@@ -2,8 +2,9 @@ import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { GameModeCard } from "@/components/GameModeCard";
 import { LiveBets } from "@/components/LiveBets";
+import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
-import { Coins, Trophy, Swords, Dices, Zap } from "lucide-react";
+import { Coins, Trophy, Dices, Zap } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import heroBanner from "@/assets/hero-banner.jpg";
 
@@ -12,7 +13,7 @@ const Index = () => {
     <div className="min-h-screen w-full flex">
       <Sidebar />
       
-      <div className="flex-1 ml-16">
+      <div className="flex-1 ml-16 mr-96">
         <TopBar />
         
         <main className="pt-16">
@@ -79,12 +80,6 @@ const Index = () => {
                 isNew
               />
               <GameModeCard
-                title="1V1 BATTLE"
-                subtitle="MM2 PVP Originals"
-                icon={Swords}
-                isNew
-              />
-              <GameModeCard
                 title="UPGRADER"
                 subtitle="MM2 PVP Originals"
                 icon={Zap}
@@ -110,6 +105,8 @@ const Index = () => {
           </section>
         </main>
       </div>
+
+      <LiveChat />
     </div>
   );
 };
