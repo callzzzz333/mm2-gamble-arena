@@ -7,6 +7,9 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Deposit from "./pages/Deposit";
 import Admin from "./pages/Admin";
+import Coinflip from "./pages/Coinflip";
+import Jackpot from "./pages/Jackpot";
+import Items from "./pages/Items";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +25,9 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/deposit" element={<Deposit />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/coinflip" element={<Coinflip />} />
+          <Route path="/jackpot" element={<Jackpot />} />
+          <Route path="/items" element={<Items />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

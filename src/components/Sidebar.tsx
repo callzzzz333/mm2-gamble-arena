@@ -41,8 +41,8 @@ export const Sidebar = () => {
   const gameMenuItems: GameMenuItem[] = [
     { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
     { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
-    { title: "1v1 Battle", icon: Swords, path: "/battle" },
-    { title: "Upgrader", icon: Zap, path: "/upgrader" },
+    { title: "1v1 Battle", icon: Swords, comingSoon: true },
+    { title: "Upgrader", icon: Zap, comingSoon: true },
     { title: "Dice Duel", icon: Dices, comingSoon: true },
     { title: "Mystery Box", icon: Gift, comingSoon: true },
     { title: "Wheel", icon: CircleDot, comingSoon: true },
@@ -118,6 +118,18 @@ export const Sidebar = () => {
         <div className="py-4">
           <div className="h-px bg-border" />
         </div>
+
+        <Button 
+          variant="ghost" 
+          className={cn(
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all",
+            isActive("/items") ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+          )}
+          onClick={() => navigate("/items")}
+        >
+          <Star className="w-5 h-5" />
+          <span className="font-medium">Item Values</span>
+        </Button>
 
         <Button 
           variant="ghost" 

@@ -46,6 +46,45 @@ export type Database = {
           },
         ]
       }
+      coinflip_games: {
+        Row: {
+          bet_amount: number
+          completed_at: string | null
+          created_at: string | null
+          creator_id: string
+          creator_side: string
+          id: string
+          joiner_id: string | null
+          result: string | null
+          status: string
+          winner_id: string | null
+        }
+        Insert: {
+          bet_amount: number
+          completed_at?: string | null
+          created_at?: string | null
+          creator_id: string
+          creator_side: string
+          id?: string
+          joiner_id?: string | null
+          result?: string | null
+          status?: string
+          winner_id?: string | null
+        }
+        Update: {
+          bet_amount?: number
+          completed_at?: string | null
+          created_at?: string | null
+          creator_id?: string
+          creator_side?: string
+          id?: string
+          joiner_id?: string | null
+          result?: string | null
+          status?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       deposits: {
         Row: {
           created_at: string | null
@@ -114,21 +153,122 @@ export type Database = {
         }
         Relationships: []
       }
+      jackpot_entries: {
+        Row: {
+          bet_amount: number
+          created_at: string | null
+          game_id: string
+          id: string
+          user_id: string
+          win_chance: number | null
+        }
+        Insert: {
+          bet_amount: number
+          created_at?: string | null
+          game_id: string
+          id?: string
+          user_id: string
+          win_chance?: number | null
+        }
+        Update: {
+          bet_amount?: number
+          created_at?: string | null
+          game_id?: string
+          id?: string
+          user_id?: string
+          win_chance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jackpot_entries_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "jackpot_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jackpot_games: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          draw_at: string | null
+          id: string
+          status: string
+          total_pot: number
+          winner_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          draw_at?: string | null
+          id?: string
+          status?: string
+          total_pot?: number
+          winner_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          draw_at?: string | null
+          id?: string
+          status?: string
+          total_pot?: number
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          balance: number
           created_at: string | null
           id: string
           username: string
         }
         Insert: {
+          balance?: number
           created_at?: string | null
           id: string
           username: string
         }
         Update: {
+          balance?: number
           created_at?: string | null
           id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          game_id: string | null
+          game_type: string | null
+          id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          game_id?: string | null
+          game_type?: string | null
+          id?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          game_id?: string | null
+          game_type?: string | null
+          id?: string
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -201,6 +341,17 @@ export type Database = {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      update_user_balance: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_game_id?: string
+          p_game_type?: string
+          p_type: string
+          p_user_id: string
         }
         Returns: boolean
       }

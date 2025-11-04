@@ -19,12 +19,16 @@ const Admin = () => {
   const [itemRarity, setItemRarity] = useState("");
   const [itemValue, setItemValue] = useState("");
   const [itemImageUrl, setItemImageUrl] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState("");
+  const [creditAmount, setCreditAmount] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     checkAdminStatus();
     fetchDeposits();
+    fetchUsers();
   }, []);
 
   const checkAdminStatus = async () => {
@@ -91,6 +95,17 @@ const Admin = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .order("username");
+
+    if (data) {
+      setUsers(data);
+    }
+  };
+
   const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -119,6 +134,43 @@ const Admin = () => {
     }
   };
 
+  const handleCreditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedUser) {
+      toast({ title: "Please select a user", variant: "destructive" });
+      return;
+    }
+
+    const amount = parseFloat(creditAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ title: "Invalid amount", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await supabase.rpc('update_user_balance', {
+      p_user_id: selectedUser,
+      p_amount: amount,
+      p_type: 'admin_credit',
+      p_description: `Admin credited $${amount.toFixed(2)}`
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to credit user",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Credited $${amount.toFixed(2)} to user`,
+      });
+      setSelectedUser("");
+      setCreditAmount("");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
@@ -135,7 +187,7 @@ const Admin = () => {
     <div className="min-h-screen w-full flex">
       <Sidebar />
       
-      <div className="flex-1 ml-16 mr-96">
+      <div className="flex-1 ml-64 mr-96">
         <TopBar />
         
         <main className="pt-16 px-12 py-12">
@@ -148,6 +200,7 @@ const Admin = () => {
             <TabsList className="bg-card border border-border">
               <TabsTrigger value="deposits">Deposit Requests</TabsTrigger>
               <TabsTrigger value="items">Manage Items</TabsTrigger>
+              <TabsTrigger value="users">Manage Users</TabsTrigger>
             </TabsList>
 
             <TabsContent value="deposits" className="space-y-4">
@@ -262,6 +315,46 @@ const Admin = () => {
 
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
                     Create Item
+                  </Button>
+                </form>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="users">
+              <Card className="p-6 bg-card border-border">
+                <h2 className="text-xl font-bold mb-4">Credit User Balance</h2>
+                <form onSubmit={handleCreditUser} className="space-y-4">
+                  <div>
+                    <label className="text-sm font-semibold">Select User</label>
+                    <select
+                      value={selectedUser}
+                      onChange={(e) => setSelectedUser(e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md"
+                      required
+                    >
+                      <option value="">Choose a user...</option>
+                      {users.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.username}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold">Amount ($)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={creditAmount}
+                      onChange={(e) => setCreditAmount(e.target.value)}
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
+                    Credit User
                   </Button>
                 </form>
               </Card>
