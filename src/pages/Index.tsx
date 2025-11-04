@@ -6,14 +6,14 @@ import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
 import { Coins, Trophy, Dices, Zap } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import heroBanner from "@/assets/hero-banner.jpg";
+import heroBanner from "@/assets/mm2-hero-banner.jpg";
 
 const Index = () => {
   return (
     <div className="min-h-screen w-full flex">
       <Sidebar />
       
-      <div className="flex-1 ml-16 mr-96">
+      <div className="flex-1 ml-64 mr-96">
         <TopBar />
         
         <main className="pt-16">
