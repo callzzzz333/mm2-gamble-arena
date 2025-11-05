@@ -1,9 +1,10 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Trophy, DollarSign, Shield, Coins, Dices, Zap, Gift, Swords, Star, CircleDot } from "lucide-react";
+import { Home, Trophy, DollarSign, Shield, Coins, Dices, Zap, Gift, Swords, Star, CircleDot, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/logo.png";
 
 interface GameMenuItem {
   title: string;
@@ -46,19 +47,17 @@ export const Sidebar = () => {
     { title: "Dice Duel", icon: Dices, comingSoon: true },
     { title: "Mystery Box", icon: Gift, comingSoon: true },
     { title: "Wheel", icon: CircleDot, comingSoon: true },
+    { title: "Rakeback", icon: Percent, comingSoon: true },
   ];
 
   return (
     <div className="fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col py-6 z-50 overflow-y-auto scrollbar-hide">
       {/* Logo */}
       <div 
-        className="px-6 mb-8 cursor-pointer flex items-center gap-3"
+        className="px-6 mb-8 cursor-pointer flex items-center justify-center"
         onClick={() => navigate("/")}
       >
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">
-          <Trophy className="w-6 h-6" />
-        </div>
-        <span className="text-xl font-bold">MM2 PVP</span>
+        <img src={logo} alt="Royale Logo" className="h-16 w-auto" />
       </div>
 
       {/* Navigation */}
@@ -66,8 +65,10 @@ export const Sidebar = () => {
         <Button 
           variant="ghost" 
           className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all",
-            isActive("/") ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
+            isActive("/") 
+              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]" 
+              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]"
           )}
           onClick={() => navigate("/")}
         >
@@ -90,10 +91,10 @@ export const Sidebar = () => {
             key={item.title}
             variant="ghost"
             className={cn(
-              "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all relative",
+              "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all relative border border-border",
               item.path && isActive(item.path) 
-                ? "bg-accent text-accent-foreground" 
-                : "hover:bg-accent/50",
+                ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]" 
+                : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
               item.comingSoon && "opacity-60 cursor-not-allowed"
             )}
             onClick={() => item.path && !item.comingSoon && navigate(item.path)}
@@ -102,12 +103,12 @@ export const Sidebar = () => {
             <item.icon className="w-5 h-5" />
             <span className="font-medium flex-1 text-left">{item.title}</span>
             {item.isNew && (
-              <span className="px-1.5 py-0.5 bg-primary text-[10px] font-bold rounded uppercase">
+              <span className="px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded uppercase">
                 New
               </span>
             )}
             {item.comingSoon && (
-              <span className="px-1.5 py-0.5 bg-muted text-[10px] font-bold rounded uppercase">
+              <span className="px-1.5 py-0.5 bg-muted text-muted-foreground text-[10px] font-bold rounded uppercase">
                 Soon
               </span>
             )}
@@ -122,8 +123,10 @@ export const Sidebar = () => {
         <Button 
           variant="ghost" 
           className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all",
-            isActive("/items") ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
+            isActive("/items") 
+              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]" 
+              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]"
           )}
           onClick={() => navigate("/items")}
         >
@@ -134,8 +137,10 @@ export const Sidebar = () => {
         <Button 
           variant="ghost" 
           className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all",
-            isActive("/deposit") ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
+            isActive("/deposit") 
+              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]" 
+              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]"
           )}
           onClick={() => navigate("/deposit")}
         >
@@ -147,8 +152,10 @@ export const Sidebar = () => {
           <Button 
             variant="ghost" 
             className={cn(
-              "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all",
-              isActive("/admin") ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+              "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
+              isActive("/admin") 
+                ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]" 
+                : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]"
             )}
             onClick={() => navigate("/admin")}
           >
