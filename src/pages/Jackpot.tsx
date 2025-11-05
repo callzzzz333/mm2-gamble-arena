@@ -3,19 +3,34 @@ import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Trophy } from "lucide-react";
+import { Trophy, Package, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { UserInventoryDialog } from "@/components/UserInventoryDialog";
+
+interface Item {
+  id: string;
+  name: string;
+  rarity: string;
+  value: number;
+  image_url: string | null;
+}
+
+interface SelectedItem {
+  item: Item;
+  quantity: number;
+}
 
 interface JackpotEntry {
   id: string;
   user_id: string;
   bet_amount: string;
   win_chance: string;
+  items: any[];
   profiles: any;
 }
 
@@ -29,10 +44,10 @@ interface JackpotGame {
 const Jackpot = () => {
   const [currentGame, setCurrentGame] = useState<JackpotGame | null>(null);
   const [entries, setEntries] = useState<JackpotEntry[]>([]);
-  const [betAmount, setBetAmount] = useState("");
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [user, setUser] = useState<any>(null);
-  const [userBalance, setUserBalance] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -74,16 +89,6 @@ const Jackpot = () => {
       return;
     }
     setUser(user);
-    
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("balance")
-      .eq("id", user.id)
-      .single();
-    
-    if (profile) {
-      setUserBalance(parseFloat(String(profile.balance)) || 0);
-    }
   };
 
   const fetchCurrentGame = async () => {
@@ -93,7 +98,7 @@ const Jackpot = () => {
       .in("status", ["active", "rolling"])
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!game) {
       // Create new game
@@ -124,19 +129,73 @@ const Jackpot = () => {
     }
   };
 
+  const handleSelectItem = (itemWithQty: Item & { quantity: number }) => {
+    const existing = selectedItems.find(si => si.item.id === itemWithQty.id);
+    if (existing) {
+      setSelectedItems(selectedItems.map(si =>
+        si.item.id === itemWithQty.id ? { ...si, quantity: si.quantity + 1 } : si
+      ));
+    } else {
+      const { quantity, ...item } = itemWithQty;
+      setSelectedItems([...selectedItems, { item, quantity: 1 }]);
+    }
+    setInventoryOpen(false);
+  };
+
+  const removeItem = (itemId: string) => {
+    const existing = selectedItems.find(si => si.item.id === itemId);
+    if (existing && existing.quantity > 1) {
+      setSelectedItems(selectedItems.map(si =>
+        si.item.id === itemId ? { ...si, quantity: si.quantity - 1 } : si
+      ));
+    } else {
+      setSelectedItems(selectedItems.filter(si => si.item.id !== itemId));
+    }
+  };
+
+  const getTotalValue = () => {
+    return selectedItems.reduce((sum, si) => sum + (si.item.value * si.quantity), 0);
+  };
+
   const enterJackpot = async () => {
     if (!user || !currentGame) return;
 
-    const amount = parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({ title: "Invalid bet amount", variant: "destructive" });
+    if (selectedItems.length === 0) {
+      toast({ title: "Please select items to bet", variant: "destructive" });
       return;
     }
 
-    if (amount > userBalance) {
-      toast({ title: "Insufficient balance", variant: "destructive" });
-      return;
+    // Remove items from inventory
+    for (const si of selectedItems) {
+      const { data: userItem } = await supabase
+        .from('user_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('item_id', si.item.id)
+        .single();
+
+      if (!userItem || userItem.quantity < si.quantity) {
+        toast({ title: `Not enough ${si.item.name}`, variant: "destructive" });
+        return;
+      }
+
+      const newQty = userItem.quantity - si.quantity;
+      if (newQty === 0) {
+        await supabase.from('user_items').delete().eq('id', userItem.id);
+      } else {
+        await supabase.from('user_items').update({ quantity: newQty }).eq('id', userItem.id);
+      }
     }
+
+    const amount = getTotalValue();
+    const itemsData = selectedItems.map(si => ({
+      item_id: si.item.id,
+      name: si.item.name,
+      value: si.item.value,
+      quantity: si.quantity,
+      image_url: si.item.image_url,
+      rarity: si.item.rarity
+    }));
 
     // Insert entry
     const { error: entryError } = await supabase
@@ -145,7 +204,8 @@ const Jackpot = () => {
         game_id: currentGame.id,
         user_id: user.id,
         bet_amount: amount,
-        win_chance: 0
+        win_chance: 0,
+        items: itemsData
       });
 
     if (entryError) {
@@ -154,29 +214,13 @@ const Jackpot = () => {
     }
 
     // Update game total
-    const { error: gameError } = await supabase
+    await supabase
       .from("jackpot_games")
       .update({ total_pot: parseFloat(currentGame.total_pot) + amount })
       .eq("id", currentGame.id);
 
-    if (gameError) {
-      toast({ title: "Error updating game", variant: "destructive" });
-      return;
-    }
-
-    // Deduct balance
-    await supabase.rpc('update_user_balance', {
-      p_user_id: user.id,
-      p_amount: -amount,
-      p_type: 'loss',
-      p_game_type: 'jackpot',
-      p_game_id: currentGame.id,
-      p_description: 'Entered jackpot'
-    });
-
-    setBetAmount("");
+    setSelectedItems([]);
     toast({ title: "Entered jackpot!", description: `Bet $${amount.toFixed(2)}` });
-    checkUser();
   };
 
   const drawWinner = async () => {
@@ -202,9 +246,7 @@ const Jackpot = () => {
       }
     }
 
-    const winAmount = totalPot * 0.95; // 5% house edge
-
-    // Update game
+    // Update game status
     await supabase
       .from("jackpot_games")
       .update({
@@ -214,22 +256,59 @@ const Jackpot = () => {
       })
       .eq("id", currentGame.id);
 
-    // Credit winner
-    await supabase.rpc('update_user_balance', {
-      p_user_id: winnerId,
-      p_amount: winAmount,
-      p_type: 'win',
-      p_game_type: 'jackpot',
-      p_game_id: currentGame.id,
-      p_description: 'Won jackpot'
-    });
-
-    if (winnerId === user?.id) {
-      toast({ title: "YOU WON THE JACKPOT! 🎉", description: `Won $${winAmount.toFixed(2)}` });
+    // Collect all items from all entries
+    const allItems: any[] = [];
+    for (const entry of entries) {
+      if (entry.items && Array.isArray(entry.items)) {
+        allItems.push(...entry.items);
+      }
     }
 
-    checkUser();
+    // Give winner 95% of all items (5% house edge)
+    for (const item of allItems) {
+      const adjustedQty = Math.floor(item.quantity * 0.95);
+      if (adjustedQty > 0) {
+        const { data: existingItem } = await supabase
+          .from('user_items')
+          .select('*')
+          .eq('user_id', winnerId)
+          .eq('item_id', item.item_id)
+          .maybeSingle();
+
+        if (existingItem) {
+          await supabase
+            .from('user_items')
+            .update({ quantity: existingItem.quantity + adjustedQty })
+            .eq('id', existingItem.id);
+        } else {
+          await supabase
+            .from('user_items')
+            .insert({
+              user_id: winnerId,
+              item_id: item.item_id,
+              quantity: adjustedQty
+            });
+        }
+      }
+    }
+
+    if (winnerId === user?.id) {
+      toast({ title: "YOU WON THE JACKPOT! 🎉", description: `Won $${(totalPot * 0.95).toFixed(2)} in items!` });
+    }
+
     fetchCurrentGame();
+  };
+
+  const getRarityColor = (rarity: string) => {
+    const colors: any = {
+      'Godly': 'bg-red-500/20 text-red-500',
+      'Ancient': 'bg-purple-500/20 text-purple-500',
+      'Legendary': 'bg-orange-500/20 text-orange-500',
+      'Rare': 'bg-blue-500/20 text-blue-500',
+      'Uncommon': 'bg-green-500/20 text-green-500',
+      'Common': 'bg-gray-500/20 text-gray-500'
+    };
+    return colors[rarity] || 'bg-gray-500/20 text-gray-500';
   };
 
   return (
@@ -277,21 +356,50 @@ const Jackpot = () => {
               <h2 className="text-xl font-bold mb-4">Enter Jackpot</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Bet Amount ($)</label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(e.target.value)}
-                    min="0"
-                    step="0.01"
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Your balance: ${userBalance.toFixed(2)}
-                  </p>
+                  <label className="text-sm font-medium mb-2 block">Select Items to Bet</label>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start gap-2"
+                    onClick={() => setInventoryOpen(true)}
+                  >
+                    <Package className="w-4 h-4" />
+                    {selectedItems.length === 0 ? 'Select from inventory' : `${selectedItems.length} items selected`}
+                  </Button>
+
+                  {selectedItems.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {selectedItems.map((si) => (
+                        <div key={si.item.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          {si.item.image_url && (
+                            <img src={si.item.image_url} alt={si.item.name} className="w-12 h-12 object-cover rounded" />
+                          )}
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm">{si.item.name}</p>
+                            <div className="flex items-center gap-2">
+                              <Badge className={getRarityColor(si.item.rarity)}>{si.item.rarity}</Badge>
+                              <span className="text-xs text-muted-foreground">x{si.quantity}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-primary">${(si.item.value * si.quantity).toFixed(2)}</p>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeItem(si.item.id)}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="pt-2 border-t border-border">
+                        <p className="text-lg font-bold">Total: <span className="text-primary">${getTotalValue().toFixed(2)}</span></p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <Button onClick={enterJackpot} className="w-full" size="lg">
+                <Button onClick={enterJackpot} className="w-full" size="lg" disabled={selectedItems.length === 0}>
                   Enter Jackpot
                 </Button>
               </div>
@@ -305,7 +413,7 @@ const Jackpot = () => {
                   <p className="text-muted-foreground">No participants yet. Be the first!</p>
                 </Card>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {entries.map((entry) => {
                     const chance = currentGame ? (parseFloat(entry.bet_amount) / parseFloat(currentGame.total_pot)) * 100 : 0;
                     return (
@@ -314,12 +422,29 @@ const Jackpot = () => {
                           <span className="font-medium">{entry.profiles?.username || 'Unknown'}</span>
                           <span className="text-lg font-bold">${parseFloat(entry.bet_amount).toFixed(2)}</span>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <div className="flex justify-between text-sm text-muted-foreground">
                             <span>Win Chance</span>
                             <span>{chance.toFixed(2)}%</span>
                           </div>
                           <Progress value={chance} className="h-2" />
+                          
+                          {entry.items && entry.items.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-border">
+                              <p className="text-xs text-muted-foreground mb-2">Items bet:</p>
+                              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                                {entry.items.map((item: any, idx: number) => (
+                                  <div key={idx} className="p-1 bg-muted/30 rounded text-center">
+                                    {item.image_url && (
+                                      <img src={item.image_url} alt={item.name} className="w-full aspect-square object-cover rounded mb-1" />
+                                    )}
+                                    <p className="text-xs truncate">{item.name}</p>
+                                    <p className="text-xs text-muted-foreground">x{item.quantity}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </Card>
                     );
@@ -332,6 +457,11 @@ const Jackpot = () => {
       </div>
 
       <LiveChat />
+      <UserInventoryDialog 
+        open={inventoryOpen} 
+        onOpenChange={setInventoryOpen}
+        onSelectItem={handleSelectItem}
+      />
     </div>
   );
 };

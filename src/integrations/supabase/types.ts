@@ -280,6 +280,7 @@ export type Database = {
           created_at: string | null
           game_id: string
           id: string
+          items: Json | null
           user_id: string
           win_chance: number | null
         }
@@ -288,6 +289,7 @@ export type Database = {
           created_at?: string | null
           game_id: string
           id?: string
+          items?: Json | null
           user_id: string
           win_chance?: number | null
         }
@@ -296,6 +298,7 @@ export type Database = {
           created_at?: string | null
           game_id?: string
           id?: string
+          items?: Json | null
           user_id?: string
           win_chance?: number | null
         }
