@@ -11,6 +11,11 @@ import Admin from "./pages/Admin";
 import Coinflip from "./pages/Coinflip";
 import Jackpot from "./pages/Jackpot";
 import Items from "./pages/Items";
+import RussianRoulette from "./pages/RussianRoulette";
+import KingOfHill from "./pages/KingOfHill";
+import DraftBattle from "./pages/DraftBattle";
+import TeamShowdown from "./pages/TeamShowdown";
+import ItemDuel from "./pages/ItemDuel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +35,11 @@ const App = () => (
           <Route path="/coinflip" element={<Coinflip />} />
           <Route path="/jackpot" element={<Jackpot />} />
           <Route path="/items" element={<Items />} />
+          <Route path="/russian-roulette" element={<RussianRoulette />} />
+          <Route path="/king-of-hill" element={<KingOfHill />} />
+          <Route path="/draft-battle" element={<DraftBattle />} />
+          <Route path="/team-showdown" element={<TeamShowdown />} />
+          <Route path="/item-duel" element={<ItemDuel />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
