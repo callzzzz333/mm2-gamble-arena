@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,25 +25,26 @@ export const TopBar = () => {
 
   return (
     <>
-      <div className="fixed top-0 left-64 right-96 h-16 bg-background/95 backdrop-blur-sm border-b border-border z-40 flex items-center justify-center px-12">
-        {user && (
-          <div className="absolute left-1/2 -translate-x-1/2">
-            <BalanceDisplay />
-          </div>
-        )}
+      <div className="fixed top-0 left-64 right-96 h-16 bg-background/95 backdrop-blur-sm border-b border-border z-40 flex items-center justify-between px-12">
+        {/* Centered Inventory Button */}
+        <div className="flex-1 flex justify-center">
+          {user && (
+            <Button 
+              variant="outline" 
+              size="lg"
+              onClick={() => setInventoryOpen(true)}
+              className="gap-2 border-primary/20 hover:border-primary hover:shadow-glow transition-all font-semibold"
+            >
+              <Package className="w-5 h-5" />
+              Inventory
+            </Button>
+          )}
+        </div>
         
-        <div className="flex items-center gap-3 absolute right-12">
+        {/* Right Side Actions */}
+        <div className="flex items-center gap-3">
           {user ? (
             <>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setInventoryOpen(true)}
-                className="gap-2 border-primary/20 hover:border-primary hover:shadow-glow transition-all"
-              >
-                <Package className="w-4 h-4" />
-                Inventory
-              </Button>
               <Button 
                 variant="ghost" 
                 size="icon" 
