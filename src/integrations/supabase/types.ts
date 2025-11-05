@@ -171,6 +171,76 @@ export type Database = {
           },
         ]
       }
+      giveaway_entries: {
+        Row: {
+          created_at: string | null
+          giveaway_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          giveaway_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          giveaway_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "giveaway_entries_giveaway_id_fkey"
+            columns: ["giveaway_id"]
+            isOneToOne: false
+            referencedRelation: "giveaways"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      giveaways: {
+        Row: {
+          created_at: string | null
+          creator_id: string
+          ended_at: string | null
+          ends_at: string | null
+          id: string
+          item_id: string
+          status: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id: string
+          ended_at?: string | null
+          ends_at?: string | null
+          id?: string
+          item_id: string
+          status?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string
+          ended_at?: string | null
+          ends_at?: string | null
+          id?: string
+          item_id?: string
+          status?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "giveaways_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           created_at: string | null
