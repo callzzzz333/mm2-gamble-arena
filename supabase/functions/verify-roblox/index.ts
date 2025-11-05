@@ -53,6 +53,19 @@ serve(async (req) => {
     
     console.log('Roblox bio:', bio);
 
+    // Get Roblox avatar headshot
+    const avatarResponse = await fetch(
+      `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${robloxId}&size=150x150&format=Png&isCircular=false`
+    );
+    
+    let avatarUrl = null;
+    if (avatarResponse.ok) {
+      const avatarData = await avatarResponse.json();
+      if (avatarData.data && avatarData.data.length > 0) {
+        avatarUrl = avatarData.data[0].imageUrl;
+      }
+    }
+
     // Check if verification code is in bio
     if (!bio.includes(verificationCode)) {
       return new Response(
@@ -109,8 +122,10 @@ serve(async (req) => {
       .update({
         roblox_username: robloxUsername,
         roblox_id: robloxId,
+        avatar_url: avatarUrl,
         verification_code: verificationCode,
-        verified_at: new Date().toISOString()
+        verified_at: new Date().toISOString(),
+        username: robloxUsername // Also update the username
       })
       .eq('id', userId);
 

@@ -265,31 +265,43 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           balance: number
           created_at: string | null
           id: string
           roblox_id: number | null
           roblox_username: string | null
+          total_deposited: number | null
+          total_profits: number | null
+          total_wagered: number | null
           username: string
           verification_code: string | null
           verified_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           balance?: number
           created_at?: string | null
           id: string
           roblox_id?: number | null
           roblox_username?: string | null
+          total_deposited?: number | null
+          total_profits?: number | null
+          total_wagered?: number | null
           username: string
           verification_code?: string | null
           verified_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           balance?: number
           created_at?: string | null
           id?: string
           roblox_id?: number | null
           roblox_username?: string | null
+          total_deposited?: number | null
+          total_profits?: number | null
+          total_wagered?: number | null
           username?: string
           verification_code?: string | null
           verified_at?: string | null
