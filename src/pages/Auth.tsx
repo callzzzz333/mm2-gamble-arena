@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Check } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
 
 const Auth = () => {
   const [robloxUsername, setRobloxUsername] = useState("");
@@ -14,16 +15,30 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"generate" | "verify">("generate");
   const [copied, setCopied] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if already logged in
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        if (session) {
+          navigate("/");
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
         navigate("/");
       }
     });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleGenerateCode = async () => {
