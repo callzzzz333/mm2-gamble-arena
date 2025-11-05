@@ -110,28 +110,29 @@ const Items = () => {
             </Card>
 
             {/* Items Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-2">
               {filteredItems.map((item) => (
-                <Card key={item.id} className="p-4 hover:border-primary/50 transition-all">
-                  <div className="space-y-3">
-                    <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
+                <Card key={item.id} className="p-2 hover:border-primary/50 transition-all">
+                  <div className="space-y-1.5">
+                    <div className="aspect-square bg-muted rounded-md flex items-center justify-center">
                       {item.image_url ? (
-                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-md" />
                       ) : (
-                        <Package className="w-16 h-16 text-muted-foreground" />
+                        <Package className="w-8 h-8 text-muted-foreground" />
                       )}
                     </div>
                     
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold truncate">{item.name}</h3>
-                        <Badge className={`${getRarityColor(item.rarity)} text-white`}>
-                          {item.rarity}
-                        </Badge>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <h3 className="text-xs font-semibold truncate">{item.name}</h3>
                       </div>
                       
+                      <Badge className={`${getRarityColor(item.rarity)} text-white text-[10px] px-1 py-0`}>
+                        {item.rarity}
+                      </Badge>
+                      
                       <div className="flex items-center justify-between">
-                        <span className="text-2xl font-bold">${item.value.toFixed(2)}</span>
+                        <span className="text-sm font-bold">${item.value.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
