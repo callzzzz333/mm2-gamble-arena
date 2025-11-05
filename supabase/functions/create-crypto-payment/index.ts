@@ -12,7 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { amount, currency = 'btc' } = await req.json();
+    const { amount } = await req.json();
+    
+    // Force Litecoin only
+    const currency = 'ltc';
+    const fixedAddress = 'LYY4HmKg88pUvDyY4JGhMb8DnJChAmsaru';
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -30,35 +34,40 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    // Create payment via NOWPayments API
+    // Create payment via NOWPayments API - using fixed Litecoin address
     const nowpaymentsApiKey = Deno.env.get('NOWPAYMENTS_API_KEY');
     if (!nowpaymentsApiKey) {
       throw new Error('NOWPayments API key not configured');
     }
 
-    const paymentResponse = await fetch('https://api.nowpayments.io/v1/payment', {
-      method: 'POST',
-      headers: {
-        'x-api-key': nowpaymentsApiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        price_amount: amount,
-        price_currency: 'usd',
-        pay_currency: currency.toLowerCase(),
-        ipn_callback_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/crypto-payment-webhook`,
-        order_id: `${user.id}_${Date.now()}`,
-        order_description: 'MM2 Royale Deposit',
-      }),
-    });
+    // Get estimated LTC amount for the USD amount
+    const estimateResponse = await fetch(
+      `https://api.nowpayments.io/v1/estimate?amount=${amount}&currency_from=usd&currency_to=ltc`,
+      {
+        headers: {
+          'x-api-key': nowpaymentsApiKey,
+        },
+      }
+    );
 
-    if (!paymentResponse.ok) {
-      const errorData = await paymentResponse.json();
-      console.error('NOWPayments error:', errorData);
-      throw new Error('Failed to create payment');
+    if (!estimateResponse.ok) {
+      throw new Error('Failed to get payment estimate');
     }
 
-    const paymentData = await paymentResponse.json();
+    const estimateData = await estimateResponse.json();
+    const ltcAmount = estimateData.estimated_amount;
+
+    // Create a unique payment ID for tracking
+    const paymentId = `${user.id}_${Date.now()}`;
+    
+    const paymentData = {
+      payment_id: paymentId,
+      pay_amount: ltcAmount,
+      pay_address: fixedAddress,
+      payment_status: 'waiting',
+      payment_url: null,
+      order_id: paymentId,
+    };
 
     // Store payment in database
     const { data: deposit, error: depositError } = await supabase
@@ -71,7 +80,7 @@ serve(async (req) => {
         usd_amount: amount,
         pay_address: paymentData.pay_address,
         payment_status: paymentData.payment_status,
-        payment_url: paymentData.payment_url || paymentData.invoice_url,
+        payment_url: null,
       })
       .select()
       .single();
@@ -87,7 +96,7 @@ serve(async (req) => {
         payment: {
           ...deposit,
           pay_address: paymentData.pay_address,
-          payment_url: paymentData.payment_url || paymentData.invoice_url,
+          payment_url: null,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

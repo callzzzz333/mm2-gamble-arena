@@ -404,23 +404,12 @@ const Deposit = () => {
                     <label className="text-sm font-semibold mb-2 block">
                       Cryptocurrency
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { value: 'btc', label: 'Bitcoin', icon: '₿' },
-                        { value: 'eth', label: 'Ethereum', icon: 'Ξ' },
-                        { value: 'ltc', label: 'Litecoin', icon: 'Ł' },
-                      ].map((crypto) => (
-                        <Button
-                          key={crypto.value}
-                          type="button"
-                          variant={selectedCrypto === crypto.value ? "default" : "outline"}
-                          onClick={() => setSelectedCrypto(crypto.value)}
-                          className="h-16 flex flex-col gap-1"
-                        >
-                          <span className="text-xl">{crypto.icon}</span>
-                          <span className="text-xs">{crypto.label}</span>
-                        </Button>
-                      ))}
+                    <div className="p-4 bg-muted/20 rounded-lg border border-primary text-center">
+                      <span className="text-3xl">Ł</span>
+                      <div className="text-sm font-medium mt-2">Litecoin (LTC) Only</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Send to: LYY4HmKg88pUvDyY4JGhMb8DnJChAmsaru
+                      </div>
                     </div>
                   </div>
 

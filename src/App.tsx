@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Deposit from "./pages/Deposit";
 import Withdraw from "./pages/Withdraw";
 import Admin from "./pages/Admin";
+import Inventory from "./pages/Inventory";
 import Coinflip from "./pages/Coinflip";
 import Jackpot from "./pages/Jackpot";
 import Items from "./pages/Items";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/deposit" element={<Deposit />} />
           <Route path="/withdraw" element={<Withdraw />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/inventory" element={<Inventory />} />
           <Route path="/coinflip" element={<Coinflip />} />
           <Route path="/jackpot" element={<Jackpot />} />
           <Route path="/items" element={<Items />} />

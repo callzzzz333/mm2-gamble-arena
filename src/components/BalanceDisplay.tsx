@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Wallet, Plus, Minus } from "lucide-react";
+import { Wallet } from "lucide-react";
 
 export const BalanceDisplay = () => {
   const [balance, setBalance] = useState(0);
   const [user, setUser] = useState<any>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchBalance();
@@ -60,32 +57,11 @@ export const BalanceDisplay = () => {
       <div className="flex items-center gap-2 px-3 py-1.5 bg-background/80 rounded-md border border-border/30">
         <Wallet className="w-4 h-4 text-primary" />
         <div className="flex items-baseline gap-1">
-          <span className="text-xs text-muted-foreground font-medium">$</span>
+          <span className="text-xs text-muted-foreground font-medium">Inventory Value: $</span>
           <span className="text-lg font-bold text-foreground tabular-nums">
             {balance.toFixed(2)}
           </span>
         </div>
-      </div>
-      
-      <div className="flex items-center gap-1.5">
-        <Button
-          onClick={() => navigate("/deposit")}
-          size="sm"
-          className="h-8 px-3 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 transition-all shadow-none"
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          Deposit
-        </Button>
-        
-        <Button
-          onClick={() => navigate("/withdraw")}
-          size="sm"
-          variant="outline"
-          className="h-8 px-3 border-border/50 hover:bg-muted/50 transition-all shadow-none"
-        >
-          <Minus className="w-3.5 h-3.5 mr-1" />
-          Withdraw
-        </Button>
       </div>
     </div>
   );
