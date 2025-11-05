@@ -113,16 +113,24 @@ export const LiveChat = () => {
   };
 
   return (
-    <Card className="fixed right-4 top-20 bottom-4 w-96 bg-card border-border flex flex-col">
-      <div className="p-4 border-b border-border flex items-center justify-center">
-        <img src={logo} alt="Royale Logo" className="h-12 w-auto" />
+    <div className="fixed right-0 top-0 h-screen w-96 bg-card/95 backdrop-blur-sm border-l border-border flex flex-col shadow-2xl z-40">
+      <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card to-card/80">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">
+            <MessageSquare className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Live Chat</h2>
+            <p className="text-xs text-muted-foreground">{messages.length} messages</p>
+          </div>
+        </div>
       </div>
 
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {messages.map((msg) => (
-            <div key={msg.id} className="space-y-1">
-              <div className="flex items-baseline gap-2">
+            <div key={msg.id} className="group hover:bg-muted/30 p-3 rounded-lg transition-colors">
+              <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-sm font-semibold text-primary">
                   {msg.username}
                 </span>
@@ -133,7 +141,7 @@ export const LiveChat = () => {
                   })}
                 </span>
               </div>
-              <p className="text-sm text-foreground break-words">
+              <p className="text-sm text-foreground/90 break-words leading-relaxed">
                 {msg.message}
               </p>
             </div>
@@ -141,26 +149,26 @@ export const LiveChat = () => {
         </div>
       </ScrollArea>
 
-      <form onSubmit={sendMessage} className="p-4 border-t border-border">
+      <form onSubmit={sendMessage} className="p-4 border-t border-border/50 bg-card/80 backdrop-blur-sm">
         <div className="flex gap-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder={user ? "Type a message..." : "Login to chat"}
             disabled={!user}
-            className="flex-1 bg-background border-border"
+            className="flex-1 bg-background/50"
             maxLength={500}
           />
           <Button
             type="submit"
             size="icon"
             disabled={!user || !newMessage.trim()}
-            className="bg-primary hover:bg-primary/90"
+            className="shadow-glow"
           >
             <Send className="w-4 h-4" />
           </Button>
         </div>
       </form>
-    </Card>
+    </div>
   );
 };
