@@ -52,9 +52,11 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           creator_id: string
+          creator_items: Json | null
           creator_side: string
           id: string
           joiner_id: string | null
+          joiner_items: Json | null
           result: string | null
           status: string
           winner_id: string | null
@@ -64,9 +66,11 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           creator_id: string
+          creator_items?: Json | null
           creator_side: string
           id?: string
           joiner_id?: string | null
+          joiner_items?: Json | null
           result?: string | null
           status?: string
           winner_id?: string | null
@@ -76,9 +80,11 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           creator_id?: string
+          creator_items?: Json | null
           creator_side?: string
           id?: string
           joiner_id?: string | null
+          joiner_items?: Json | null
           result?: string | null
           status?: string
           winner_id?: string | null
