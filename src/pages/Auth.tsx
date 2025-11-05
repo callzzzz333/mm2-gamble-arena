@@ -5,20 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
-
-const authSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  username: z.string().min(3, "Username must be at least 3 characters").optional(),
-});
+import { Copy, Check } from "lucide-react";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
+  const [robloxUsername, setRobloxUsername] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [generatedCode, setGeneratedCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"generate" | "verify">("generate");
+  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -31,55 +26,34 @@ const Auth = () => {
     });
   }, [navigate]);
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerateCode = async () => {
+    if (!robloxUsername || robloxUsername.length < 3) {
+      toast({
+        title: "Invalid Username",
+        description: "Please enter a valid Roblox username",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
-
     try {
-      // Validate input
-      const validationData = isLogin
-        ? { email, password }
-        : { email, password, username };
+      const { data, error } = await supabase.functions.invoke('generate-verification-code');
       
-      authSchema.parse(validationData);
-
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Welcome back!",
-          description: "Successfully logged in",
-        });
-        navigate("/");
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              username,
-            },
-            emailRedirectTo: `${window.location.origin}/`,
-          },
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Account created!",
-          description: "Welcome to MM2 PVP",
-        });
-        navigate("/");
-      }
+      if (error) throw error;
+      
+      setGeneratedCode(data.code);
+      setVerificationCode(data.code);
+      setStep("verify");
+      
+      toast({
+        title: "Code Generated!",
+        description: "Add this code to your Roblox profile bio",
+      });
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Authentication failed",
+        description: error.message || "Failed to generate code",
         variant: "destructive",
       });
     } finally {
@@ -87,76 +61,142 @@ const Auth = () => {
     }
   };
 
+  const handleVerify = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-roblox', {
+        body: { robloxUsername, verificationCode: generatedCode }
+      });
+      
+      if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Success!",
+        description: "Your Roblox account has been verified",
+      });
+      
+      // Refresh the session
+      await supabase.auth.refreshSession();
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Verification Failed",
+        description: error.message || "Please make sure the code is in your Roblox bio",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(generatedCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({
+      title: "Copied!",
+      description: "Verification code copied to clipboard",
+    });
+  };
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md p-8 bg-card border-border">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md p-8 bg-card border-border shadow-[0_0_20px_hsl(var(--glow-primary)/0.3)]">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            {isLogin ? "Welcome Back" : "Create Account"}
+            Roblox Login
           </h1>
           <p className="text-muted-foreground">
-            {isLogin ? "Login to your MM2 PVP account" : "Join MM2 PVP today"}
+            Verify your Roblox account to continue
           </p>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-4">
-          {!isLogin && (
+        {step === "generate" ? (
+          <div className="space-y-4">
             <div>
-              <label className="text-sm text-muted-foreground">Username</label>
+              <label className="text-sm text-muted-foreground">Roblox Username</label>
               <Input
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-                required
+                value={robloxUsername}
+                onChange={(e) => setRobloxUsername(e.target.value)}
+                placeholder="Enter your Roblox username"
                 className="mt-1"
               />
             </div>
-          )}
 
-          <div>
-            <label className="text-sm text-muted-foreground">Email</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-              className="mt-1"
-            />
+            <Button
+              onClick={handleGenerateCode}
+              className="w-full bg-primary hover:bg-primary/90 shadow-[0_0_10px_hsl(var(--glow-primary)/0.3)]"
+              disabled={loading}
+            >
+              {loading ? "Generating..." : "Generate Verification Code"}
+            </Button>
+
+            <div className="mt-4 p-4 bg-muted/20 rounded-lg border border-border">
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">How it works:</strong>
+              </p>
+              <ol className="text-sm text-muted-foreground mt-2 space-y-1 list-decimal list-inside">
+                <li>Enter your Roblox username</li>
+                <li>Copy the generated verification code</li>
+                <li>Add the code to your Roblox profile bio</li>
+                <li>Click verify to complete login</li>
+              </ol>
+            </div>
           </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="p-4 bg-muted/20 rounded-lg border border-primary">
+              <p className="text-sm text-muted-foreground mb-2">
+                Add this code to your Roblox profile bio:
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 p-3 bg-background rounded text-primary font-mono font-bold text-center">
+                  {generatedCode}
+                </code>
+                <Button
+                  onClick={copyCode}
+                  variant="outline"
+                  size="icon"
+                  className="border-primary hover:bg-primary/10"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
 
-          <div>
-            <label className="text-sm text-muted-foreground">Password</label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              className="mt-1"
-            />
+            <div className="p-4 bg-primary/10 rounded-lg border border-primary">
+              <p className="text-sm font-medium text-foreground mb-2">Instructions:</p>
+              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                <li>Go to <a href="https://www.roblox.com/my/account#!/info" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Roblox Settings</a></li>
+                <li>Paste the code into your "About" section</li>
+                <li>Click "Save" on Roblox</li>
+                <li>Come back and click "Verify" below</li>
+              </ol>
+            </div>
+
+            <Button
+              onClick={handleVerify}
+              className="w-full bg-primary hover:bg-primary/90 shadow-[0_0_10px_hsl(var(--glow-primary)/0.3)]"
+              disabled={loading}
+            >
+              {loading ? "Verifying..." : "Verify Roblox Account"}
+            </Button>
+
+            <Button
+              onClick={() => setStep("generate")}
+              variant="outline"
+              className="w-full border-border"
+              disabled={loading}
+            >
+              Back
+            </Button>
           </div>
-
-          <Button
-            type="submit"
-            className="w-full bg-primary hover:bg-primary/90"
-            disabled={loading}
-          >
-            {loading ? "Loading..." : isLogin ? "Login" : "Sign Up"}
-          </Button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-primary hover:underline"
-          >
-            {isLogin
-              ? "Don't have an account? Sign up"
-              : "Already have an account? Login"}
-          </button>
-        </div>
+        )}
       </Card>
     </div>
   );

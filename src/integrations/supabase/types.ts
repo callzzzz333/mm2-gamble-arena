@@ -223,19 +223,31 @@ export type Database = {
           balance: number
           created_at: string | null
           id: string
+          roblox_id: number | null
+          roblox_username: string | null
           username: string
+          verification_code: string | null
+          verified_at: string | null
         }
         Insert: {
           balance?: number
           created_at?: string | null
           id: string
+          roblox_id?: number | null
+          roblox_username?: string | null
           username: string
+          verification_code?: string | null
+          verified_at?: string | null
         }
         Update: {
           balance?: number
           created_at?: string | null
           id?: string
+          roblox_id?: number | null
+          roblox_username?: string | null
           username?: string
+          verification_code?: string | null
+          verified_at?: string | null
         }
         Relationships: []
       }
@@ -332,6 +344,36 @@ export type Database = {
         }
         Relationships: []
       }
+      verification_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          roblox_username: string | null
+          used: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          roblox_username?: string | null
+          used?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          roblox_username?: string | null
+          used?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       withdrawals: {
         Row: {
           amount: number
@@ -376,6 +418,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_verification_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -1,0 +1,156 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { robloxUsername, verificationCode } = await req.json();
+    
+    console.log('Verifying Roblox user:', robloxUsername, 'with code:', verificationCode);
+
+    // Get Roblox user ID from username
+    const userSearchResponse = await fetch(
+      `https://users.roblox.com/v1/usernames/users`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usernames: [robloxUsername], excludeBannedUsers: true })
+      }
+    );
+
+    if (!userSearchResponse.ok) {
+      throw new Error('Failed to find Roblox user');
+    }
+
+    const userData = await userSearchResponse.json();
+    
+    if (!userData.data || userData.data.length === 0) {
+      throw new Error('Roblox user not found');
+    }
+
+    const robloxId = userData.data[0].id;
+    console.log('Found Roblox ID:', robloxId);
+
+    // Get user profile/bio
+    const profileResponse = await fetch(
+      `https://users.roblox.com/v1/users/${robloxId}`
+    );
+
+    if (!profileResponse.ok) {
+      throw new Error('Failed to fetch Roblox profile');
+    }
+
+    const profileData = await profileResponse.json();
+    const bio = profileData.description || '';
+    
+    console.log('Roblox bio:', bio);
+
+    // Check if verification code is in bio
+    if (!bio.includes(verificationCode)) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Verification code not found in Roblox bio. Please add the code to your bio and try again.' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Create or get user account
+    const email = `${robloxUsername.toLowerCase()}@roblox.mm2pvp.temp`;
+    const password = crypto.randomUUID();
+
+    // Try to sign up
+    const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        roblox_username: robloxUsername,
+        roblox_id: robloxId
+      }
+    });
+
+    let userId = signUpData?.user?.id;
+
+    // If user already exists, try to get their ID
+    if (signUpError && signUpError.message.includes('already registered')) {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('roblox_username', robloxUsername)
+        .single();
+      
+      if (existingProfile) {
+        userId = existingProfile.id;
+      }
+    }
+
+    if (!userId) {
+      throw new Error('Failed to create or find user account');
+    }
+
+    // Update profile with Roblox data
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        roblox_username: robloxUsername,
+        roblox_id: robloxId,
+        verification_code: verificationCode,
+        verified_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('Profile update error:', updateError);
+    }
+
+    // Mark verification code as used
+    await supabase
+      .from('verification_codes')
+      .update({ used: true })
+      .eq('code', verificationCode);
+
+    // Generate session token
+    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    });
+
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    console.log('Verification successful for:', robloxUsername);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        message: 'Roblox account verified successfully!',
+        session: sessionData
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Verification error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Verification failed';
+    return new Response(
+      JSON.stringify({ success: false, error: errorMessage }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+    );
+  }
+});
