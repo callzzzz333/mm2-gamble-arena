@@ -102,7 +102,7 @@ serve(async (req) => {
     if (signUpData?.user) {
       userId = signUpData.user.id;
       console.log('Created new user:', userId);
-    } else if (signUpError?.message.includes('already registered')) {
+    } else if (signUpError?.code === 'email_exists') {
       // User exists, find them by email
       console.log('User already exists, finding by email...');
       
@@ -119,7 +119,11 @@ serve(async (req) => {
         console.log('Found existing user:', userId);
         
         // Update the existing user's password so we can sign them in
-        await supabase.auth.admin.updateUserById(userId, { password });
+        const { error: updateError } = await supabase.auth.admin.updateUserById(userId, { password });
+        if (updateError) {
+          console.error('Error updating password:', updateError);
+          throw new Error('Failed to update user password');
+        }
       }
     } else if (signUpError) {
       console.error('Signup error:', signUpError);
