@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Deposit from "./pages/Deposit";
+import Withdraw from "./pages/Withdraw";
 import Admin from "./pages/Admin";
 import Coinflip from "./pages/Coinflip";
 import Jackpot from "./pages/Jackpot";
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/deposit" element={<Deposit />} />
+          <Route path="/withdraw" element={<Withdraw />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/coinflip" element={<Coinflip />} />
           <Route path="/jackpot" element={<Jackpot />} />

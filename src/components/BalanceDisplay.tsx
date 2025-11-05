@@ -39,9 +39,9 @@ export const BalanceDisplay = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-card rounded-lg border border-border">
-      <DollarSign className="w-4 h-4 text-primary" />
-      <span className="font-semibold">${balance.toFixed(2)}</span>
+    <div className="flex items-center gap-2 px-6 py-2 bg-card rounded-lg border border-border shadow-[0_0_15px_hsl(var(--glow-primary)/0.3)]">
+      <DollarSign className="w-5 h-5 text-primary" />
+      <span className="font-bold text-lg text-primary">${balance.toFixed(2)}</span>
     </div>
   );
 };

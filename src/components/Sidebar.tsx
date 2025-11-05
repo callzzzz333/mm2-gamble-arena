@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Trophy, DollarSign, Shield, Coins, Dices, Zap, Gift, Swords, Star, CircleDot, Percent } from "lucide-react";
+import { Home, Trophy, DollarSign, Shield, Coins, Dices, Zap, Gift, Swords, Star, CircleDot, Percent, Skull, Crown, Target, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,11 +42,11 @@ export const Sidebar = () => {
   const gameMenuItems: GameMenuItem[] = [
     { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
     { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
-    { title: "1v1 Battle", icon: Swords, comingSoon: true },
-    { title: "Upgrader", icon: Zap, comingSoon: true },
-    { title: "Dice Duel", icon: Dices, comingSoon: true },
-    { title: "Mystery Box", icon: Gift, comingSoon: true },
-    { title: "Wheel", icon: CircleDot, comingSoon: true },
+    { title: "Russian Roulette", icon: Skull, comingSoon: true },
+    { title: "King of the Hill", icon: Crown, comingSoon: true },
+    { title: "Draft Battle", icon: Target, comingSoon: true },
+    { title: "Team Showdown", icon: Users, comingSoon: true },
+    { title: "Item Duel", icon: Swords, comingSoon: true },
     { title: "Rakeback", icon: Percent, comingSoon: true },
   ];
 
@@ -145,7 +145,21 @@ export const Sidebar = () => {
           onClick={() => navigate("/deposit")}
         >
           <DollarSign className="w-5 h-5" />
-          <span className="font-medium">Deposit Items</span>
+          <span className="font-medium">Deposit</span>
+        </Button>
+
+        <Button 
+          variant="ghost" 
+          className={cn(
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
+            isActive("/withdraw") 
+              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]" 
+              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]"
+          )}
+          onClick={() => navigate("/withdraw")}
+        >
+          <DollarSign className="w-5 h-5" />
+          <span className="font-medium">Withdraw</span>
         </Button>
 
         {isAdmin && (

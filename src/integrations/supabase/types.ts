@@ -332,6 +332,45 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawals: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          items_requested: Json | null
+          private_server_link: string
+          processed_at: string | null
+          status: string
+          trader_username: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          items_requested?: Json | null
+          private_server_link: string
+          processed_at?: string | null
+          status?: string
+          trader_username: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          items_requested?: Json | null
+          private_server_link?: string
+          processed_at?: string | null
+          status?: string
+          trader_username?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
