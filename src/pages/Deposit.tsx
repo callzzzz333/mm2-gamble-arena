@@ -5,16 +5,33 @@ import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Plus, Minus, Package } from "lucide-react";
+
+interface Item {
+  id: string;
+  name: string;
+  rarity: string;
+  value: number;
+  image_url: string | null;
+}
+
+interface SelectedItem {
+  item: Item;
+  quantity: number;
+}
 
 const Deposit = () => {
   const [user, setUser] = useState<any>(null);
   const [privateServerLink, setPrivateServerLink] = useState("");
   const [traderUsername, setTraderUsername] = useState("MM2PVP_Trader");
   const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -26,10 +43,66 @@ const Deposit = () => {
         setUser(user);
       }
     });
+    fetchItems();
   }, [navigate]);
+
+  const fetchItems = async () => {
+    const { data } = await supabase
+      .from("items")
+      .select("*")
+      .order("value", { ascending: false });
+    
+    if (data) {
+      setItems(data);
+    }
+  };
+
+  const addItem = (item: Item) => {
+    const existing = selectedItems.find(si => si.item.id === item.id);
+    if (existing) {
+      setSelectedItems(selectedItems.map(si =>
+        si.item.id === item.id
+          ? { ...si, quantity: si.quantity + 1 }
+          : si
+      ));
+    } else {
+      setSelectedItems([...selectedItems, { item, quantity: 1 }]);
+    }
+  };
+
+  const removeItem = (itemId: string) => {
+    const existing = selectedItems.find(si => si.item.id === itemId);
+    if (existing && existing.quantity > 1) {
+      setSelectedItems(selectedItems.map(si =>
+        si.item.id === itemId
+          ? { ...si, quantity: si.quantity - 1 }
+          : si
+      ));
+    } else {
+      setSelectedItems(selectedItems.filter(si => si.item.id !== itemId));
+    }
+  };
+
+  const getTotalValue = () => {
+    return selectedItems.reduce((sum, si) => sum + (si.item.value * si.quantity), 0);
+  };
+
+  const filteredItems = items.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (selectedItems.length === 0) {
+      toast({
+        title: "No items selected",
+        description: "Please select at least one item to deposit",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -41,21 +114,30 @@ const Deposit = () => {
 
       if (!profile) throw new Error("Profile not found");
 
+      const itemsData = selectedItems.map(si => ({
+        id: si.item.id,
+        name: si.item.name,
+        value: si.item.value,
+        quantity: si.quantity
+      }));
+
       const { error } = await supabase.from("deposits").insert({
         user_id: profile.id,
         private_server_link: privateServerLink,
         trader_username: traderUsername,
         status: "pending",
+        items_deposited: itemsData
       });
 
       if (error) throw error;
 
       toast({
         title: "Deposit request submitted!",
-        description: "An admin will review your deposit shortly",
+        description: `Total value: $${getTotalValue().toFixed(2)}. An admin will review shortly.`,
       });
 
       setPrivateServerLink("");
+      setSelectedItems([]);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -71,84 +153,156 @@ const Deposit = () => {
     <div className="min-h-screen w-full flex">
       <Sidebar />
       
-      <div className="flex-1 ml-16 mr-96">
+      <div className="flex-1 ml-64 mr-96">
         <TopBar />
         
-        <main className="pt-16 px-12 py-12">
-          <div className="max-w-2xl mx-auto">
+        <main className="pt-16 px-8 py-8">
+          <div className="max-w-6xl mx-auto">
             <h1 className="text-4xl font-bold mb-2">Deposit Items</h1>
             <p className="text-muted-foreground mb-8">
-              Join a private server and trade your MM2 items to add them to your balance
+              Select your MM2 items and submit a deposit request
             </p>
 
-            <Card className="p-6 bg-card border-border mb-6">
-              <h2 className="text-xl font-bold mb-4">How to Deposit</h2>
-              <ol className="space-y-3 text-muted-foreground">
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">1.</span>
-                  <span>Create a Roblox private server or use an existing one</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">2.</span>
-                  <span>Copy the private server link</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">3.</span>
-                  <span>Paste the link below and submit</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">4.</span>
-                  <span>Trade your items to <strong className="text-primary">{traderUsername}</strong> in the server</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">5.</span>
-                  <span>An admin will verify and add items to your account</span>
-                </li>
-              </ol>
-            </Card>
-
-            <Card className="p-6 bg-card border-border">
-              <form onSubmit={handleDeposit} className="space-y-4">
-                <div>
-                  <label className="text-sm font-semibold text-foreground mb-2 block">
-                    Private Server Link
-                  </label>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Item Selection */}
+              <div className="lg:col-span-2 space-y-4">
+                <Card className="p-6 bg-card border-border">
+                  <h2 className="text-xl font-bold mb-4">Select Items to Deposit</h2>
+                  
                   <Input
-                    type="url"
-                    value={privateServerLink}
-                    onChange={(e) => setPrivateServerLink(e.target.value)}
-                    placeholder="https://www.roblox.com/games/..."
-                    required
-                    className="bg-background"
+                    placeholder="Search items..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="mb-4"
                   />
-                </div>
 
-                <div>
-                  <label className="text-sm font-semibold text-foreground mb-2 block">
-                    Trader Username
-                  </label>
-                  <Input
-                    type="text"
-                    value={traderUsername}
-                    onChange={(e) => setTraderUsername(e.target.value)}
-                    className="bg-background"
-                    disabled
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Trade your items to this username in the private server
-                  </p>
-                </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto">
+                    {filteredItems.map((item) => (
+                      <Card
+                        key={item.id}
+                        className="p-3 cursor-pointer hover:border-primary/50 transition-all"
+                        onClick={() => addItem(item)}
+                      >
+                        <div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-2">
+                          {item.image_url ? (
+                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <Package className="w-8 h-8 text-muted-foreground" />
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-sm truncate">{item.name}</h3>
+                        <p className="text-primary font-bold">${item.value.toFixed(2)}</p>
+                        <Badge className="mt-1 text-xs">{item.rarity}</Badge>
+                      </Card>
+                    ))}
+                  </div>
+                </Card>
+              </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary/90"
-                  disabled={loading}
-                >
-                  {loading ? "Submitting..." : "Submit Deposit Request"}
-                  <ExternalLink className="w-4 h-4 ml-2" />
-                </Button>
-              </form>
-            </Card>
+              {/* Selected Items & Submission */}
+              <div className="space-y-4">
+                <Card className="p-6 bg-card border-border">
+                  <h2 className="text-xl font-bold mb-4">Selected Items</h2>
+                  
+                  {selectedItems.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No items selected
+                    </p>
+                  ) : (
+                    <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto">
+                      {selectedItems.map((si) => (
+                        <div key={si.item.id} className="flex items-center justify-between gap-2 p-2 bg-background rounded">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm truncate">{si.item.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              ${si.item.value.toFixed(2)} x {si.quantity}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-6 w-6"
+                              onClick={() => removeItem(si.item.id)}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <span className="w-6 text-center text-sm">{si.quantity}</span>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-6 w-6"
+                              onClick={() => addItem(si.item)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="border-t border-border pt-4 mt-4">
+                    <div className="flex justify-between items-center text-lg font-bold mb-4">
+                      <span>Total Value:</span>
+                      <span className="text-primary">${getTotalValue().toFixed(2)}</span>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-6 bg-card border-border">
+                  <h2 className="text-lg font-bold mb-4">Deposit Details</h2>
+                  <form onSubmit={handleDeposit} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold mb-2 block">
+                        Private Server Link
+                      </label>
+                      <Input
+                        type="url"
+                        value={privateServerLink}
+                        onChange={(e) => setPrivateServerLink(e.target.value)}
+                        placeholder="https://www.roblox.com/games/..."
+                        required
+                        className="bg-background"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold mb-2 block">
+                        Trader Username
+                      </label>
+                      <Input
+                        type="text"
+                        value={traderUsername}
+                        className="bg-background"
+                        disabled
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Trade to this username
+                      </p>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full bg-primary hover:bg-primary/90 shadow-[0_0_10px_hsl(var(--glow-primary)/0.3)]"
+                      disabled={loading || selectedItems.length === 0}
+                    >
+                      {loading ? "Submitting..." : "Submit Deposit"}
+                    </Button>
+                  </form>
+                </Card>
+
+                <Card className="p-4 bg-card border-border">
+                  <h3 className="font-bold text-sm mb-2">How to Deposit</h3>
+                  <ol className="space-y-1 text-xs text-muted-foreground">
+                    <li>1. Select items you want to deposit</li>
+                    <li>2. Enter your private server link</li>
+                    <li>3. Trade items to {traderUsername}</li>
+                    <li>4. Admin will verify and credit you</li>
+                  </ol>
+                </Card>
+              </div>
+            </div>
           </div>
         </main>
       </div>

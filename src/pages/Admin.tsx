@@ -95,6 +95,48 @@ const Admin = () => {
     }
   };
 
+  const handleDepositApproval = async (deposit: any) => {
+    if (!deposit.items_deposited || !Array.isArray(deposit.items_deposited)) {
+      toast({
+        title: "Error",
+        description: "No items found in this deposit",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Calculate total value
+    const totalValue = deposit.items_deposited.reduce(
+      (sum: number, item: any) => sum + (item.value * item.quantity), 
+      0
+    );
+
+    // Credit user balance
+    const { error: balanceError } = await supabase.rpc('update_user_balance', {
+      p_user_id: deposit.user_id,
+      p_amount: totalValue,
+      p_type: 'deposit',
+      p_description: `Deposit approved - ${deposit.items_deposited.length} items worth $${totalValue.toFixed(2)}`
+    });
+
+    if (balanceError) {
+      toast({
+        title: "Error",
+        description: "Failed to credit user balance",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update deposit status
+    await handleDepositStatus(deposit.id, "approved");
+    
+    toast({
+      title: "Deposit Approved!",
+      description: `Credited $${totalValue.toFixed(2)} to ${deposit.profiles?.username}`,
+    });
+  };
+
   const fetchUsers = async () => {
     const { data } = await supabase
       .from("profiles")
@@ -211,54 +253,79 @@ const Admin = () => {
               ) : (
                 deposits.map((deposit) => (
                   <Card key={deposit.id} className="p-6 bg-card border-border">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <p className="font-semibold text-foreground">
-                          {deposit.profiles?.username}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Trader: {deposit.trader_username}
-                        </p>
-                        <a
-                          href={deposit.private_server_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-primary hover:underline flex items-center gap-1"
-                        >
-                          View Private Server
-                        </a>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(deposit.created_at).toLocaleString()}
-                        </p>
-                        <span
-                          className={`inline-block px-2 py-1 rounded text-xs ${
-                            deposit.status === "pending"
-                              ? "bg-yellow-500/20 text-yellow-500"
-                              : deposit.status === "approved"
-                              ? "bg-green-500/20 text-green-500"
-                              : "bg-red-500/20 text-red-500"
-                          }`}
-                        >
-                          {deposit.status}
-                        </span>
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <p className="font-semibold text-foreground text-lg">
+                            {deposit.profiles?.username}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Trader: {deposit.trader_username}
+                          </p>
+                          <a
+                            href={deposit.private_server_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
+                          >
+                            View Private Server
+                          </a>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(deposit.created_at).toLocaleString()}
+                          </p>
+                          <span
+                            className={`inline-block px-2 py-1 rounded text-xs ${
+                              deposit.status === "pending"
+                                ? "bg-yellow-500/20 text-yellow-500"
+                                : deposit.status === "approved"
+                                ? "bg-green-500/20 text-green-500"
+                                : "bg-red-500/20 text-red-500"
+                            }`}
+                          >
+                            {deposit.status}
+                          </span>
+                        </div>
+
+                        {deposit.status === "pending" && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleDepositApproval(deposit)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Check className="w-4 h-4 mr-1" /> Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDepositStatus(deposit.id, "rejected")}
+                            >
+                              <X className="w-4 h-4 mr-1" /> Reject
+                            </Button>
+                          </div>
+                        )}
                       </div>
 
-                      {deposit.status === "pending" && (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleDepositStatus(deposit.id, "approved")}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Check className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDepositStatus(deposit.id, "rejected")}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
+                      {/* Display deposited items */}
+                      {deposit.items_deposited && Array.isArray(deposit.items_deposited) && deposit.items_deposited.length > 0 && (
+                        <div className="border-t border-border pt-4">
+                          <h3 className="font-semibold mb-3">Deposited Items:</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {deposit.items_deposited.map((item: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-background rounded border border-border">
+                                <p className="font-semibold text-sm">{item.name}</p>
+                                <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                                <p className="text-primary font-bold">${(item.value * item.quantity).toFixed(2)}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <p className="text-lg font-bold">
+                              Total Value: <span className="text-primary">
+                                ${deposit.items_deposited.reduce((sum: number, item: any) => sum + (item.value * item.quantity), 0).toFixed(2)}
+                              </span>
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
