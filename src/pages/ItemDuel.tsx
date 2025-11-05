@@ -5,31 +5,33 @@ import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Swords } from "lucide-react";
+import { Swords, Package } from "lucide-react";
+import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import itemDuelImg from "@/assets/item-duel.jpg";
 
-interface DuelItem {
+interface Item {
   id: string;
   name: string;
   value: number;
-  image_url: string;
+  image_url: string | null;
   rarity: string;
 }
 
 export default function ItemDuel() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const [userBalance, setUserBalance] = useState<number>(0);
-  const [items, setItems] = useState<DuelItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<DuelItem | null>(null);
-  const [opponentItem, setOpponentItem] = useState<DuelItem | null>(null);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [opponentItem, setOpponentItem] = useState<Item | null>(null);
   const [isDueling, setIsDueling] = useState(false);
+  const [availableItems, setAvailableItems] = useState<Item[]>([]);
 
   useEffect(() => {
     checkUser();
-    fetchItems();
+    fetchAvailableItems();
   }, []);
 
   const checkUser = async () => {
@@ -39,54 +41,47 @@ export default function ItemDuel() {
       return;
     }
     setUser(user);
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("balance")
-      .eq("id", user.id)
-      .single();
-
-    if (profile) {
-      setUserBalance(parseFloat(String(profile.balance)));
-    }
   };
 
-  const fetchItems = async () => {
-    const { data, error } = await supabase
+  const fetchAvailableItems = async () => {
+    const { data } = await supabase
       .from("items")
       .select("*")
-      .limit(6);
+      .limit(10);
 
     if (data) {
-      setItems(data);
+      setAvailableItems(data);
     }
   };
 
-  const startDuel = async (item: DuelItem) => {
-    if (item.value > userBalance) {
-      toast.error("Insufficient balance for this item");
+  const handleSelectItem = async (itemWithQty: Item & { quantity: number }) => {
+    const { quantity, ...item } = itemWithQty;
+    
+    // Remove 1 of this item from inventory
+    const { data: userItem } = await supabase
+      .from('user_items')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('item_id', item.id)
+      .single();
+
+    if (!userItem) {
+      toast.error("Item not found in inventory");
       return;
     }
 
-    const { data, error } = await supabase.rpc("update_user_balance", {
-      p_user_id: user.id,
-      p_amount: -item.value,
-      p_type: "bet",
-      p_game_type: "item_duel",
-      p_description: `Item Duel with ${item.name}`
-    });
-
-    if (error || !data) {
-      toast.error("Failed to start duel");
-      return;
+    const newQty = userItem.quantity - 1;
+    if (newQty === 0) {
+      await supabase.from('user_items').delete().eq('id', userItem.id);
+    } else {
+      await supabase.from('user_items').update({ quantity: newQty }).eq('id', userItem.id);
     }
 
-    setUserBalance(prev => prev - item.value);
+    setInventoryOpen(false);
     setSelectedItem(item);
     setIsDueling(true);
 
     // Select random opponent item
-    const availableItems = items.filter(i => i.id !== item.id);
     const randomOpponent = availableItems[Math.floor(Math.random() * availableItems.length)];
     setOpponentItem(randomOpponent);
 
@@ -94,22 +89,61 @@ export default function ItemDuel() {
     setTimeout(() => resolveDuel(item, randomOpponent), 3000);
   };
 
-  const resolveDuel = async (myItem: DuelItem, oppItem: DuelItem) => {
+  const resolveDuel = async (myItem: Item, oppItem: Item) => {
     // 50/50 chance with slight edge to higher value item
     const myChance = myItem.value / (myItem.value + oppItem.value);
     const won = Math.random() < myChance;
 
     if (won) {
-      const winAmount = (myItem.value + oppItem.value) * 0.95; // 5% house edge
-      await supabase.rpc("update_user_balance", {
-        p_user_id: user.id,
-        p_amount: winAmount,
-        p_type: "win",
-        p_game_type: "item_duel",
-        p_description: "Item Duel win"
-      });
-      setUserBalance(prev => prev + winAmount);
-      toast.success(`Your ${myItem.name} won! +$${winAmount.toFixed(2)}`);
+      // Give back the player's item + opponent's item (95% of opponent's)
+      const { data: existingMyItem } = await supabase
+        .from('user_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('item_id', myItem.id)
+        .maybeSingle();
+
+      if (existingMyItem) {
+        await supabase
+          .from('user_items')
+          .update({ quantity: existingMyItem.quantity + 1 })
+          .eq('id', existingMyItem.id);
+      } else {
+        await supabase
+          .from('user_items')
+          .insert({
+            user_id: user.id,
+            item_id: myItem.id,
+            quantity: 1
+          });
+      }
+
+      // Add opponent item (95% chance to get it - house edge)
+      if (Math.random() < 0.95) {
+        const { data: existingOppItem } = await supabase
+          .from('user_items')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('item_id', oppItem.id)
+          .maybeSingle();
+
+        if (existingOppItem) {
+          await supabase
+            .from('user_items')
+            .update({ quantity: existingOppItem.quantity + 1 })
+            .eq('id', existingOppItem.id);
+        } else {
+          await supabase
+            .from('user_items')
+            .insert({
+              user_id: user.id,
+              item_id: oppItem.id,
+              quantity: 1
+            });
+        }
+      }
+
+      toast.success(`Your ${myItem.name} won! You got ${oppItem.name}!`);
     } else {
       toast.error(`Your ${myItem.name} lost to ${oppItem.name}`);
     }
@@ -119,6 +153,18 @@ export default function ItemDuel() {
       setSelectedItem(null);
       setOpponentItem(null);
     }, 2000);
+  };
+
+  const getRarityColor = (rarity: string) => {
+    const colors: any = {
+      'Godly': 'bg-red-500/20 text-red-500',
+      'Ancient': 'bg-purple-500/20 text-purple-500',
+      'Legendary': 'bg-orange-500/20 text-orange-500',
+      'Rare': 'bg-blue-500/20 text-blue-500',
+      'Uncommon': 'bg-green-500/20 text-green-500',
+      'Common': 'bg-gray-500/20 text-gray-500'
+    };
+    return colors[rarity] || 'bg-gray-500/20 text-gray-500';
   };
 
   return (
@@ -142,32 +188,24 @@ export default function ItemDuel() {
             {!isDueling ? (
               <div className="space-y-6">
                 <Card className="p-6 border-border shadow-glow">
-                  <h2 className="text-xl font-bold text-foreground mb-4">Select Your Item</h2>
-                  <div className="grid grid-cols-3 gap-4">
-                    {items.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => startDuel(item)}
-                        className="p-4 bg-card border border-border rounded-lg hover:border-primary transition-all shadow-glow hover:shadow-[0_0_20px_hsl(var(--glow-primary)/0.4)]"
-                      >
-                        <div className="aspect-square bg-card/50 rounded mb-2 flex items-center justify-center">
-                          <Swords className="w-12 h-12 text-primary" />
-                        </div>
-                        <div className="text-sm font-bold text-foreground">{item.name}</div>
-                        <div className="text-xs text-primary">${item.value.toFixed(2)}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{item.rarity}</div>
-                      </button>
-                    ))}
-                  </div>
+                  <h2 className="text-xl font-bold text-foreground mb-4">Select Item from Your Inventory</h2>
+                  <Button
+                    onClick={() => setInventoryOpen(true)}
+                    className="w-full justify-start gap-2 h-16"
+                    variant="outline"
+                  >
+                    <Package className="w-5 h-5" />
+                    <span>Choose item to duel with</span>
+                  </Button>
                 </Card>
 
                 <Card className="p-4 bg-card/50 border-border">
                   <h3 className="font-bold text-foreground mb-2">How to Play:</h3>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Select an item to duel with</li>
+                    <li>• Select an item from your inventory to duel with</li>
                     <li>• System randomly selects an opponent item</li>
                     <li>• Higher value items have slight advantage</li>
-                    <li>• Winner takes both items (minus 5% house edge)</li>
+                    <li>• Winner gets both items (95% chance - 5% house edge)</li>
                     <li>• Quick and intense battles!</li>
                   </ul>
                 </Card>
@@ -180,9 +218,14 @@ export default function ItemDuel() {
                   <div className="grid grid-cols-3 gap-4 items-center">
                     <div className="text-center">
                       <div className="p-6 bg-primary/10 border-2 border-primary rounded-lg shadow-glow">
-                        <Swords className="w-16 h-16 text-primary mx-auto mb-2" />
+                        {selectedItem?.image_url ? (
+                          <img src={selectedItem.image_url} alt={selectedItem.name} className="w-24 h-24 mx-auto mb-2 object-cover rounded" />
+                        ) : (
+                          <Swords className="w-16 h-16 text-primary mx-auto mb-2" />
+                        )}
                         <div className="font-bold text-foreground">{selectedItem?.name}</div>
                         <div className="text-primary">${selectedItem?.value.toFixed(2)}</div>
+                        {selectedItem && <Badge className={getRarityColor(selectedItem.rarity)}>{selectedItem.rarity}</Badge>}
                       </div>
                     </div>
 
@@ -193,9 +236,14 @@ export default function ItemDuel() {
 
                     <div className="text-center">
                       <div className="p-6 bg-card/50 border-2 border-border rounded-lg shadow-glow">
-                        <Swords className="w-16 h-16 text-muted-foreground mx-auto mb-2" />
+                        {opponentItem?.image_url ? (
+                          <img src={opponentItem.image_url} alt={opponentItem.name} className="w-24 h-24 mx-auto mb-2 object-cover rounded" />
+                        ) : (
+                          <Swords className="w-16 h-16 text-muted-foreground mx-auto mb-2" />
+                        )}
                         <div className="font-bold text-foreground">{opponentItem?.name}</div>
                         <div className="text-primary">${opponentItem?.value.toFixed(2)}</div>
+                        {opponentItem && <Badge className={getRarityColor(opponentItem.rarity)}>{opponentItem.rarity}</Badge>}
                       </div>
                     </div>
                   </div>
@@ -211,6 +259,11 @@ export default function ItemDuel() {
       </div>
 
       <LiveChat />
+      <UserInventoryDialog 
+        open={inventoryOpen} 
+        onOpenChange={setInventoryOpen}
+        onSelectItem={handleSelectItem}
+      />
     </div>
   );
 }

@@ -4,20 +4,36 @@ import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Package, Minus } from "lucide-react";
+import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import russianRouletteImg from "@/assets/russian-roulette.jpg";
+
+interface Item {
+  id: string;
+  name: string;
+  rarity: string;
+  value: number;
+  image_url: string | null;
+}
+
+interface SelectedItem {
+  item: Item;
+  quantity: number;
+}
 
 export default function RussianRoulette() {
   const navigate = useNavigate();
-  const [betAmount, setBetAmount] = useState<string>("");
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [user, setUser] = useState<any>(null);
-  const [userBalance, setUserBalance] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [chamber, setChamber] = useState<number>(6);
   const [roundsPlayed, setRoundsPlayed] = useState<number>(0);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [betValue, setBetValue] = useState<number>(0);
 
   useEffect(() => {
     checkUser();
@@ -30,44 +46,65 @@ export default function RussianRoulette() {
       return;
     }
     setUser(user);
+  };
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("balance")
-      .eq("id", user.id)
-      .single();
+  const handleSelectItem = (itemWithQty: Item & { quantity: number }) => {
+    const existing = selectedItems.find(si => si.item.id === itemWithQty.id);
+    if (existing) {
+      setSelectedItems(selectedItems.map(si =>
+        si.item.id === itemWithQty.id ? { ...si, quantity: si.quantity + 1 } : si
+      ));
+    } else {
+      const { quantity, ...item } = itemWithQty;
+      setSelectedItems([...selectedItems, { item, quantity: 1 }]);
+    }
+    setInventoryOpen(false);
+  };
 
-    if (profile) {
-      setUserBalance(parseFloat(String(profile.balance)));
+  const removeItem = (itemId: string) => {
+    const existing = selectedItems.find(si => si.item.id === itemId);
+    if (existing && existing.quantity > 1) {
+      setSelectedItems(selectedItems.map(si =>
+        si.item.id === itemId ? { ...si, quantity: si.quantity - 1 } : si
+      ));
+    } else {
+      setSelectedItems(selectedItems.filter(si => si.item.id !== itemId));
     }
   };
 
+  const getTotalValue = () => {
+    return selectedItems.reduce((sum, si) => sum + (si.item.value * si.quantity), 0);
+  };
+
   const startGame = async () => {
-    const amount = parseFloat(betAmount);
-    if (!amount || amount <= 0) {
-      toast.error("Please enter a valid bet amount");
+    if (selectedItems.length === 0) {
+      toast.error("Please select items to bet");
       return;
     }
 
-    if (amount > userBalance) {
-      toast.error("Insufficient balance");
-      return;
+    // Remove items from inventory
+    for (const si of selectedItems) {
+      const { data: userItem } = await supabase
+        .from('user_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('item_id', si.item.id)
+        .single();
+
+      if (!userItem || userItem.quantity < si.quantity) {
+        toast.error(`Not enough ${si.item.name}`);
+        return;
+      }
+
+      const newQty = userItem.quantity - si.quantity;
+      if (newQty === 0) {
+        await supabase.from('user_items').delete().eq('id', userItem.id);
+      } else {
+        await supabase.from('user_items').update({ quantity: newQty }).eq('id', userItem.id);
+      }
     }
 
-    const { data, error } = await supabase.rpc("update_user_balance", {
-      p_user_id: user.id,
-      p_amount: -amount,
-      p_type: "bet",
-      p_game_type: "russian_roulette",
-      p_description: "Russian Roulette bet"
-    });
-
-    if (error || !data) {
-      toast.error("Failed to place bet");
-      return;
-    }
-
-    setUserBalance(prev => prev - amount);
+    setBetValue(getTotalValue());
     setIsPlaying(true);
     setChamber(6);
     setRoundsPlayed(0);
@@ -85,10 +122,11 @@ export default function RussianRoulette() {
       toast.error("💥 BANG! You lost!");
       setChamber(6);
       setRoundsPlayed(0);
+      setSelectedItems([]);
     } else {
       // Survived
       const multiplier = 1 + (newRoundsPlayed * 0.5);
-      const currentWinnings = parseFloat(betAmount) * multiplier;
+      const currentWinnings = betValue * multiplier;
       
       toast.success(`✓ Click! You survived! Current multiplier: ${multiplier.toFixed(1)}x ($${currentWinnings.toFixed(2)})`);
       setChamber(chamber - 1);
@@ -97,26 +135,51 @@ export default function RussianRoulette() {
 
   const cashOut = async () => {
     const multiplier = 1 + (roundsPlayed * 0.5);
-    const winAmount = parseFloat(betAmount) * multiplier;
 
-    const { data, error } = await supabase.rpc("update_user_balance", {
-      p_user_id: user.id,
-      p_amount: winAmount,
-      p_type: "win",
-      p_game_type: "russian_roulette",
-      p_description: `Russian Roulette win - ${multiplier.toFixed(1)}x multiplier`
-    });
+    // Return items with multiplier
+    for (const si of selectedItems) {
+      const newQty = Math.floor(si.quantity * multiplier);
+      
+      const { data: existingItem } = await supabase
+        .from('user_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('item_id', si.item.id)
+        .maybeSingle();
 
-    if (error || !data) {
-      toast.error("Failed to cash out");
-      return;
+      if (existingItem) {
+        await supabase
+          .from('user_items')
+          .update({ quantity: existingItem.quantity + newQty })
+          .eq('id', existingItem.id);
+      } else {
+        await supabase
+          .from('user_items')
+          .insert({
+            user_id: user.id,
+            item_id: si.item.id,
+            quantity: newQty
+          });
+      }
     }
 
-    setUserBalance(prev => prev + winAmount);
     setIsPlaying(false);
     setChamber(6);
     setRoundsPlayed(0);
-    toast.success(`Cashed out $${winAmount.toFixed(2)}! (${multiplier.toFixed(1)}x)`);
+    toast.success(`Cashed out! (${multiplier.toFixed(1)}x multiplier)`);
+    setSelectedItems([]);
+  };
+
+  const getRarityColor = (rarity: string) => {
+    const colors: any = {
+      'Godly': 'bg-red-500/20 text-red-500',
+      'Ancient': 'bg-purple-500/20 text-purple-500',
+      'Legendary': 'bg-orange-500/20 text-orange-500',
+      'Rare': 'bg-blue-500/20 text-blue-500',
+      'Uncommon': 'bg-green-500/20 text-green-500',
+      'Common': 'bg-gray-500/20 text-gray-500'
+    };
+    return colors[rarity] || 'bg-gray-500/20 text-gray-500';
   };
 
   return (
@@ -141,23 +204,56 @@ export default function RussianRoulette() {
               {!isPlaying ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-foreground">Bet Amount ($)</label>
-                    <Input
-                      type="number"
-                      value={betAmount}
-                      onChange={(e) => setBetAmount(e.target.value)}
-                      placeholder="Enter bet amount"
-                      className="mt-1"
-                    />
+                    <label className="text-sm font-medium text-foreground mb-2 block">Select Items to Bet</label>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setInventoryOpen(true)}
+                    >
+                      <Package className="w-4 h-4" />
+                      {selectedItems.length === 0 ? 'Select from inventory' : `${selectedItems.length} items selected`}
+                    </Button>
+
+                    {selectedItems.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {selectedItems.map((si) => (
+                          <div key={si.item.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                            {si.item.image_url && (
+                              <img src={si.item.image_url} alt={si.item.name} className="w-12 h-12 object-cover rounded" />
+                            )}
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm">{si.item.name}</p>
+                              <div className="flex items-center gap-2">
+                                <Badge className={getRarityColor(si.item.rarity)}>{si.item.rarity}</Badge>
+                                <span className="text-xs text-muted-foreground">x{si.quantity}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-primary">${(si.item.value * si.quantity).toFixed(2)}</p>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => removeItem(si.item.id)}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="pt-2 border-t border-border">
+                          <p className="text-lg font-bold">Total: <span className="text-primary">${getTotalValue().toFixed(2)}</span></p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <Button onClick={startGame} className="w-full border border-primary/20 shadow-glow">
+                  <Button onClick={startGame} className="w-full border border-primary/20 shadow-glow" disabled={selectedItems.length === 0}>
                     Start Game
                   </Button>
                   
                   <div className="mt-6 p-4 bg-card/50 rounded-lg border border-border">
                     <h3 className="font-bold text-foreground mb-2">How to Play:</h3>
                     <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Place your bet to start</li>
+                      <li>• Select items from your inventory to bet</li>
                       <li>• Pull the trigger - if you survive, your multiplier increases by 0.5x</li>
                       <li>• Each round, your chances of losing increase</li>
                       <li>• Cash out anytime to secure your winnings</li>
@@ -173,7 +269,7 @@ export default function RussianRoulette() {
                     </div>
                     <p className="text-muted-foreground">Current Multiplier</p>
                     <div className="text-2xl font-bold text-foreground">
-                      ${(parseFloat(betAmount) * (1 + (roundsPlayed * 0.5))).toFixed(2)}
+                      ${(betValue * (1 + (roundsPlayed * 0.5))).toFixed(2)}
                     </div>
                   </div>
 
@@ -203,6 +299,11 @@ export default function RussianRoulette() {
       </div>
 
       <LiveChat />
+      <UserInventoryDialog 
+        open={inventoryOpen} 
+        onOpenChange={setInventoryOpen}
+        onSelectItem={handleSelectItem}
+      />
     </div>
   );
 }
