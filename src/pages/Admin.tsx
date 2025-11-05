@@ -105,36 +105,49 @@ const Admin = () => {
       return;
     }
 
-    // Calculate total value
-    const totalValue = deposit.items_deposited.reduce(
-      (sum: number, item: any) => sum + (item.value * item.quantity), 
-      0
-    );
+    try {
+      // Add items to user's inventory
+      for (const depositedItem of deposit.items_deposited) {
+        // Check if user already has this item
+        const { data: existingItem } = await supabase
+          .from('user_items')
+          .select('*')
+          .eq('user_id', deposit.user_id)
+          .eq('item_id', depositedItem.id)
+          .single();
 
-    // Credit user balance
-    const { error: balanceError } = await supabase.rpc('update_user_balance', {
-      p_user_id: deposit.user_id,
-      p_amount: totalValue,
-      p_type: 'deposit',
-      p_description: `Deposit approved - ${deposit.items_deposited.length} items worth $${totalValue.toFixed(2)}`
-    });
+        if (existingItem) {
+          // Update quantity
+          await supabase
+            .from('user_items')
+            .update({ quantity: existingItem.quantity + depositedItem.quantity })
+            .eq('id', existingItem.id);
+        } else {
+          // Insert new item
+          await supabase
+            .from('user_items')
+            .insert({
+              user_id: deposit.user_id,
+              item_id: depositedItem.id,
+              quantity: depositedItem.quantity
+            });
+        }
+      }
 
-    if (balanceError) {
+      // Update deposit status
+      await handleDepositStatus(deposit.id, "approved");
+      
+      toast({
+        title: "Deposit Approved!",
+        description: `Added ${deposit.items_deposited.length} items to ${deposit.profiles?.username}'s inventory`,
+      });
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to credit user balance",
+        description: error.message || "Failed to process deposit",
         variant: "destructive",
       });
-      return;
     }
-
-    // Update deposit status
-    await handleDepositStatus(deposit.id, "approved");
-    
-    toast({
-      title: "Deposit Approved!",
-      description: `Credited $${totalValue.toFixed(2)} to ${deposit.profiles?.username}`,
-    });
   };
 
   const fetchUsers = async () => {
