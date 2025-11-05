@@ -27,6 +27,7 @@ export const LiveChat = () => {
   const [giveaways, setGiveaways] = useState<any[]>([]);
   const [tosOpen, setTosOpen] = useState(false);
   const [giveawayOpen, setGiveawayOpen] = useState(false);
+  const [selectedGiveawayItem, setSelectedGiveawayItem] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -145,12 +146,12 @@ export const LiveChat = () => {
   };
 
   const createGiveaway = async () => {
-    if (!user || !selectedItem) {
+    if (!user || !selectedGiveawayItem) {
       toast({ title: "Please select an item", variant: "destructive" });
       return;
     }
 
-    const userItem = userItems.find(ui => ui.item_id === selectedItem);
+    const userItem = userItems.find(ui => ui.item_id === selectedGiveawayItem);
     if (!userItem) return;
 
     // Remove item from user's inventory
@@ -169,7 +170,7 @@ export const LiveChat = () => {
       .from("giveaways")
       .insert({
         creator_id: user.id,
-        item_id: selectedItem,
+        item_id: selectedGiveawayItem,
         status: "active"
       });
 
@@ -180,7 +181,7 @@ export const LiveChat = () => {
 
     toast({ title: "Giveaway created!", description: "Users can now join!" });
     setGiveawayOpen(false);
-    setSelectedItem("");
+    setSelectedGiveawayItem("");
     fetchUserItems(user.id);
   };
 
@@ -254,36 +255,84 @@ export const LiveChat = () => {
                 TOS
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-card border-border">
               <DialogHeader>
-                <DialogTitle>Terms of Service</DialogTitle>
+                <DialogTitle className="text-2xl font-bold text-primary">Terms of Service</DialogTitle>
               </DialogHeader>
-              <ScrollArea className="h-96">
-                <div className="space-y-4 text-sm">
-                  <p>Welcome to RBXRoyale. By using our services, you agree to the following terms:</p>
-                  
-                  <h3 className="font-semibold">1. Eligibility</h3>
-                  <p>You must be at least 13 years old to use this platform.</p>
-                  
-                  <h3 className="font-semibold">2. Account Security</h3>
-                  <p>You are responsible for maintaining the security of your account and any activities under it.</p>
-                  
-                  <h3 className="font-semibold">3. Fair Play</h3>
-                  <p>Any form of cheating, exploiting, or unfair advantage will result in account termination.</p>
-                  
-                  <h3 className="font-semibold">4. Virtual Items</h3>
-                  <p>All items have value only within the platform. We are not responsible for trades outside our system.</p>
-                  
-                  <h3 className="font-semibold">5. Deposits & Withdrawals</h3>
-                  <p>All transactions are final. Process times may vary. Minimum amounts apply.</p>
-                  
-                  <h3 className="font-semibold">6. Prohibited Activities</h3>
-                  <p>No harassment, scamming, or illegal activities. Violations will be reported and accounts banned.</p>
-                  
-                  <h3 className="font-semibold">7. Disclaimer</h3>
-                  <p>RBXRoyale is not affiliated with Roblox Corporation. Use at your own risk.</p>
-                  
-                  <p className="text-muted-foreground">Last updated: November 2025</p>
+              <ScrollArea className="h-96 pr-4">
+                <div className="space-y-6 text-sm text-foreground">
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">1. Acceptance of Terms</h3>
+                    <p className="text-muted-foreground">
+                      By accessing and using RBXRoyale ("the Platform"), you agree to be bound by these Terms of Service. 
+                      If you do not agree to these terms, please do not use our services.
+                    </p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">2. Eligibility</h3>
+                    <p className="text-muted-foreground">
+                      You must be at least 13 years old to use this Platform. By using RBXRoyale, you represent and warrant 
+                      that you meet this age requirement and have the right, authority, and capacity to enter into this agreement.
+                    </p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">3. Virtual Items and Currency</h3>
+                    <p className="text-muted-foreground">
+                      All virtual items, currencies, and rewards on the Platform have no real-world monetary value outside the platform. 
+                      They are for entertainment purposes only. Items are provided "as is" without any warranties.
+                    </p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">4. Game Rules and Fair Play</h3>
+                    <p className="text-muted-foreground">
+                      Users must play fairly and not use any exploits, bots, or third-party software to gain unfair advantages. 
+                      Violation of fair play rules may result in account suspension or termination without refund.
+                    </p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">5. Transactions</h3>
+                    <p className="text-muted-foreground">
+                      All deposits and transactions are final. Refunds are not provided except where required by law. 
+                      You are responsible for maintaining the security of your account and all transactions made under it.
+                    </p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">6. Account Termination</h3>
+                    <p className="text-muted-foreground">
+                      We reserve the right to suspend or terminate your account at any time for violation of these terms, 
+                      fraudulent activity, or any other reason we deem necessary to protect the Platform and its users.
+                    </p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">7. Limitation of Liability</h3>
+                    <p className="text-muted-foreground">
+                      RBXRoyale is provided "as is" without warranties of any kind. We are not liable for any damages arising 
+                      from your use of the Platform, including but not limited to loss of virtual items, account access, or data.
+                    </p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">8. Responsible Gaming</h3>
+                    <p className="text-muted-foreground">
+                      Please play responsibly. If you feel you may have a gaming problem, we encourage you to seek help 
+                      and consider limiting or stopping your use of the Platform.
+                    </p>
+                  </section>
+
+                  <section>
+                    <h3 className="font-bold text-lg mb-2 text-primary">9. Disclaimer</h3>
+                    <p className="text-muted-foreground">
+                      RBXRoyale is not affiliated with, endorsed by, or sponsored by Roblox Corporation. Use at your own risk.
+                    </p>
+                  </section>
+
+                  <p className="text-xs text-muted-foreground pt-4">Last updated: November 2025</p>
                 </div>
               </ScrollArea>
             </DialogContent>
@@ -296,27 +345,36 @@ export const LiveChat = () => {
                 Giveaway
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md bg-card border-border">
               <DialogHeader>
-                <DialogTitle>Create Giveaway</DialogTitle>
+                <DialogTitle className="text-xl font-bold text-primary">Create Giveaway</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Select Item</label>
-                  <Select value={selectedItem} onValueChange={setSelectedItem}>
-                    <SelectTrigger>
+                  <label className="text-sm font-medium mb-2 block text-foreground">Select Item from Your Inventory</label>
+                  <Select value={selectedGiveawayItem} onValueChange={setSelectedGiveawayItem}>
+                    <SelectTrigger className="bg-input border-border">
                       <SelectValue placeholder="Choose an item" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-card border-border">
                       {userItems.map((ui) => (
                         <SelectItem key={ui.id} value={ui.item_id}>
-                          {ui.items?.name} - ${ui.items?.value}
+                          {ui.items?.name} - ${ui.items?.value} ({ui.items?.rarity})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {userItems.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      You need items in your inventory to create a giveaway
+                    </p>
+                  )}
                 </div>
-                <Button onClick={createGiveaway} className="w-full" disabled={!user || !selectedItem}>
+                <Button 
+                  onClick={createGiveaway} 
+                  className="w-full border border-primary/20 shadow-glow" 
+                  disabled={!user || !selectedGiveawayItem || userItems.length === 0}
+                >
                   Create Giveaway
                 </Button>
               </div>
