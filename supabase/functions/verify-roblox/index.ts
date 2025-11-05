@@ -117,6 +117,9 @@ serve(async (req) => {
       if (existingUser) {
         userId = existingUser.id;
         console.log('Found existing user:', userId);
+        
+        // Update the existing user's password so we can sign them in
+        await supabase.auth.admin.updateUserById(userId, { password });
       }
     } else if (signUpError) {
       console.error('Signup error:', signUpError);
