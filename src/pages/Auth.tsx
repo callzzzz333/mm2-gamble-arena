@@ -74,14 +74,27 @@ const Auth = () => {
         throw new Error(data.error);
       }
 
+      // Set the session using the tokens from the response
+      if (data.access_token && data.refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+        
+        if (sessionError) {
+          throw sessionError;
+        }
+      }
+
       toast({
         title: "Success!",
         description: "Your Roblox account has been verified",
       });
       
-      // Refresh the session
-      await supabase.auth.refreshSession();
-      navigate("/");
+      // Wait a moment for session to be set, then navigate
+      setTimeout(() => {
+        navigate("/");
+      }, 500);
     } catch (error: any) {
       toast({
         title: "Verification Failed",

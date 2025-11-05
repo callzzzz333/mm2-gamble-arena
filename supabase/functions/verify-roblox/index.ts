@@ -86,7 +86,9 @@ serve(async (req) => {
     const email = `${robloxUsername.toLowerCase()}@roblox.mm2pvp.temp`;
     const password = crypto.randomUUID();
 
-    // Try to sign up
+    let userId: string | undefined;
+    
+    // Try to sign up new user
     const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -97,19 +99,28 @@ serve(async (req) => {
       }
     });
 
-    let userId = signUpData?.user?.id;
-
-    // If user already exists, try to get their ID
-    if (signUpError && signUpError.message.includes('already registered')) {
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('roblox_username', robloxUsername)
-        .single();
+    if (signUpData?.user) {
+      userId = signUpData.user.id;
+      console.log('Created new user:', userId);
+    } else if (signUpError?.message.includes('already registered')) {
+      // User exists, find them by email
+      console.log('User already exists, finding by email...');
       
-      if (existingProfile) {
-        userId = existingProfile.id;
+      const { data: users, error: listError } = await supabase.auth.admin.listUsers();
+      
+      if (listError) {
+        console.error('Error listing users:', listError);
+        throw new Error('Failed to find existing user account');
       }
+      
+      const existingUser = users.users.find(u => u.email === email);
+      if (existingUser) {
+        userId = existingUser.id;
+        console.log('Found existing user:', userId);
+      }
+    } else if (signUpError) {
+      console.error('Signup error:', signUpError);
+      throw signUpError;
     }
 
     if (!userId) {
@@ -136,17 +147,36 @@ serve(async (req) => {
     // Mark verification code as used
     await supabase
       .from('verification_codes')
-      .update({ used: true })
+      .update({ used: true, user_id: userId })
       .eq('code', verificationCode);
 
-    // Generate session token
-    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
+    // Sign in the user to get session tokens
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
+      password,
     });
 
-    if (sessionError) {
-      throw sessionError;
+    if (signInError) {
+      // If password sign-in fails, generate a magic link
+      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email,
+      });
+
+      if (linkError || !linkData) {
+        console.error('Failed to generate session');
+        throw new Error('Failed to create session');
+      }
+
+      // Return the magic link for the user to use
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'Roblox account verified successfully!',
+          redirect_url: linkData.properties.action_link,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Verification successful for:', robloxUsername);
@@ -155,7 +185,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true,
         message: 'Roblox account verified successfully!',
-        session: sessionData
+        access_token: signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
