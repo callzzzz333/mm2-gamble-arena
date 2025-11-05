@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, Plus, Minus, Package } from "lucide-react";
+import { ExternalLink, Plus, Minus, Package, Bitcoin, Wallet } from "lucide-react";
 
 interface Item {
   id: string;
@@ -32,6 +33,9 @@ const Deposit = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [cryptoAmount, setCryptoAmount] = useState("");
+  const [selectedCrypto, setSelectedCrypto] = useState("btc");
+  const [cryptoLoading, setCryptoLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -149,6 +153,49 @@ const Deposit = () => {
     }
   };
 
+  const handleCryptoDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!cryptoAmount || parseFloat(cryptoAmount) <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid deposit amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCryptoLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-crypto-payment', {
+        body: {
+          amount: parseFloat(cryptoAmount),
+          currency: selectedCrypto,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.payment?.payment_url) {
+        window.open(data.payment.payment_url, '_blank');
+        toast({
+          title: "Payment created!",
+          description: "Opening payment page. Your balance will be credited automatically once confirmed.",
+        });
+        setCryptoAmount("");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create crypto payment",
+        variant: "destructive",
+      });
+    } finally {
+      setCryptoLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex">
       <Sidebar />
@@ -158,12 +205,30 @@ const Deposit = () => {
         
         <main className="pt-16 px-8 py-8">
           <div className="max-w-6xl mx-auto">
-            <h1 className="text-4xl font-bold mb-2">Deposit Items</h1>
-            <p className="text-muted-foreground mb-8">
-              Select your MM2 items and submit a deposit request
-            </p>
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">
+                <Wallet className="w-7 h-7" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold">Deposit</h1>
+                <p className="text-muted-foreground">Add funds to your account</p>
+              </div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Tabs defaultValue="items" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+                <TabsTrigger value="items" className="gap-2">
+                  <Package className="w-4 h-4" />
+                  MM2 Items
+                </TabsTrigger>
+                <TabsTrigger value="crypto" className="gap-2">
+                  <Bitcoin className="w-4 h-4" />
+                  Crypto
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="items" className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Item Selection */}
               <div className="lg:col-span-2 space-y-4">
                 <Card className="p-6 bg-card border-border">
@@ -303,6 +368,107 @@ const Deposit = () => {
                 </Card>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="crypto" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="p-6 bg-card border-border">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <Bitcoin className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold">Crypto Deposit</h2>
+                </div>
+
+                <form onSubmit={handleCryptoDeposit} className="space-y-4">
+                  <div>
+                    <label className="text-sm font-semibold mb-2 block">
+                      Amount (USD)
+                    </label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="5"
+                      value={cryptoAmount}
+                      onChange={(e) => setCryptoAmount(e.target.value)}
+                      placeholder="Enter amount in USD"
+                      required
+                      className="bg-background"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Minimum deposit: $5.00
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold mb-2 block">
+                      Cryptocurrency
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'btc', label: 'Bitcoin', icon: '₿' },
+                        { value: 'eth', label: 'Ethereum', icon: 'Ξ' },
+                        { value: 'ltc', label: 'Litecoin', icon: 'Ł' },
+                      ].map((crypto) => (
+                        <Button
+                          key={crypto.value}
+                          type="button"
+                          variant={selectedCrypto === crypto.value ? "default" : "outline"}
+                          onClick={() => setSelectedCrypto(crypto.value)}
+                          className="h-16 flex flex-col gap-1"
+                        >
+                          <span className="text-xl">{crypto.icon}</span>
+                          <span className="text-xs">{crypto.label}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-primary hover:bg-primary/90 shadow-glow"
+                    disabled={cryptoLoading}
+                  >
+                    {cryptoLoading ? "Creating Payment..." : "Create Crypto Payment"}
+                  </Button>
+                </form>
+              </Card>
+
+              <Card className="p-6 bg-card border-border">
+                <h3 className="font-bold text-lg mb-4">How it works</h3>
+                <ol className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex gap-3">
+                    <span className="font-bold text-primary">1.</span>
+                    <span>Enter the amount you want to deposit in USD</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="font-bold text-primary">2.</span>
+                    <span>Select your preferred cryptocurrency</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="font-bold text-primary">3.</span>
+                    <span>Click "Create Crypto Payment" to generate a payment address</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="font-bold text-primary">4.</span>
+                    <span>Send the exact crypto amount to the provided address</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="font-bold text-primary">5.</span>
+                    <span>Your balance will be credited automatically after blockchain confirmation</span>
+                  </li>
+                </ol>
+
+                <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Note:</strong> Crypto deposits are processed automatically once confirmed on the blockchain. 
+                    This usually takes 10-30 minutes depending on network congestion.
+                  </p>
+                </div>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
           </div>
         </main>
       </div>
