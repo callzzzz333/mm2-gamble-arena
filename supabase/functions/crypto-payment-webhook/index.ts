@@ -56,6 +56,7 @@ serve(async (req) => {
     if (['finished', 'confirmed'].includes(payload.payment_status) && !deposit.confirmed_at) {
       console.log('Crediting balance for user:', deposit.user_id, 'amount:', deposit.usd_amount);
       
+      // Update user balance using RPC function
       const { data: balanceResult, error: balanceError } = await supabase.rpc(
         'update_user_balance',
         {
@@ -72,6 +73,12 @@ serve(async (req) => {
       }
 
       console.log('Balance credited successfully');
+      
+      // Also mark the deposit as confirmed in crypto_deposits table
+      await supabase
+        .from('crypto_deposits')
+        .update({ confirmed_at: new Date().toISOString() })
+        .eq('payment_id', payload.payment_id);
     }
 
     return new Response(
