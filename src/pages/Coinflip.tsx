@@ -57,6 +57,8 @@ const Coinflip = () => {
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [flipAnimation, setFlipAnimation] = useState<FlipAnimation | null>(null);
   const [recentFlips, setRecentFlips] = useState<Array<'heads' | 'tails'>>([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -256,6 +258,8 @@ const Coinflip = () => {
   };
 
   const createGame = async () => {
+    if (isCreating) return;
+    
     if (!user) {
       toast({ title: "Please login first", variant: "destructive" });
       return;
@@ -265,6 +269,8 @@ const Coinflip = () => {
       toast({ title: "Please select items to bet", variant: "destructive" });
       return;
     }
+
+    setIsCreating(true);
 
     // Remove items from inventory
     for (const si of selectedItems) {
@@ -339,10 +345,13 @@ const Coinflip = () => {
     }
 
     setSelectedItems([]);
+    setIsCreating(false);
     toast({ title: "Game created!", description: "Waiting for opponent..." });
   };
 
   const joinGame = async (game: CoinflipGame) => {
+    if (isJoining) return;
+    
     if (!user) {
       toast({ title: "Please login first", variant: "destructive" });
       return;
@@ -357,6 +366,8 @@ const Coinflip = () => {
       toast({ title: "Please select items to bet", variant: "destructive" });
       return;
     }
+
+    setIsJoining(true);
 
     const joinerTotal = getTotalValue();
     const creatorTotal = parseFloat(game.bet_amount);
@@ -532,6 +543,7 @@ const Coinflip = () => {
     fetchRecentFlips();
 
     setSelectedItems([]);
+    setIsJoining(false);
     
     // Clear flip animation after showing result
     setTimeout(() => {
@@ -660,8 +672,8 @@ const Coinflip = () => {
                   </div>
                 </div>
 
-                <Button onClick={createGame} className="w-full" size="lg" disabled={selectedItems.length === 0}>
-                  Create Game
+                <Button onClick={createGame} className="w-full" size="lg" disabled={selectedItems.length === 0 || isCreating}>
+                  {isCreating ? 'Creating...' : 'Create Game'}
                 </Button>
               </div>
             </Card>
@@ -677,7 +689,7 @@ const Coinflip = () => {
                         {flipAnimation.countdown}
                       </div>
                     </>
-                  ) : flipAnimation.isFlipping ? (
+                   ) : flipAnimation.isFlipping ? (
                     <>
                       <h2 className="text-4xl font-bold">Flipping Coin...</h2>
                       <div className="relative w-48 h-48 mx-auto rounded-full overflow-hidden bg-transparent">
@@ -687,6 +699,9 @@ const Coinflip = () => {
                           className="absolute inset-0 w-full h-full object-contain animate-[spin_0.5s_linear_infinite]"
                           style={{ backfaceVisibility: 'hidden' }}
                         />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-8xl font-black text-white drop-shadow-[0_0_8px_rgba(0,0,0,0.9)] animate-[spin_0.5s_linear_infinite]">H</span>
+                        </div>
                       </div>
                     </>
                   ) : flipAnimation.result ? (
@@ -698,6 +713,11 @@ const Coinflip = () => {
                           alt={flipAnimation.result} 
                           className="w-full h-full object-contain"
                         />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-8xl font-black text-white drop-shadow-[0_0_10px_rgba(0,0,0,1)]">
+                            {flipAnimation.result === 'heads' ? 'H' : 'T'}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-6xl font-bold text-primary uppercase animate-fade-in">
                         {flipAnimation.result}!
@@ -738,12 +758,17 @@ const Coinflip = () => {
                           {/* Creator Section - Compact */}
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             {/* Coin Image */}
-                            <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent flex-shrink-0">
+                            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-transparent flex-shrink-0">
                               <img 
                                 src={game.creator_side === 'heads' ? coinHeads : coinTails} 
                                 alt={game.creator_side}
                                 className="w-full h-full object-contain"
                               />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-2xl font-black text-white drop-shadow-[0_0_6px_rgba(0,0,0,1)]">
+                                  {game.creator_side === 'heads' ? 'H' : 'T'}
+                                </span>
+                              </div>
                             </div>
                             
                             {/* Creator Info */}
@@ -760,9 +785,44 @@ const Coinflip = () => {
                               </div>
                             </div>
                             
-                            {/* Bet Amount */}
+                            {/* Bet Amount & Items */}
                             <div className="text-right flex-shrink-0">
-                              <p className="text-xl font-bold text-primary">${betAmount.toFixed(2)}</p>
+                              <div className="flex items-center gap-2 justify-end">
+                                <p className="text-xl font-bold text-primary">${betAmount.toFixed(2)}</p>
+                                {game.creator_items && game.creator_items.length > 0 && (
+                                  <div className="flex items-center gap-0.5">
+                                    {game.creator_items.slice(0, 3).map((item: any, idx: number) => (
+                                      <div 
+                                        key={idx}
+                                        className="relative w-5 h-5 rounded bg-muted border border-border/50 overflow-hidden"
+                                        title={`${item.name} x${item.quantity}`}
+                                      >
+                                        {item.image_url ? (
+                                          <img 
+                                            src={item.image_url} 
+                                            alt={item.name}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center text-[8px]">
+                                            {item.name[0]}
+                                          </div>
+                                        )}
+                                        {item.quantity > 1 && (
+                                          <span className="absolute bottom-0 right-0 text-[7px] bg-black/70 px-0.5 rounded-tl">
+                                            {item.quantity}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                    {game.creator_items.length > 3 && (
+                                      <span className="text-[9px] text-muted-foreground">
+                                        +{game.creator_items.length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground">
                                 ${minBet.toFixed(0)}-${maxBet.toFixed(0)}
                               </p>
@@ -788,11 +848,13 @@ const Coinflip = () => {
                           <div className="flex items-center px-3">
                             <Button
                               onClick={() => joinGame(game)}
-                              disabled={!canJoin}
+                              disabled={!canJoin || isJoining}
                               size="sm"
                               className="min-w-[100px]"
                             >
-                              {game.creator_id === user?.id 
+                              {isJoining
+                                ? 'Joining...'
+                                : game.creator_id === user?.id 
                                 ? 'Waiting' 
                                 : !canJoin && selectedItems.length === 0
                                 ? 'Select Items'
