@@ -12,11 +12,20 @@ interface Transaction {
   game_type: string;
   description: string;
   created_at: string;
+  game_id?: string;
   profiles: {
     username: string;
     avatar_url: string | null;
     roblox_username: string | null;
-  };
+  } | null;
+  items?: Array<{
+    item_id: string;
+    name: string;
+    value: number;
+    quantity: number;
+    image_url: string | null;
+    rarity: string;
+  }> | null;
 }
 
 export const LiveBets = () => {
@@ -60,6 +69,7 @@ export const LiveBets = () => {
       return;
     }
 
+    // Fetch user profiles
     const userIds = Array.from(new Set((txs || []).map(t => t.user_id))).filter(Boolean);
     let profilesMap: Record<string, any> = {};
 
@@ -75,10 +85,42 @@ export const LiveBets = () => {
       }
     }
 
-    const merged = (txs || []).map((t: any) => ({
-      ...t,
-      profiles: profilesMap[t.user_id] || null,
-    }));
+    // Fetch coinflip game data to get items
+    const coinflipGameIds = (txs || [])
+      .filter(t => t.game_type === 'coinflip' && t.game_id)
+      .map(t => t.game_id);
+    
+    let gamesMap: Record<string, any> = {};
+    if (coinflipGameIds.length) {
+      const { data: games } = await supabase
+        .from('coinflip_games')
+        .select('id, creator_id, creator_items, joiner_items')
+        .in('id', coinflipGameIds as any);
+      
+      if (games) {
+        gamesMap = Object.fromEntries(games.map(g => [g.id, g]));
+      }
+    }
+
+    const merged = (txs || []).map((t: any) => {
+      const game = gamesMap[t.game_id];
+      let items = null;
+      
+      // Determine which items to show based on who made the bet
+      if (game && t.game_type === 'coinflip') {
+        if (t.user_id === game.creator_id) {
+          items = game.creator_items;
+        } else {
+          items = game.joiner_items;
+        }
+      }
+
+      return {
+        ...t,
+        profiles: profilesMap[t.user_id] || null,
+        items: items,
+      };
+    });
 
     console.log('Fetched live bets count:', merged.length);
     setLiveBets(merged as any);
@@ -142,9 +184,44 @@ export const LiveBets = () => {
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className={bet.type === 'win' ? 'text-green-500 font-semibold' : bet.type === 'loss' ? 'text-red-500' : 'text-yellow-500'}>
-                  {bet.type === 'win' ? '+' : bet.type === 'bet' ? '' : '-'}${Math.abs(bet.amount).toFixed(2)}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className={bet.type === 'win' ? 'text-green-500 font-semibold' : bet.type === 'loss' ? 'text-red-500' : 'text-yellow-500'}>
+                    {bet.type === 'win' ? '+' : bet.type === 'bet' ? '' : '-'}${Math.abs(bet.amount).toFixed(2)}
+                  </span>
+                  {bet.items && bet.items.length > 0 && (
+                    <div className="flex items-center gap-0.5 ml-1">
+                      {bet.items.slice(0, 3).map((item, idx) => (
+                        <div 
+                          key={idx}
+                          className="relative w-5 h-5 rounded bg-muted border border-border/50 overflow-hidden"
+                          title={`${item.name} x${item.quantity}`}
+                        >
+                          {item.image_url ? (
+                            <img 
+                              src={item.image_url} 
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[8px]">
+                              {item.name[0]}
+                            </div>
+                          )}
+                          {item.quantity > 1 && (
+                            <span className="absolute bottom-0 right-0 text-[7px] bg-black/70 px-0.5 rounded-tl">
+                              {item.quantity}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {bet.items.length > 3 && (
+                        <span className="text-[9px] text-muted-foreground ml-0.5">
+                          +{bet.items.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <span className="text-muted-foreground">{formatTime(bet.created_at)}</span>
               </div>
             </div>
