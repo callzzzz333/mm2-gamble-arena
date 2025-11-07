@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
@@ -65,6 +65,10 @@ const Coinflip = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Keep an up-to-date reference to the current user for interval callbacks
+  const userRef = useRef<any>(null);
+  useEffect(() => { userRef.current = user; }, [user]);
+
   useEffect(() => {
     checkUser();
     fetchGames();
@@ -95,28 +99,28 @@ const Coinflip = () => {
   }, []);
 
   const checkExpiredGames = async () => {
+    const currentUserId = userRef.current?.id;
+    if (!currentUserId) return;
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    
-    // Check for waiting games that have expired (exactly at or past 5 minutes)
-    const { data: expiredGames } = await supabase
+
+    // Only expire your own waiting games to respect security policies
+    const { data: expiredGames, error } = await supabase
       .from("coinflip_games")
       .select("*")
       .eq("status", "waiting")
-      .lte("created_at", fiveMinutesAgo);
+      .lte("created_at", fiveMinutesAgo)
+      .eq("creator_id", currentUserId);
+
+    if (error) {
+      console.error("Error checking expired games:", error);
+      return;
+    }
 
     if (expiredGames && expiredGames.length > 0) {
       for (const game of expiredGames) {
         await refundGame(game);
       }
     }
-
-    // Also purge any old expired/completed games from database (cleanup failsafe)
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    await supabase
-      .from("coinflip_games")
-      .delete()
-      .in("status", ["expired", "completed"])
-      .lt("created_at", tenMinutesAgo);
   };
 
   const refundGame = async (game: any) => {
@@ -160,7 +164,10 @@ const Coinflip = () => {
     }
 
     // Delete the expired game from database
-    await supabase.from("coinflip_games").delete().eq("id", game.id);
+    const { error: delErr } = await supabase.from("coinflip_games").delete().eq("id", game.id);
+    if (delErr) {
+      console.error('Failed to delete expired game:', delErr);
+    }
 
     // Remove the expired game locally right away
     setGames((prev) => prev.filter((g) => g.id !== game.id));
@@ -489,7 +496,7 @@ const Coinflip = () => {
     });
 
     // Update game
-    await supabase
+    const { error: updateError } = await supabase
       .from("coinflip_games")
       .update({
         joiner_id: user.id,
@@ -500,6 +507,13 @@ const Coinflip = () => {
         completed_at: new Date().toISOString()
       })
       .eq("id", game.id);
+
+    if (updateError) {
+      console.error('Failed to update coinflip game:', updateError);
+      toast({ title: 'Failed to complete game', description: updateError.message, variant: 'destructive' });
+      setIsJoining(false);
+      return;
+    }
 
     // Calculate total pot value (with 5% house edge)
     const totalPot = creatorTotal + joinerTotal;
@@ -556,7 +570,10 @@ const Coinflip = () => {
     }
 
     // Delete the completed game from database
-    await supabase.from("coinflip_games").delete().eq("id", game.id);
+    const { error: deleteError } = await supabase.from("coinflip_games").delete().eq("id", game.id);
+    if (deleteError) {
+      console.error('Failed to delete coinflip game:', deleteError);
+    }
 
     toast({
       title: winnerId === user?.id ? "You won! 🎉" : "You lost 😢",
