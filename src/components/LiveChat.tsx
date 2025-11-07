@@ -6,15 +6,21 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Send, FileText, Gift, Timer } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 
 interface Message {
   id: string;
+  user_id: string;
   username: string;
   message: string;
   created_at: string;
+  profiles?: {
+    avatar_url: string | null;
+    roblox_username: string | null;
+  };
 }
 
 export const LiveChat = () => {
@@ -63,8 +69,19 @@ export const LiveChat = () => {
           schema: "public",
           table: "chat_messages",
         },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+        async (payload) => {
+          // Fetch the profile data for the new message
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("avatar_url, roblox_username")
+            .eq("id", (payload.new as any).user_id)
+            .single();
+          
+          const messageWithProfile = {
+            ...payload.new,
+            profiles: profile
+          };
+          setMessages((prev) => [...prev, messageWithProfile as Message]);
         }
       )
       .subscribe();
@@ -101,12 +118,15 @@ export const LiveChat = () => {
   const fetchMessages = async () => {
     const { data, error } = await supabase
       .from("chat_messages")
-      .select("*")
+      .select(`
+        *,
+        profiles!chat_messages_user_id_fkey(avatar_url, roblox_username)
+      `)
       .order("created_at", { ascending: true })
       .limit(100);
 
     if (!error && data) {
-      setMessages(data);
+      setMessages(data as any);
     }
   };
 
@@ -429,20 +449,30 @@ export const LiveChat = () => {
           {/* Chat Messages */}
           {messages.map((msg) => (
             <div key={msg.id} className="group hover:bg-muted/30 p-3 rounded-lg transition-colors">
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-sm font-semibold text-primary">
-                  {msg.username}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(msg.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+              <div className="flex items-start gap-2">
+                <Avatar className="w-8 h-8 flex-shrink-0">
+                  <AvatarImage src={msg.profiles?.avatar_url || undefined} />
+                  <AvatarFallback className="text-xs bg-primary/20 text-primary font-bold">
+                    {(msg.profiles?.roblox_username || msg.username || 'U')[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-sm font-semibold text-primary">
+                      {msg.profiles?.roblox_username || msg.username}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(msg.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground/90 break-words leading-relaxed">
+                    {msg.message}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-foreground/90 break-words leading-relaxed">
-                {msg.message}
-              </p>
             </div>
           ))}
         </div>
