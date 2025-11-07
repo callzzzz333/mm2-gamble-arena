@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, FileText, Gift, Timer } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Send, FileText, Gift, Timer, Plus } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -361,94 +362,132 @@ export const LiveChat = () => {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={giveawayOpen} onOpenChange={setGiveawayOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="relative">
                 <Gift className="w-4 h-4" />
+                {giveaways.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                    {giveaways.length}
+                  </span>
+                )}
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md bg-card border-border">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-primary">Create Giveaway</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block text-foreground">Select Item from Your Inventory</label>
-                  <Select value={selectedGiveawayItem} onValueChange={setSelectedGiveawayItem}>
-                    <SelectTrigger className="bg-input border-border">
-                      <SelectValue placeholder="Choose an item" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      {userItems.map((ui) => (
-                        <SelectItem key={ui.id} value={ui.item_id}>
-                          {ui.items?.name} - ${ui.items?.value} ({ui.items?.rarity})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {userItems.length === 0 && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      You need items in your inventory to create a giveaway
-                    </p>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0 bg-card border-border" align="end">
+              <div className="flex items-center justify-between p-3 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Giveaways</h3>
+                </div>
+                <Dialog open={giveawayOpen} onOpenChange={setGiveawayOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-xs">
+                      <Plus className="w-3 h-3 mr-1" />
+                      Create
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md bg-card border-border">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-bold text-primary">Create Giveaway</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block text-foreground">Select Item from Your Inventory</label>
+                        <Select value={selectedGiveawayItem} onValueChange={setSelectedGiveawayItem}>
+                          <SelectTrigger className="bg-input border-border">
+                            <SelectValue placeholder="Choose an item" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            {userItems.map((ui) => (
+                              <SelectItem key={ui.id} value={ui.item_id}>
+                                {ui.items?.name} - ${ui.items?.value} ({ui.items?.rarity})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {userItems.length === 0 && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            You need items in your inventory to create a giveaway
+                          </p>
+                        )}
+                      </div>
+                      <Button 
+                        onClick={createGiveaway} 
+                        className="w-full border border-primary/20 shadow-glow" 
+                        disabled={!user || !selectedGiveawayItem || userItems.length === 0}
+                      >
+                        Create Giveaway
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <ScrollArea className="max-h-96">
+                <div className="p-2 space-y-2">
+                  {giveaways.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <Gift className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No active giveaways</p>
+                    </div>
+                  ) : (
+                    giveaways.map((giveaway) => {
+                      const timeLeft = Math.max(0, new Date(giveaway.ends_at).getTime() - Date.now());
+                      const secondsLeft = Math.floor(timeLeft / 1000);
+                      const hasJoined = giveaway.giveaway_entries?.some((e: any) => e.user_id === user?.id);
+                      
+                      return (
+                        <Card key={giveaway.id} className="p-3 bg-muted/30 hover:bg-muted/50 transition-colors border-border">
+                          <div className="flex gap-3">
+                            {giveaway.items?.image_url && (
+                              <div className="w-16 h-16 flex-shrink-0 rounded bg-background/50 border border-border overflow-hidden">
+                                <img 
+                                  src={giveaway.items.image_url} 
+                                  alt={giveaway.items.name}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-semibold truncate">{giveaway.items?.name}</span>
+                                  <span className="text-xs font-bold text-primary flex-shrink-0">${giveaway.items?.value}</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  by {giveaway.profiles?.username}
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Timer className="w-3 h-3" />
+                                  {secondsLeft}s
+                                </span>
+                                <span className="text-muted-foreground">{giveaway.giveaway_entries?.length || 0} entries</span>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                className="w-full h-7 text-xs" 
+                                onClick={() => joinGiveaway(giveaway.id)}
+                                disabled={hasJoined || !user}
+                              >
+                                {hasJoined ? "Joined ✓" : "Join Giveaway"}
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })
                   )}
                 </div>
-                <Button 
-                  onClick={createGiveaway} 
-                  className="w-full border border-primary/20 shadow-glow" 
-                  disabled={!user || !selectedGiveawayItem || userItems.length === 0}
-                >
-                  Create Giveaway
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
           </div>
         </div>
       </div>
 
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4">
-          {/* Active Giveaways */}
-          {giveaways.length > 0 && (
-            <div className="space-y-2 mb-4">
-              <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
-                <Gift className="w-4 h-4" />
-                Active Giveaways
-              </h3>
-              {giveaways.map((giveaway) => {
-                const timeLeft = Math.max(0, new Date(giveaway.ends_at).getTime() - Date.now());
-                const secondsLeft = Math.floor(timeLeft / 1000);
-                const hasJoined = giveaway.giveaway_entries?.some((e: any) => e.user_id === user?.id);
-                
-                return (
-                  <Card key={giveaway.id} className="p-3 bg-muted/50">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{giveaway.items?.name}</span>
-                        <span className="text-xs text-primary">${giveaway.items?.value}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Timer className="w-3 h-3" />
-                          {secondsLeft}s left
-                        </span>
-                        <span>{giveaway.giveaway_entries?.length || 0} entries</span>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        className="w-full" 
-                        onClick={() => joinGiveaway(giveaway.id)}
-                        disabled={hasJoined || !user}
-                      >
-                        {hasJoined ? "Joined" : "Join"}
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-
           {/* Chat Messages */}
           {messages.map((msg) => (
             <div key={msg.id} className="group hover:bg-muted/30 p-3 rounded-lg transition-colors">
