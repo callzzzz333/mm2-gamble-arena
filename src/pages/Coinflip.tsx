@@ -67,6 +67,7 @@ const Coinflip = () => {
 
   // Keep an up-to-date reference to the current user for interval callbacks
   const userRef = useRef<any>(null);
+  const lastCleanupRef = useRef<number>(0);
   useEffect(() => { userRef.current = user; }, [user]);
 
   useEffect(() => {
@@ -100,25 +101,31 @@ const Coinflip = () => {
 
   const checkExpiredGames = async () => {
     const currentUserId = userRef.current?.id;
-    if (!currentUserId) return;
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
-    // Only expire your own waiting games to respect security policies
-    const { data: expiredGames, error } = await supabase
-      .from("coinflip_games")
-      .select("*")
-      .eq("status", "waiting")
-      .lte("created_at", fiveMinutesAgo)
-      .eq("creator_id", currentUserId);
+    // Locally expire ONLY your own games (respect RLS)
+    if (currentUserId) {
+      const { data: expiredGames, error } = await supabase
+        .from("coinflip_games")
+        .select("*")
+        .eq("status", "waiting")
+        .lte("created_at", fiveMinutesAgo)
+        .eq("creator_id", currentUserId);
 
-    if (error) {
-      console.error("Error checking expired games:", error);
-      return;
+      if (!error && expiredGames && expiredGames.length > 0) {
+        for (const game of expiredGames) {
+          await refundGame(game);
+        }
+      }
     }
 
-    if (expiredGames && expiredGames.length > 0) {
-      for (const game of expiredGames) {
-        await refundGame(game);
+    // Throttle a global cleanup that expires ANY old waiting games server-side
+    if (Date.now() - (lastCleanupRef.current || 0) > 30000) {
+      lastCleanupRef.current = Date.now();
+      try {
+        await supabase.functions.invoke('cleanup-coinflip');
+      } catch (e) {
+        // silently ignore
       }
     }
   };
@@ -216,10 +223,12 @@ const Coinflip = () => {
   };
 
   const fetchGames = async () => {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from("coinflip_games")
       .select("*")
       .eq("status", "waiting")
+      .gt("created_at", fiveMinutesAgo)
       .order("created_at", { ascending: false });
 
     if (error) {
