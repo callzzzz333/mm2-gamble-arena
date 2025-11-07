@@ -5,12 +5,12 @@ import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Coins, Package, Plus, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
+import { JoinCoinflipDialog } from "@/components/JoinCoinflipDialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import coinHeads from "@/assets/coin-heads.png";
 import coinTails from "@/assets/coin-tails.png";
@@ -61,6 +61,7 @@ const Coinflip = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [gameToJoin, setGameToJoin] = useState<CoinflipGame | null>(null);
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -231,38 +232,20 @@ const Coinflip = () => {
       return;
     }
 
-    if (selectedItems.length === 0) {
-      toast({ title: "Please select items to bet", variant: "destructive" });
-      return;
-    }
-
-    // Show confirmation dialog
     setGameToJoin(game);
+    setJoinDialogOpen(true);
   };
 
-  const joinGame = async (game: CoinflipGame) => {
+  const joinGame = async (game: CoinflipGame, joinerItems: SelectedItem[]) => {
     if (isJoining) return;
     
     setIsJoining(true);
+    setJoinDialogOpen(false);
     setGameToJoin(null);
 
     try {
-      const joinerTotal = getTotalValue();
-      const creatorTotal = parseFloat(game.bet_amount);
-      const tolerance = creatorTotal * 0.1;
-
-      if (joinerTotal < creatorTotal - tolerance || joinerTotal > creatorTotal + tolerance) {
-        toast({ 
-          title: "Invalid bet amount", 
-          description: `Must be within 10% of $${creatorTotal.toFixed(2)} ($${(creatorTotal - tolerance).toFixed(2)} - $${(creatorTotal + tolerance).toFixed(2)})`,
-          variant: "destructive" 
-        });
-        setIsJoining(false);
-        return;
-      }
-
       // Verify user still has the items before proceeding
-      for (const si of selectedItems) {
+      for (const si of joinerItems) {
         const { data: userItem, error: checkError } = await supabase
           .from('user_items')
           .select('*')
@@ -281,7 +264,7 @@ const Coinflip = () => {
         }
       }
 
-      const joinerItemsData = selectedItems.map(si => ({
+      const joinerItemsData = joinerItems.map(si => ({
         item_id: si.item.id,
         name: si.item.name,
         value: si.item.value,
@@ -559,15 +542,11 @@ const Coinflip = () => {
                     const betAmount = parseFloat(game.bet_amount);
                     const minBet = betAmount * 0.9;
                     const maxBet = betAmount * 1.1;
-                    const userTotal = getTotalValue();
-                    const canJoin = userTotal >= minBet && userTotal <= maxBet && selectedItems.length > 0 && game.creator_id !== user?.id;
 
                     return (
                       <Card 
                         key={game.id} 
-                        className={`overflow-hidden border transition-all duration-300 ${
-                          canJoin ? 'border-primary/50 hover:border-primary shadow-glow' : 'border-border'
-                        }`}
+                        className="overflow-hidden border border-border hover:border-primary/50 transition-all duration-300"
                       >
                         <div className="flex items-center gap-4 p-4">
                           {/* Creator Section - Compact */}
@@ -654,14 +633,7 @@ const Coinflip = () => {
                           {/* Join Button */}
                           <div className="flex items-center px-3">
                             <Button
-                              onClick={() => {
-                                if (game.creator_id === user?.id) return;
-                                if (selectedItems.length === 0) {
-                                  setInventoryOpen(true);
-                                } else {
-                                  handleJoinClick(game);
-                                }
-                              }}
+                              onClick={() => handleJoinClick(game)}
                               disabled={isJoining || game.creator_id === user?.id}
                               size="sm"
                               className="min-w-[100px]"
@@ -669,11 +641,7 @@ const Coinflip = () => {
                               {isJoining
                                 ? 'Joining...'
                                 : game.creator_id === user?.id
-                                ? 'Waiting' 
-                                : selectedItems.length === 0
-                                ? 'Select Items'
-                                : !canJoin
-                                ? 'Out of Range'
+                                ? 'Your Game' 
                                 : 'Join'
                               }
                             </Button>
@@ -690,6 +658,7 @@ const Coinflip = () => {
       </div>
 
       <LiveChat />
+      
       <UserInventoryDialog 
         open={inventoryOpen} 
         onOpenChange={setInventoryOpen}
@@ -698,69 +667,13 @@ const Coinflip = () => {
         selectedItems={selectedItems.map(si => si.item.id)}
       />
 
-      {/* Join Confirmation Dialog */}
-      <AlertDialog open={!!gameToJoin} onOpenChange={(open) => !open && setGameToJoin(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Join Game</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>Are you sure you want to join this coinflip game?</p>
-              
-              {gameToJoin && (
-                <div className="space-y-2 text-foreground">
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <span className="text-sm">Opponent:</span>
-                    <span className="font-semibold">{gameToJoin.profiles?.roblox_username || gameToJoin.profiles?.username || 'Unknown'}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <span className="text-sm">Opponent Side:</span>
-                    <span className="font-semibold uppercase">{gameToJoin.creator_side}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <span className="text-sm">Your Side:</span>
-                    <span className="font-semibold uppercase">{gameToJoin.creator_side === 'heads' ? 'TAILS' : 'HEADS'}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <span className="text-sm">Bet Amount:</span>
-                    <span className="font-bold text-primary">${parseFloat(gameToJoin.bet_amount).toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <span className="text-sm">Your Items Value:</span>
-                    <span className="font-bold text-primary">${getTotalValue().toFixed(2)}</span>
-                  </div>
-
-                  {selectedItems.length > 0 && (
-                    <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-                      <span className="text-sm">Your Items ({selectedItems.length}):</span>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedItems.map((si) => (
-                          <div key={si.item.id} className="flex items-center gap-1 text-xs bg-background/50 px-2 py-1 rounded">
-                            {si.item.image_url && (
-                              <img src={si.item.image_url} alt={si.item.name} className="w-4 h-4 object-cover rounded" />
-                            )}
-                            <span>{si.item.name}</span>
-                            <span className="text-muted-foreground">x{si.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => gameToJoin && joinGame(gameToJoin)}>
-              Confirm Join
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <JoinCoinflipDialog
+        open={joinDialogOpen}
+        onOpenChange={setJoinDialogOpen}
+        game={gameToJoin}
+        onJoin={joinGame}
+        isJoining={isJoining}
+      />
     </div>
   );
 };
