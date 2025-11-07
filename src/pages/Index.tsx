@@ -17,21 +17,12 @@ const Index = () => {
         
         <main className="pt-16">
           {/* Discord Banner */}
-          <section className="relative h-64 overflow-hidden">
-            <div 
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${discordBanner})` }}
+          <section className="relative h-64 overflow-hidden cursor-pointer" onClick={() => window.open('https://discord.gg/xBbrVPsPqs', '_blank')}>
+            <img 
+              src={discordBanner}
+              alt="Join our Discord - Daily Giveaways & Airdrops"
+              className="absolute inset-0 w-full h-full object-cover"
             />
-            
-            <div className="relative h-full flex items-center justify-center px-12">
-              <Button 
-                size="lg" 
-                className="bg-[hsl(235,86%,65%)] hover:bg-[hsl(235,86%,60%)] text-white font-semibold shadow-lg text-lg"
-                onClick={() => window.open('https://discord.gg/xBbrVPsPqs', '_blank')}
-              >
-                CLICK HERE
-              </Button>
-            </div>
           </section>
 
           {/* Game Modes */}
