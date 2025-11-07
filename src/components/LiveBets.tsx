@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, Trophy, Timer } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Timer } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -22,20 +21,16 @@ interface Transaction {
 
 export const LiveBets = () => {
   const [liveBets, setLiveBets] = useState<Transaction[]>([]);
-  const [biggestWins, setBiggestWins] = useState<Transaction[]>([]);
-  const [luckyWins, setLuckyWins] = useState<Transaction[]>([]);
 
   useEffect(() => {
     fetchLiveBets();
-    fetchBiggestWins();
-    fetchLuckyWins();
 
     // Subscribe to real-time updates
     const channel = supabase
       .channel('transactions-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, () => {
+        console.log('New transaction detected, refreshing...');
         fetchLiveBets();
-        fetchBiggestWins();
       })
       .subscribe();
 
@@ -51,7 +46,8 @@ export const LiveBets = () => {
   }, []);
 
   const fetchLiveBets = async () => {
-    const { data } = await supabase
+    console.log('Fetching live bets...');
+    const { data, error } = await supabase
       .from('transactions')
       .select(`
         *,
@@ -60,46 +56,16 @@ export const LiveBets = () => {
       .in('type', ['bet', 'win', 'loss'])
       .not('game_type', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(30);
 
+    if (error) {
+      console.error('Error fetching live bets:', error);
+      return;
+    }
+
+    console.log('Fetched live bets:', data?.length || 0);
     if (data) {
       setLiveBets(data as any);
-    }
-  };
-
-  const fetchBiggestWins = async () => {
-    const { data } = await supabase
-      .from('transactions')
-      .select(`
-        *,
-        profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
-      `)
-      .eq('type', 'win')
-      .not('game_type', 'is', null)
-      .order('amount', { ascending: false })
-      .limit(10);
-
-    if (data) {
-      setBiggestWins(data as any);
-    }
-  };
-
-  const fetchLuckyWins = async () => {
-    // Lucky wins are wins where the amount is significantly higher than average
-    const { data } = await supabase
-      .from('transactions')
-      .select(`
-        *,
-        profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
-      `)
-      .eq('type', 'win')
-      .not('game_type', 'is', null)
-      .gte('amount', 50) // Only show wins over $50
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (data) {
-      setLuckyWins(data as any);
     }
   };
 
@@ -136,120 +102,40 @@ export const LiveBets = () => {
         Live Activity
       </h2>
       
-      <Tabs defaultValue="live" className="w-full">
-        <TabsList className="bg-secondary w-full">
-          <TabsTrigger value="live" className="flex-1">Live Bets</TabsTrigger>
-          <TabsTrigger value="biggest" className="flex-1">Biggest</TabsTrigger>
-          <TabsTrigger value="luckiest" className="flex-1">Luckiest</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="live" className="mt-4">
-          <div className="space-y-2 max-h-[600px] overflow-y-auto">
-            {liveBets.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Timer className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No recent activity</p>
-              </div>
-            ) : (
-              liveBets.map((bet) => (
-                <div key={bet.id} className="p-3 bg-muted/30 rounded-lg border border-border hover:border-primary/30 transition-all">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="w-6 h-6">
-                        <AvatarImage src={bet.profiles?.avatar_url || undefined} />
-                        <AvatarFallback className="text-xs">{(bet.profiles?.roblox_username || bet.profiles?.username || 'U')[0].toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span className="font-semibold text-sm">{bet.profiles?.roblox_username || bet.profiles?.username || 'Unknown'}</span>
-                    </div>
-                    <Badge className={getGameTypeColor(bet.game_type)}>
-                      {formatGameType(bet.game_type)}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className={bet.type === 'win' ? 'text-green-500' : bet.type === 'loss' ? 'text-red-500' : 'text-muted-foreground'}>
-                      {bet.type === 'win' ? '+' : bet.type === 'loss' ? '-' : ''}${Math.abs(bet.amount).toFixed(2)}
-                    </span>
-                    <span className="text-muted-foreground">{formatTime(bet.created_at)}</span>
-                  </div>
-                </div>
-              ))
-            )}
+      <div className="space-y-2 max-h-[600px] overflow-y-auto">
+        {liveBets.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Timer className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No recent activity</p>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="biggest" className="mt-4">
-          <div className="space-y-2 max-h-[600px] overflow-y-auto">
-            {biggestWins.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Trophy className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No wins yet</p>
-              </div>
-            ) : (
-              biggestWins.map((win, index) => (
-                <div key={win.id} className="p-3 bg-muted/30 rounded-lg border border-border hover:border-primary/30 transition-all">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      {index < 3 && (
-                        <span className={`text-lg ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : 'text-orange-600'}`}>
-                          {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                        </span>
-                      )}
-                      <Avatar className="w-6 h-6">
-                        <AvatarImage src={win.profiles?.avatar_url || undefined} />
-                        <AvatarFallback className="text-xs">{(win.profiles?.roblox_username || win.profiles?.username || 'U')[0].toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span className="font-semibold text-sm">{win.profiles?.roblox_username || win.profiles?.username || 'Unknown'}</span>
-                    </div>
-                    <Badge className={getGameTypeColor(win.game_type)}>
-                      {formatGameType(win.game_type)}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-green-500 font-bold">+${win.amount.toFixed(2)}</span>
-                    <span className="text-muted-foreground">{formatTime(win.created_at)}</span>
-                  </div>
+        ) : (
+          liveBets.map((bet) => (
+            <div key={bet.id} className="p-3 bg-muted/30 rounded-lg border border-border hover:border-primary/30 transition-all">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Avatar className="w-6 h-6">
+                    <AvatarImage src={bet.profiles?.avatar_url || undefined} />
+                    <AvatarFallback className="text-xs">{(bet.profiles?.roblox_username || bet.profiles?.username || 'U')[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-semibold text-sm">{bet.profiles?.roblox_username || bet.profiles?.username || 'Unknown'}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {bet.type === 'bet' ? 'placed a bet' : bet.type === 'win' ? 'won' : 'lost'}
+                  </span>
                 </div>
-              ))
-            )}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="luckiest" className="mt-4">
-          <div className="space-y-2 max-h-[600px] overflow-y-auto">
-            {luckyWins.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <TrendingUp className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No lucky wins yet</p>
+                <Badge className={getGameTypeColor(bet.game_type)}>
+                  {formatGameType(bet.game_type)}
+                </Badge>
               </div>
-            ) : (
-              luckyWins.map((win) => (
-                <div key={win.id} className="p-3 bg-muted/30 rounded-lg border border-border hover:border-primary/30 transition-all">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span>🍀</span>
-                      <Avatar className="w-6 h-6">
-                        <AvatarImage src={win.profiles?.avatar_url || undefined} />
-                        <AvatarFallback className="text-xs">{(win.profiles?.roblox_username || win.profiles?.username || 'U')[0].toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span className="font-semibold text-sm">{win.profiles?.roblox_username || win.profiles?.username || 'Unknown'}</span>
-                    </div>
-                    <Badge className={getGameTypeColor(win.game_type)}>
-                      {formatGameType(win.game_type)}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-green-500 font-bold">+${win.amount.toFixed(2)}</span>
-                    <span className="text-muted-foreground">{formatTime(win.created_at)}</span>
-                  </div>
-                  {win.description && (
-                    <p className="text-xs text-muted-foreground mt-1 truncate">{win.description}</p>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+              <div className="flex items-center justify-between text-xs">
+                <span className={bet.type === 'win' ? 'text-green-500 font-semibold' : bet.type === 'loss' ? 'text-red-500' : 'text-yellow-500'}>
+                  {bet.type === 'win' ? '+' : bet.type === 'bet' ? '' : '-'}${Math.abs(bet.amount).toFixed(2)}
+                </span>
+                <span className="text-muted-foreground">{formatTime(bet.created_at)}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };
