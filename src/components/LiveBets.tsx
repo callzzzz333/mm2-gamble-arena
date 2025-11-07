@@ -47,26 +47,41 @@ export const LiveBets = () => {
 
   const fetchLiveBets = async () => {
     console.log('Fetching live bets...');
-    const { data, error } = await supabase
+    const { data: txs, error: txError } = await supabase
       .from('transactions')
-      .select(`
-        *,
-        profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
-      `)
+      .select('*')
       .in('type', ['bet', 'win', 'loss'])
       .not('game_type', 'is', null)
       .order('created_at', { ascending: false })
       .limit(30);
 
-    if (error) {
-      console.error('Error fetching live bets:', error);
+    if (txError) {
+      console.error('Error fetching live bets:', txError);
       return;
     }
 
-    console.log('Fetched live bets:', data?.length || 0);
-    if (data) {
-      setLiveBets(data as any);
+    const userIds = Array.from(new Set((txs || []).map(t => t.user_id))).filter(Boolean);
+    let profilesMap: Record<string, any> = {};
+
+    if (userIds.length) {
+      const { data: profs, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, roblox_username')
+        .in('id', userIds as any);
+      if (profErr) {
+        console.error('Error fetching profiles:', profErr);
+      } else {
+        profilesMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
+      }
     }
+
+    const merged = (txs || []).map((t: any) => ({
+      ...t,
+      profiles: profilesMap[t.user_id] || null,
+    }));
+
+    console.log('Fetched live bets count:', merged.length);
+    setLiveBets(merged as any);
   };
 
   const getGameTypeColor = (gameType: string) => {
