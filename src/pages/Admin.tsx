@@ -22,6 +22,7 @@ const Admin = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -29,6 +30,7 @@ const Admin = () => {
     checkAdminStatus();
     fetchDeposits();
     fetchUsers();
+    fetchWithdrawals();
   }, []);
 
   const checkAdminStatus = async () => {
@@ -162,6 +164,80 @@ const Admin = () => {
     }
   };
 
+  const fetchWithdrawals = async () => {
+    const { data } = await supabase
+      .from("withdrawals")
+      .select(`
+        *,
+        profiles (username, roblox_username)
+      `)
+      .order("created_at", { ascending: false });
+
+    if (data) {
+      setWithdrawals(data);
+    }
+  };
+
+  const handleWithdrawalStatus = async (withdrawalId: string, status: string, withdrawal: any) => {
+    if (status === "completed") {
+      // Deduct items from user's inventory
+      try {
+        for (const item of withdrawal.items_requested) {
+          const { data: userItem } = await supabase
+            .from('user_items')
+            .select('*')
+            .eq('user_id', withdrawal.user_id)
+            .eq('item_id', item.item_id || item.id)
+            .single();
+
+          if (userItem) {
+            const newQuantity = userItem.quantity - item.quantity;
+            
+            if (newQuantity <= 0) {
+              // Remove item completely
+              await supabase
+                .from('user_items')
+                .delete()
+                .eq('id', userItem.id);
+            } else {
+              // Update quantity
+              await supabase
+                .from('user_items')
+                .update({ quantity: newQuantity })
+                .eq('id', userItem.id);
+            }
+          }
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: "Failed to remove items from inventory",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const { error } = await supabase
+      .from("withdrawals")
+      .update({ status, processed_at: new Date().toISOString() })
+      .eq("id", withdrawalId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update withdrawal status",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Withdrawal ${status}`,
+      });
+      fetchWithdrawals();
+    }
+  };
+
   const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -255,6 +331,7 @@ const Admin = () => {
           <Tabs defaultValue="deposits" className="w-full">
             <TabsList className="bg-card border border-border">
               <TabsTrigger value="deposits">Deposit Requests</TabsTrigger>
+              <TabsTrigger value="withdrawals">Withdrawal Requests</TabsTrigger>
               <TabsTrigger value="items">Manage Items</TabsTrigger>
               <TabsTrigger value="users">Manage Users</TabsTrigger>
             </TabsList>
@@ -337,6 +414,98 @@ const Admin = () => {
                             <p className="text-lg font-bold">
                               Total Value: <span className="text-primary">
                                 ${deposit.items_deposited.reduce((sum: number, item: any) => sum + (item.value * item.quantity), 0).toFixed(2)}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="withdrawals" className="space-y-4">
+              {withdrawals.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground">No withdrawal requests</p>
+                </Card>
+              ) : (
+                withdrawals.map((withdrawal) => (
+                  <Card key={withdrawal.id} className="p-6 bg-card border-border">
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <p className="font-semibold text-foreground text-lg">
+                            {withdrawal.profiles?.roblox_username || withdrawal.profiles?.username}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Trader: {withdrawal.trader_username}
+                          </p>
+                          <a
+                            href={withdrawal.private_server_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
+                          >
+                            View Private Server
+                          </a>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(withdrawal.created_at).toLocaleString()}
+                          </p>
+                          <span
+                            className={`inline-block px-2 py-1 rounded text-xs ${
+                              withdrawal.status === "pending"
+                                ? "bg-yellow-500/20 text-yellow-500"
+                                : withdrawal.status === "completed"
+                                ? "bg-green-500/20 text-green-500"
+                                : "bg-red-500/20 text-red-500"
+                            }`}
+                          >
+                            {withdrawal.status}
+                          </span>
+                        </div>
+
+                        {withdrawal.status === "pending" && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleWithdrawalStatus(withdrawal.id, "completed", withdrawal)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Check className="w-4 h-4 mr-1" /> Complete
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleWithdrawalStatus(withdrawal.id, "rejected", withdrawal)}
+                            >
+                              <X className="w-4 h-4 mr-1" /> Reject
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Display requested items */}
+                      {withdrawal.items_requested && Array.isArray(withdrawal.items_requested) && withdrawal.items_requested.length > 0 && (
+                        <div className="border-t border-border pt-4">
+                          <h3 className="font-semibold mb-3">Requested Items:</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {withdrawal.items_requested.map((item: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-background rounded border border-border">
+                                {item.image_url && (
+                                  <img src={item.image_url} alt={item.name} className="w-full h-20 object-cover rounded mb-2" />
+                                )}
+                                <p className="font-semibold text-sm">{item.name}</p>
+                                <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                                <p className="text-primary font-bold">${(item.value * item.quantity).toFixed(2)}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <p className="text-lg font-bold">
+                              Total Value: <span className="text-primary">
+                                ${withdrawal.items_requested.reduce((sum: number, item: any) => sum + (item.value * item.quantity), 0).toFixed(2)}
                               </span>
                             </p>
                           </div>
