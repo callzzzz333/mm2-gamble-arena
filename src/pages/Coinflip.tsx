@@ -390,7 +390,10 @@ const Coinflip = () => {
     }));
 
     // Start flip animation with countdown
-    const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
+    // Use crypto API for cryptographically secure randomness
+    const randomArray = new Uint32Array(1);
+    crypto.getRandomValues(randomArray);
+    const result: 'heads' | 'tails' = (randomArray[0] % 2) === 0 ? 'heads' : 'tails';
     const winnerId = result === game.creator_side ? game.creator_id : user.id;
 
     // Show countdown and flip animation

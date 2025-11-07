@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// ⚠️ CRITICAL SECURITY WARNING ⚠️
+// This webhook has NO authentication and is vulnerable to payment fraud.
+// An attacker can forge payment confirmations and steal funds.
+// TODO: Implement NOWPayments IPN signature validation before production use.
+// See: https://documenter.getpostman.com/view/7907941/2s93JusNJt
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

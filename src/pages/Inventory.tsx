@@ -78,8 +78,7 @@ const Inventory = () => {
       .eq("user_id", user.id);
 
     const hasPermission = 
-      roles?.some(r => r.role === 'item_manager' || r.role === 'admin') ||
-      profile?.username === 'solzz0_0';
+      roles?.some(r => r.role === 'item_manager' || r.role === 'admin');
 
     setIsItemManager(hasPermission);
   };

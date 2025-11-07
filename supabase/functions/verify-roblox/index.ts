@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Reserved usernames that cannot be used for account creation
+const RESERVED_USERNAMES = ['solzz0_0', 'admin', 'administrator', 'moderator', 'system', 'support', 'owner', 'staff'];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -13,6 +16,17 @@ serve(async (req) => {
 
   try {
     const { robloxUsername, verificationCode } = await req.json();
+    
+    // Validate that username is not reserved
+    if (RESERVED_USERNAMES.includes(robloxUsername.toLowerCase())) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'This username is reserved and cannot be used. Please use a different Roblox account.' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
     
     console.log('Verifying Roblox user:', robloxUsername, 'with code:', verificationCode);
 
