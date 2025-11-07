@@ -695,7 +695,7 @@ const Coinflip = () => {
                   {recentFlips.map((flip, idx) => (
                     <div 
                       key={idx} 
-                      className="w-6 h-6 rounded-full overflow-hidden bg-transparent flex-shrink-0"
+                      className="relative w-6 h-6 rounded-full overflow-hidden bg-transparent flex-shrink-0"
                       title={flip}
                     >
                       <img 
@@ -703,6 +703,11 @@ const Coinflip = () => {
                         alt={flip}
                         className="w-full h-full object-contain"
                       />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs font-black text-white drop-shadow-[0_0_4px_rgba(0,0,0,1)]">
+                          {flip === 'heads' ? 'H' : 'T'}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
