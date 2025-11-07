@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Reserved usernames that cannot be used for account creation
-const RESERVED_USERNAMES = ['solzz0_0', 'admin', 'administrator', 'moderator', 'system', 'support', 'owner', 'staff'];
+const RESERVED_USERNAMES = ['admin', 'administrator', 'moderator', 'system', 'support', 'owner', 'staff'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
