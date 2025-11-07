@@ -76,10 +76,7 @@ const Coinflip = () => {
   const fetchGames = async () => {
     const { data, error } = await supabase
       .from("coinflip_games")
-      .select(`
-        *,
-        profiles!coinflip_games_creator_id_fkey(username)
-      `)
+      .select("*")
       .eq("status", "waiting")
       .order("created_at", { ascending: false });
 
@@ -88,7 +85,23 @@ const Coinflip = () => {
       return;
     }
 
-    setGames(data as any || []);
+    // Fetch creator profiles separately
+    if (data && data.length > 0) {
+      const creatorIds = data.map(game => game.creator_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", creatorIds);
+
+      const gamesWithProfiles = data.map(game => ({
+        ...game,
+        profiles: profiles?.find(p => p.id === game.creator_id)
+      }));
+
+      setGames(gamesWithProfiles as any || []);
+    } else {
+      setGames(data as any || []);
+    }
   };
 
   const handleSelectItem = (itemWithQty: Item & { quantity: number }) => {

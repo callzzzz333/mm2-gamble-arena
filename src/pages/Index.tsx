@@ -26,10 +26,10 @@ const Index = () => {
             <div className="relative h-full flex items-center justify-center px-12">
               <Button 
                 size="lg" 
-                className="bg-[hsl(235,86%,65%)] hover:bg-[hsl(235,86%,60%)] text-white font-semibold shadow-lg"
+                className="bg-[hsl(235,86%,65%)] hover:bg-[hsl(235,86%,60%)] text-white font-semibold shadow-lg text-lg"
                 onClick={() => window.open('https://discord.gg/xBbrVPsPqs', '_blank')}
               >
-                Join Discord
+                CLICK HERE
               </Button>
             </div>
           </section>
