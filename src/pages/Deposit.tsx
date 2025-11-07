@@ -40,13 +40,15 @@ const Deposit = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         navigate("/auth");
       } else {
         setUser(user);
       }
-    });
+    })();
     fetchItems();
   }, [navigate]);
 
