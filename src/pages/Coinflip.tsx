@@ -5,6 +5,7 @@ import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Coins, Package, Plus, Minus, Clock } from "lucide-react";
@@ -60,6 +61,7 @@ const Coinflip = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [gameToJoin, setGameToJoin] = useState<CoinflipGame | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -357,9 +359,7 @@ const Coinflip = () => {
     toast({ title: "Game created!", description: "Waiting for opponent..." });
   };
 
-  const joinGame = async (game: CoinflipGame) => {
-    if (isJoining) return;
-    
+  const handleJoinClick = (game: CoinflipGame) => {
     if (!user) {
       toast({ title: "Please login first", variant: "destructive" });
       return;
@@ -375,7 +375,15 @@ const Coinflip = () => {
       return;
     }
 
+    // Show confirmation dialog
+    setGameToJoin(game);
+  };
+
+  const joinGame = async (game: CoinflipGame) => {
+    if (isJoining) return;
+    
     setIsJoining(true);
+    setGameToJoin(null);
 
     try {
       const joinerTotal = getTotalValue();
@@ -866,14 +874,14 @@ const Coinflip = () => {
                           {/* Join Button */}
                           <div className="flex items-center px-3">
                             <Button
-                              onClick={() => joinGame(game)}
+                              onClick={() => handleJoinClick(game)}
                               disabled={!canJoin || isJoining}
                               size="sm"
                               className="min-w-[100px]"
                             >
                               {isJoining
                                 ? 'Joining...'
-                                : game.creator_id === user?.id 
+                                : game.creator_id === user?.id
                                 ? 'Waiting' 
                                 : !canJoin && selectedItems.length === 0
                                 ? 'Select Items'
@@ -900,6 +908,70 @@ const Coinflip = () => {
         onOpenChange={setInventoryOpen}
         onSelectItem={handleSelectItem}
       />
+
+      {/* Join Confirmation Dialog */}
+      <AlertDialog open={!!gameToJoin} onOpenChange={(open) => !open && setGameToJoin(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Join Game</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>Are you sure you want to join this coinflip game?</p>
+              
+              {gameToJoin && (
+                <div className="space-y-2 text-foreground">
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm">Opponent:</span>
+                    <span className="font-semibold">{gameToJoin.profiles?.roblox_username || gameToJoin.profiles?.username || 'Unknown'}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm">Opponent Side:</span>
+                    <span className="font-semibold uppercase">{gameToJoin.creator_side}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm">Your Side:</span>
+                    <span className="font-semibold uppercase">{gameToJoin.creator_side === 'heads' ? 'TAILS' : 'HEADS'}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm">Bet Amount:</span>
+                    <span className="font-bold text-primary">${parseFloat(gameToJoin.bet_amount).toFixed(2)}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm">Your Items Value:</span>
+                    <span className="font-bold text-primary">${getTotalValue().toFixed(2)}</span>
+                  </div>
+
+                  {selectedItems.length > 0 && (
+                    <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                      <span className="text-sm">Your Items ({selectedItems.length}):</span>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedItems.map((si) => (
+                          <div key={si.item.id} className="flex items-center gap-1 text-xs bg-background/50 px-2 py-1 rounded">
+                            {si.item.image_url && (
+                              <img src={si.item.image_url} alt={si.item.name} className="w-4 h-4 object-cover rounded" />
+                            )}
+                            <span>{si.item.name}</span>
+                            <span className="text-muted-foreground">x{si.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => gameToJoin && joinGame(gameToJoin)}>
+              Confirm Join
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
