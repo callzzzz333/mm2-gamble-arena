@@ -4,9 +4,8 @@ import { GameModeCard } from "@/components/GameModeCard";
 import { LiveBets } from "@/components/LiveBets";
 import { LiveChat } from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
-import { Coins, Trophy, Dices, Zap } from "lucide-react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import heroBanner from "@/assets/mm2-hero-banner.jpg";
+import { Coins, Trophy, Users } from "lucide-react";
+import discordBanner from "@/assets/discord-banner.png";
 
 const Index = () => {
   return (
@@ -17,53 +16,31 @@ const Index = () => {
         <TopBar />
         
         <main className="pt-16">
-          {/* Hero Banner */}
+          {/* Discord Banner */}
           <section className="relative h-64 overflow-hidden">
             <div 
               className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${heroBanner})` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/60 to-transparent" />
-            </div>
+              style={{ backgroundImage: `url(${discordBanner})` }}
+            />
             
-            <div className="relative h-full flex items-center px-12">
-              <div className="max-w-2xl space-y-4">
-                <div className="inline-block px-3 py-1 bg-primary/20 text-primary border border-primary/30 rounded-full text-sm font-semibold">
-                  🎉 PVP Battle Mode is Live!
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold">
-                  Wager Your MM2 Items
-                </h1>
-                <p className="text-lg text-muted-foreground">
-                  Battle other players in exciting PVP matches. Coinflip, Jackpot, and 1v1 battles!
-                </p>
-                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-glow">
-                  Start Playing Now
-                </Button>
-              </div>
+            <div className="relative h-full flex items-center justify-center px-12">
+              <Button 
+                size="lg" 
+                className="bg-[hsl(235,86%,65%)] hover:bg-[hsl(235,86%,60%)] text-white font-semibold shadow-lg"
+                onClick={() => window.open('https://discord.gg/xBbrVPsPqs', '_blank')}
+              >
+                Join Discord
+              </Button>
             </div>
           </section>
 
           {/* Game Modes */}
           <section className="px-12 py-12">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <Dices className="w-5 h-5" />
-                </div>
-                <h2 className="text-2xl font-bold">Game Modes</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <Trophy className="w-5 h-5" />
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  See All
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
+              <h2 className="text-2xl font-bold">Game Modes</h2>
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
@@ -72,29 +49,21 @@ const Index = () => {
                 subtitle="MM2 PVP Originals"
                 icon={Coins}
                 isNew
+                route="/coinflip"
               />
               <GameModeCard
                 title="JACKPOT"
                 subtitle="MM2 PVP Originals"
                 icon={Trophy}
                 isNew
+                route="/jackpot"
               />
               <GameModeCard
-                title="UPGRADER"
+                title="TEAM SHOWDOWN"
                 subtitle="MM2 PVP Originals"
-                icon={Zap}
-              />
-              <GameModeCard
-                title="DICE DUEL"
-                subtitle="MM2 PVP Originals"
-                icon={Dices}
+                icon={Users}
                 comingSoon
-              />
-              <GameModeCard
-                title="MYSTERY BOX"
-                subtitle="MM2 PVP Originals"
-                icon={Trophy}
-                comingSoon
+                route="/team-showdown"
               />
             </div>
           </section>

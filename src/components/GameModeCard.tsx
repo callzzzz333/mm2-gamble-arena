@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LucideIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface GameModeCardProps {
   title: string;
@@ -8,9 +9,18 @@ interface GameModeCardProps {
   icon: LucideIcon;
   isNew?: boolean;
   comingSoon?: boolean;
+  route?: string;
 }
 
-export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon }: GameModeCardProps) => {
+export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon, route }: GameModeCardProps) => {
+  const navigate = useNavigate();
+
+  const handlePlayClick = () => {
+    if (!comingSoon && route) {
+      navigate(route);
+    }
+  };
+
   return (
     <div className="group relative bg-card rounded-xl border border-border overflow-hidden transition-all duration-300 hover:border-primary/50 hover:shadow-glow min-w-[240px]">
       <div className="p-6 flex flex-col gap-4 h-full">
@@ -37,6 +47,7 @@ export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon }:
         <Button 
           className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 hover:border-primary transition-all"
           disabled={comingSoon}
+          onClick={handlePlayClick}
         >
           {comingSoon ? "Coming Soon" : "Play Now"}
         </Button>
