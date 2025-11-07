@@ -116,10 +116,17 @@ const Items = () => {
                   <div className="space-y-1.5">
                     <div className="aspect-square bg-muted rounded-md flex items-center justify-center">
                       {item.image_url ? (
-                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-md" />
-                      ) : (
-                        <Package className="w-8 h-8 text-muted-foreground" />
-                      )}
+                        <img 
+                          src={item.image_url} 
+                          alt={item.name} 
+                          className="w-full h-full object-cover rounded-md" 
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <Package className={`w-8 h-8 text-muted-foreground ${item.image_url ? 'hidden' : ''}`} />
                     </div>
                     
                     <div className="space-y-1">
