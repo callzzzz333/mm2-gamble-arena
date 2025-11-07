@@ -377,77 +377,88 @@ const Coinflip = () => {
 
     setIsJoining(true);
 
-    const joinerTotal = getTotalValue();
-    const creatorTotal = parseFloat(game.bet_amount);
-    const tolerance = creatorTotal * 0.1;
+    try {
+      const joinerTotal = getTotalValue();
+      const creatorTotal = parseFloat(game.bet_amount);
+      const tolerance = creatorTotal * 0.1;
 
-    if (joinerTotal < creatorTotal - tolerance || joinerTotal > creatorTotal + tolerance) {
-      toast({ 
-        title: "Invalid bet amount", 
-        description: `Must be within 10% of $${creatorTotal.toFixed(2)} ($${(creatorTotal - tolerance).toFixed(2)} - $${(creatorTotal + tolerance).toFixed(2)})`,
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    // Remove joiner's items from inventory
-    for (const si of selectedItems) {
-      const { data: userItem } = await supabase
-        .from('user_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('item_id', si.item.id)
-        .single();
-
-      if (!userItem || userItem.quantity < si.quantity) {
-        toast({ title: `Not enough ${si.item.name}`, variant: "destructive" });
+      if (joinerTotal < creatorTotal - tolerance || joinerTotal > creatorTotal + tolerance) {
+        toast({ 
+          title: "Invalid bet amount", 
+          description: `Must be within 10% of $${creatorTotal.toFixed(2)} ($${(creatorTotal - tolerance).toFixed(2)} - $${(creatorTotal + tolerance).toFixed(2)})`,
+          variant: "destructive" 
+        });
+        setIsJoining(false);
         return;
       }
 
-      const newQty = userItem.quantity - si.quantity;
-      if (newQty === 0) {
-        await supabase.from('user_items').delete().eq('id', userItem.id);
-      } else {
-        await supabase.from('user_items').update({ quantity: newQty }).eq('id', userItem.id);
+      // Remove joiner's items from inventory
+      for (const si of selectedItems) {
+        const { data: userItem } = await supabase
+          .from('user_items')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('item_id', si.item.id)
+          .single();
+
+        if (!userItem || userItem.quantity < si.quantity) {
+          toast({ title: `Not enough ${si.item.name}`, variant: "destructive" });
+          setIsJoining(false);
+          return;
+        }
+
+        const newQty = userItem.quantity - si.quantity;
+        if (newQty === 0) {
+          await supabase.from('user_items').delete().eq('id', userItem.id);
+        } else {
+          await supabase.from('user_items').update({ quantity: newQty }).eq('id', userItem.id);
+        }
       }
+
+      const joinerItemsData = selectedItems.map(si => ({
+        item_id: si.item.id,
+        name: si.item.name,
+        value: si.item.value,
+        quantity: si.quantity,
+        image_url: si.item.image_url,
+        rarity: si.item.rarity
+      }));
+
+      // Start flip animation with countdown
+      // Use crypto API for cryptographically secure randomness
+      const randomArray = new Uint32Array(1);
+      crypto.getRandomValues(randomArray);
+      const result: 'heads' | 'tails' = (randomArray[0] % 2) === 0 ? 'heads' : 'tails';
+      const winnerId = result === game.creator_side ? game.creator_id : user.id;
+
+      // Show countdown and flip animation
+      setFlipAnimation({ gameId: game.id, isFlipping: false, countdown: 5, result: null });
+      
+      // Countdown
+      let countdown = 5;
+      const countdownInterval = setInterval(() => {
+        countdown--;
+        setFlipAnimation(prev => prev ? { ...prev, countdown } : null);
+        if (countdown === 0) {
+          clearInterval(countdownInterval);
+          // Start flip
+          setFlipAnimation(prev => prev ? { ...prev, isFlipping: true, countdown: 0 } : null);
+          
+          // Show result after flip animation
+          setTimeout(() => {
+            setFlipAnimation(prev => prev ? { ...prev, result, isFlipping: false } : null);
+            completeGame(game, joinerItemsData, winnerId, result);
+          }, 2000);
+        }
+      }, 1000);
+    } catch (error: any) {
+      toast({ 
+        title: "Error joining game", 
+        description: error.message || "Something went wrong",
+        variant: "destructive" 
+      });
+      setIsJoining(false);
     }
-
-    const joinerItemsData = selectedItems.map(si => ({
-      item_id: si.item.id,
-      name: si.item.name,
-      value: si.item.value,
-      quantity: si.quantity,
-      image_url: si.item.image_url,
-      rarity: si.item.rarity
-    }));
-
-    // Start flip animation with countdown
-    // Use crypto API for cryptographically secure randomness
-    const randomArray = new Uint32Array(1);
-    crypto.getRandomValues(randomArray);
-    const result: 'heads' | 'tails' = (randomArray[0] % 2) === 0 ? 'heads' : 'tails';
-    const winnerId = result === game.creator_side ? game.creator_id : user.id;
-
-    // Show countdown and flip animation
-    setFlipAnimation({ gameId: game.id, isFlipping: false, countdown: 5, result: null });
-    
-    // Countdown
-    let countdown = 5;
-    const countdownInterval = setInterval(() => {
-      countdown--;
-      setFlipAnimation(prev => prev ? { ...prev, countdown } : null);
-      if (countdown === 0) {
-        clearInterval(countdownInterval);
-        // Start flip
-        setFlipAnimation(prev => prev ? { ...prev, isFlipping: true, countdown: 0 } : null);
-        
-        // Show result after flip animation
-        setTimeout(() => {
-          setFlipAnimation(prev => prev ? { ...prev, result, isFlipping: false } : null);
-          completeGame(game, joinerItemsData, winnerId, result);
-        }, 2000);
-      }
-    }, 1000);
   };
 
   const completeGame = async (
@@ -754,11 +765,6 @@ const Coinflip = () => {
                     const maxBet = betAmount * 1.1;
                     const userTotal = getTotalValue();
                     const canJoin = userTotal >= minBet && userTotal <= maxBet && selectedItems.length > 0 && game.creator_id !== user?.id;
-
-                    // If timer reached 0:00, trigger refund immediately
-                    if (timeLeft === 0 && game.status === 'waiting') {
-                      refundGame(game);
-                    }
 
                     return (
                       <Card 
