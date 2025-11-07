@@ -57,6 +57,8 @@ export const LiveBets = () => {
         *,
         profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
       `)
+      .in('type', ['bet', 'win', 'loss'])
+      .not('game_type', 'is', null)
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -73,6 +75,7 @@ export const LiveBets = () => {
         profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
       `)
       .eq('type', 'win')
+      .not('game_type', 'is', null)
       .order('amount', { ascending: false })
       .limit(10);
 
@@ -90,6 +93,7 @@ export const LiveBets = () => {
         profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
       `)
       .eq('type', 'win')
+      .not('game_type', 'is', null)
       .gte('amount', 50) // Only show wins over $50
       .order('created_at', { ascending: false })
       .limit(10);

@@ -33,7 +33,29 @@ export const ProfileDropdown = () => {
 
   useEffect(() => {
     fetchUserProfile();
-  }, []);
+
+    // Subscribe to profile updates for real-time stats
+    const profileChannel = supabase
+      .channel('profile-changes')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles' 
+      }, (payload) => {
+        if (payload.new.id === user?.id) {
+          setProfile(payload.new as Profile);
+        }
+      })
+      .subscribe();
+
+    // Refresh profile every 5 seconds to ensure stats are up to date
+    const interval = setInterval(fetchUserProfile, 5000);
+
+    return () => {
+      supabase.removeChannel(profileChannel);
+      clearInterval(interval);
+    };
+  }, [user]);
 
   const fetchUserProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
