@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     const itemsData = items as CreatorItem[]
     const betAmount = itemsData.reduce((s, it) => s + it.value * it.quantity, 0)
 
-    // Validate and deduct creator items
+    // Validate creator items (no deduction on create)
     for (const it of itemsData) {
       const { data: inv, error } = await supabaseAdmin
         .from('user_items')
@@ -59,13 +59,6 @@ Deno.serve(async (req) => {
 
       if (error || !inv || inv.quantity < it.quantity) {
         return new Response(JSON.stringify({ error: `Not enough ${it.name}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-
-      const newQty = inv.quantity - it.quantity
-      if (newQty === 0) {
-        await supabaseAdmin.from('user_items').delete().eq('id', inv.id)
-      } else {
-        await supabaseAdmin.from('user_items').update({ quantity: newQty }).eq('id', inv.id)
       }
     }
 
@@ -83,38 +76,10 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (gameError || !game) {
-      // Roll back items to creator if game creation fails
-      for (const it of itemsData) {
-        const { data: existing } = await supabaseAdmin
-          .from('user_items')
-          .select('id, quantity')
-          .eq('user_id', user.id)
-          .eq('item_id', it.item_id)
-          .maybeSingle()
-        if (existing) {
-          await supabaseAdmin
-            .from('user_items')
-            .update({ quantity: (existing.quantity ?? 0) + it.quantity })
-            .eq('id', existing.id)
-        } else {
-          await supabaseAdmin
-            .from('user_items')
-            .insert({ user_id: user.id, item_id: it.item_id, quantity: it.quantity })
-        }
-      }
-
       return new Response(JSON.stringify({ error: 'Failed to create game' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Record creator bet transaction
-    await supabaseAdmin.from('transactions').insert({
-      user_id: user.id,
-      amount: betAmount,
-      type: 'bet',
-      game_type: 'coinflip',
-      game_id: game.id,
-      description: `Created coinflip game (${side})`,
-    })
+    // No transactions on create; bets are recorded at join time
 
     return new Response(JSON.stringify({ game }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (e: any) {

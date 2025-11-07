@@ -85,17 +85,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2) Creator items may already be locked during creation.
-    // If they are still present in inventory, we'll deduct them; otherwise we skip.
+    // 2) Validate creator still owns their items (no locking at create)
     const creatorInventorySnapshot: Record<string, { id: string; quantity: number }> = {}
     for (const it of (game.creator_items as JoinItem[])) {
-      const { data: inv } = await supabaseAdmin
+      const { data: inv, error } = await supabaseAdmin
         .from('user_items')
         .select('id, quantity')
         .eq('user_id', game.creator_id)
         .eq('item_id', it.item_id)
         .maybeSingle()
-      if (inv) creatorInventorySnapshot[it.item_id] = inv
+      if (error || !inv || (inv.quantity ?? 0) < it.quantity) {
+        return new Response(JSON.stringify({ error: 'Creator no longer has required items' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      creatorInventorySnapshot[it.item_id] = inv
     }
 
     // Random result (server authoritative)
@@ -140,10 +142,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Deduct creator items only if they still exist (skip if already locked)
+    // Deduct creator items (extraction occurs only on join)
     for (const it of (game.creator_items as JoinItem[])) {
       const inv = creatorInventorySnapshot[it.item_id]
-      if (!inv) continue
       const newQty = (inv.quantity ?? 0) - it.quantity
       if (newQty === 0) {
         await supabaseAdmin.from('user_items').delete().eq('id', inv.id)
@@ -174,6 +175,16 @@ Deno.serve(async (req) => {
     }
 
     // Transactions
+    // Record both bets at join time
+    await supabaseAdmin.from('transactions').insert({
+      user_id: game.creator_id,
+      amount: -creatorTotal,
+      type: 'bet',
+      game_type: 'coinflip',
+      game_id: gameId,
+      description: `Creator coinflip bet (${game.creator_side})`,
+    })
+
     await supabaseAdmin.from('transactions').insert({
       user_id: user.id,
       amount: -joinerTotal,
