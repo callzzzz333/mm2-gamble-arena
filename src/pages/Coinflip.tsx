@@ -315,15 +315,28 @@ const Coinflip = () => {
       return;
     }
 
-    // Record bet transaction
-    await supabase.from("transactions").insert({
+    // Record bet transaction for live activity
+    const betAmount = getTotalValue();
+    console.log('Creating coinflip bet transaction:', { 
+      user_id: user.id, 
+      amount: betAmount, 
+      game_id: newGame.id 
+    });
+    
+    const { error: transactionError } = await supabase.from("transactions").insert({
       user_id: user.id,
-      amount: -getTotalValue(),
+      amount: betAmount,
       type: 'bet',
       game_type: 'coinflip',
       game_id: newGame.id,
       description: `Created coinflip game (${selectedSide})`
     });
+
+    if (transactionError) {
+      console.error('Error creating transaction:', transactionError);
+    } else {
+      console.log('Transaction created successfully!');
+    }
 
     setSelectedItems([]);
     toast({ title: "Game created!", description: "Waiting for opponent..." });
