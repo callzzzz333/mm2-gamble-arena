@@ -3,8 +3,8 @@ import { TopBar } from "@/components/TopBar";
 import { GameModeCard } from "@/components/GameModeCard";
 import { LiveBets } from "@/components/LiveBets";
 import { LiveChat } from "@/components/LiveChat";
+import { Button } from "@/components/ui/button";
 import { Coins, Trophy } from "lucide-react";
-import discordBanner from "@/assets/discord-banner.png";
 import coinflipImg from "@/assets/coinflip.png";
 import jackpotImg from "@/assets/jackpot.png";
 
@@ -17,13 +17,23 @@ const Index = () => {
         <TopBar />
         
         <main className="pt-16">
-          {/* Discord Banner */}
-          <section className="relative h-64 overflow-hidden cursor-pointer" onClick={() => window.open('https://discord.gg/xBbrVPsPqs', '_blank')}>
-            <img 
-              src={discordBanner}
-              alt="Join our Discord - Daily Giveaways & Airdrops"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+          {/* Hero Section with Discord Link */}
+          <section className="relative px-12 py-8 bg-gradient-to-br from-card to-muted/50 border-b border-border">
+            <div className="max-w-6xl mx-auto text-center space-y-4">
+              <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+                Welcome to <span className="text-primary">RBXROYALE</span>
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                The ultimate Roblox item betting platform. Play Coinflip, Jackpot, and more!
+              </p>
+              <Button 
+                size="lg" 
+                className="bg-[hsl(235,86%,65%)] hover:bg-[hsl(235,86%,60%)] text-white font-semibold shadow-lg"
+                onClick={() => window.open('https://discord.gg/xBbrVPsPqs', '_blank')}
+              >
+                Join Discord for Giveaways
+              </Button>
+            </div>
           </section>
 
           {/* Game Modes */}
