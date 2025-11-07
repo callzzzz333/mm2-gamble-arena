@@ -4,7 +4,6 @@ import { Bell, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
-import { OnlineCounter } from "@/components/OnlineCounter";
 import { supabase } from "@/integrations/supabase/client";
 
 export const TopBar = () => {
@@ -27,11 +26,6 @@ export const TopBar = () => {
   return (
     <>
       <div className="fixed top-0 left-64 right-96 h-16 bg-background/95 backdrop-blur-sm border-b border-border z-40 flex items-center justify-between px-12">
-        {/* Left Side - Online Counter */}
-        <div className="flex items-center">
-          <OnlineCounter />
-        </div>
-        
         {/* Centered Inventory Button */}
         <div className="flex-1 flex justify-center">
           {user && (

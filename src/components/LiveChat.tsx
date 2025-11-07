@@ -9,6 +9,7 @@ import { Send, FileText, Gift, Timer } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { OnlineCounter } from "@/components/OnlineCounter";
 import logo from "@/assets/logo.png";
 
 interface Message {
@@ -267,13 +268,16 @@ export const LiveChat = () => {
         <div className="flex items-center justify-center mb-3">
           <img src={logo} alt="RBXRoyale" className="h-12" />
         </div>
-        <div className="flex gap-2">
-          <Dialog open={tosOpen} onOpenChange={setTosOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <FileText className="w-4 h-4" />
-              </Button>
-            </DialogTrigger>
+        <div className="flex items-center justify-between gap-2">
+          <OnlineCounter />
+          
+          <div className="flex gap-2">
+            <Dialog open={tosOpen} onOpenChange={setTosOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <FileText className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-card border-border">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold text-primary">Terms of Service</DialogTitle>
@@ -398,6 +402,7 @@ export const LiveChat = () => {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </div>
 
