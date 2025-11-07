@@ -270,9 +270,8 @@ export const LiveChat = () => {
         <div className="flex gap-2">
           <Dialog open={tosOpen} onOpenChange={setTosOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="flex-1">
-                <FileText className="w-4 h-4 mr-2" />
-                TOS
+              <Button variant="outline" size="icon">
+                <FileText className="w-4 h-4" />
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-card border-border">
@@ -360,9 +359,8 @@ export const LiveChat = () => {
 
           <Dialog open={giveawayOpen} onOpenChange={setGiveawayOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="flex-1">
-                <Gift className="w-4 h-4 mr-2" />
-                Giveaway
+              <Button variant="outline" size="icon">
+                <Gift className="w-4 h-4" />
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md bg-card border-border">
