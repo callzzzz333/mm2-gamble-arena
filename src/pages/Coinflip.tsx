@@ -900,8 +900,15 @@ const Coinflip = () => {
                           {/* Join Button */}
                           <div className="flex items-center px-3">
                             <Button
-                              onClick={() => handleJoinClick(game)}
-                              disabled={!canJoin || isJoining}
+                              onClick={() => {
+                                if (game.creator_id === user?.id) return;
+                                if (selectedItems.length === 0) {
+                                  setInventoryOpen(true);
+                                } else {
+                                  handleJoinClick(game);
+                                }
+                              }}
+                              disabled={isJoining || game.creator_id === user?.id}
                               size="sm"
                               className="min-w-[100px]"
                             >
@@ -909,7 +916,7 @@ const Coinflip = () => {
                                 ? 'Joining...'
                                 : game.creator_id === user?.id
                                 ? 'Waiting' 
-                                : !canJoin && selectedItems.length === 0
+                                : selectedItems.length === 0
                                 ? 'Select Items'
                                 : !canJoin
                                 ? 'Out of Range'
