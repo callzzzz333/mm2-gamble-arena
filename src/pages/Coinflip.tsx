@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, Package, Plus, Minus, Clock } from "lucide-react";
+import { Coins, Package, Plus, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -60,15 +60,10 @@ const Coinflip = () => {
   const [recentFlips, setRecentFlips] = useState<Array<'heads' | 'tails'>>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
-  const [currentTime, setCurrentTime] = useState(Date.now());
   const [gameToJoin, setGameToJoin] = useState<CoinflipGame | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Keep an up-to-date reference to the current user for interval callbacks
-  const userRef = useRef<any>(null);
-  const lastCleanupRef = useRef<number>(0);
-  useEffect(() => { userRef.current = user; }, [user]);
 
   useEffect(() => {
     checkUser();
@@ -82,109 +77,11 @@ const Coinflip = () => {
       })
       .subscribe();
 
-    // Update current time every second for live countdown
-    const timeInterval = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 1000);
-
-    // Check for expired games every second to handle UI timer expiry
-    const expiryInterval = setInterval(() => {
-      checkExpiredGames();
-    }, 1000);
-
     return () => {
       supabase.removeChannel(gamesChannel);
-      clearInterval(timeInterval);
-      clearInterval(expiryInterval);
     };
   }, []);
 
-  const checkExpiredGames = async () => {
-    const currentUserId = userRef.current?.id;
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-
-    // Locally expire ONLY your own games (respect RLS)
-    if (currentUserId) {
-      const { data: expiredGames, error } = await supabase
-        .from("coinflip_games")
-        .select("*")
-        .eq("status", "waiting")
-        .lte("created_at", fiveMinutesAgo)
-        .eq("creator_id", currentUserId);
-
-      if (!error && expiredGames && expiredGames.length > 0) {
-        for (const game of expiredGames) {
-          await refundGame(game);
-        }
-      }
-    }
-
-    // Throttle a global cleanup that expires ANY old waiting games server-side
-    if (Date.now() - (lastCleanupRef.current || 0) > 30000) {
-      lastCleanupRef.current = Date.now();
-      try {
-        await supabase.functions.invoke('cleanup-coinflip');
-      } catch (e) {
-        // silently ignore
-      }
-    }
-  };
-
-  const refundGame = async (game: any) => {
-    // Try to atomically mark the game as expired first so only one client refunds
-    const { data: lockedGame, error: lockError } = await supabase
-      .from("coinflip_games")
-      .update({ status: 'expired', completed_at: new Date().toISOString(), result: 'refund' })
-      .eq('id', game.id)
-      .eq('status', 'waiting')
-      .select('id')
-      .single();
-
-    // If no row was updated, someone else already handled the refund/expiry
-    if (lockError || !lockedGame) return;
-
-    // Refund items to creator (idempotent per atomic lock above)
-    if (game.creator_items && game.creator_items.length > 0) {
-      for (const item of game.creator_items) {
-        const { data: existingItem } = await supabase
-          .from('user_items')
-          .select('*')
-          .eq('user_id', game.creator_id)
-          .eq('item_id', item.item_id)
-          .single();
-
-        if (existingItem) {
-          await supabase
-            .from('user_items')
-            .update({ quantity: existingItem.quantity + item.quantity })
-            .eq('id', existingItem.id);
-        } else {
-          await supabase
-            .from('user_items')
-            .insert({
-              user_id: game.creator_id,
-              item_id: item.item_id,
-              quantity: item.quantity
-            });
-        }
-      }
-    }
-
-    // Delete the expired game from database
-    const { error: delErr } = await supabase.from("coinflip_games").delete().eq("id", game.id);
-    if (delErr) {
-      console.error('Failed to delete expired game:', delErr);
-    }
-
-    // Remove the expired game locally right away
-    setGames((prev) => prev.filter((g) => g.id !== game.id));
-
-    toast({ 
-      title: "Game Expired", 
-      description: "Your coinflip game timed out and items were refunded.",
-      variant: "default" 
-    });
-  };
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -223,12 +120,10 @@ const Coinflip = () => {
   };
 
   const fetchGames = async () => {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from("coinflip_games")
       .select("*")
       .eq("status", "waiting")
-      .gt("created_at", fiveMinutesAgo)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -661,9 +556,6 @@ const Coinflip = () => {
               ) : (
                 <div className="space-y-3">
                    {games.map((game) => {
-                    const timeLeft = Math.max(0, 300 - Math.floor((currentTime - new Date(game.created_at).getTime()) / 1000));
-                    const minutes = Math.floor(timeLeft / 60);
-                    const seconds = timeLeft % 60;
                     const betAmount = parseFloat(game.bet_amount);
                     const minBet = betAmount * 0.9;
                     const maxBet = betAmount * 1.1;
@@ -750,14 +642,6 @@ const Coinflip = () => {
                                 ${minBet.toFixed(0)}-${maxBet.toFixed(0)}
                               </p>
                             </div>
-                          </div>
-
-                          {/* Timer */}
-                          <div className="flex items-center gap-2 px-3 border-l border-border">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm font-mono">
-                              {minutes}:{String(seconds).padStart(2, '0')}
-                            </span>
                           </div>
 
                           {/* VS Icon */}
