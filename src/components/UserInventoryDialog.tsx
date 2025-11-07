@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
-import { Package } from "lucide-react";
+import { Package, Check } from "lucide-react";
 
 interface Item {
   id: string;
@@ -117,11 +118,16 @@ export const UserInventoryDialog = ({
                 return (
                   <Card
                     key={userItem.id}
-                    className={`p-4 cursor-pointer transition-all hover:shadow-glow hover:border-primary group ${
+                    className={`p-4 cursor-pointer transition-all hover:shadow-glow hover:border-primary group relative ${
                       isSelected ? "border-primary shadow-glow" : "border-border"
                     }`}
                     onClick={() => onSelectItem?.({ ...item, quantity: userItem.quantity })}
                   >
+                    {isSelected && (
+                      <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center z-10">
+                        <Check className="w-4 h-4 text-primary-foreground" />
+                      </div>
+                    )}
                     <div className="aspect-square bg-card-hover rounded-lg mb-3 flex items-center justify-center overflow-hidden border border-border relative">
                       {item.image_url ? (
                         <img 
@@ -155,6 +161,14 @@ export const UserInventoryDialog = ({
             </div>
           )}
         </ScrollArea>
+        
+        {multiSelect && selectedItems.length > 0 && (
+          <DialogFooter>
+            <Button onClick={() => onOpenChange(false)} className="w-full">
+              Done ({selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected)
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

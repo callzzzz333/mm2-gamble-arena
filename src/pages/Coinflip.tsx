@@ -160,7 +160,7 @@ const Coinflip = () => {
       const { quantity, ...item } = itemWithQty;
       setSelectedItems([...selectedItems, { item, quantity: 1 }]);
     }
-    setInventoryOpen(false);
+    // Don't close dialog - let user select multiple items
   };
 
   const removeItem = (itemId: string) => {
@@ -694,6 +694,8 @@ const Coinflip = () => {
         open={inventoryOpen} 
         onOpenChange={setInventoryOpen}
         onSelectItem={handleSelectItem}
+        multiSelect={true}
+        selectedItems={selectedItems.map(si => si.item.id)}
       />
 
       {/* Join Confirmation Dialog */}
