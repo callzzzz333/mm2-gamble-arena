@@ -98,7 +98,19 @@ const Coinflip = () => {
   };
 
   const refundGame = async (game: any) => {
-    // Refund items to creator
+    // Try to atomically mark the game as expired first so only one client refunds
+    const { data: lockedGame, error: lockError } = await supabase
+      .from("coinflip_games")
+      .update({ status: 'expired', completed_at: new Date().toISOString(), result: 'refund' })
+      .eq('id', game.id)
+      .eq('status', 'waiting')
+      .select('id')
+      .single();
+
+    // If no row was updated, someone else already handled the refund/expiry
+    if (lockError || !lockedGame) return;
+
+    // Refund items to creator (idempotent per atomic lock above)
     if (game.creator_items && game.creator_items.length > 0) {
       for (const item of game.creator_items) {
         const { data: existingItem } = await supabase
@@ -125,11 +137,8 @@ const Coinflip = () => {
       }
     }
 
-    // Update game status
-    await supabase
-      .from("coinflip_games")
-      .update({ status: 'expired' })
-      .eq("id", game.id);
+    // Remove the expired game locally right away
+    setGames((prev) => prev.filter((g) => g.id !== game.id));
 
     toast({ 
       title: "Game Expired", 
@@ -458,6 +467,9 @@ const Coinflip = () => {
       description: `Result: ${result.toUpperCase()}`
     });
 
+    // Remove the game from local list immediately
+    setGames((prev) => prev.filter((g) => g.id !== game.id));
+
     setSelectedItems([]);
     
     // Clear flip animation after showing result
@@ -585,11 +597,11 @@ const Coinflip = () => {
                   ) : flipAnimation.isFlipping ? (
                     <>
                       <h2 className="text-4xl font-bold">Flipping Coin...</h2>
-                      <div className="relative w-48 h-48 mx-auto">
+                      <div className="relative w-48 h-48 mx-auto rounded-full overflow-hidden bg-transparent">
                         <img 
                           src={coinHeads} 
                           alt="Coin" 
-                          className="absolute inset-0 w-full h-full animate-[spin_0.5s_linear_infinite]"
+                          className="absolute inset-0 w-full h-full object-contain animate-[spin_0.5s_linear_infinite]"
                           style={{ backfaceVisibility: 'hidden' }}
                         />
                       </div>
@@ -597,11 +609,11 @@ const Coinflip = () => {
                   ) : flipAnimation.result ? (
                     <>
                       <h2 className="text-4xl font-bold mb-4">Result:</h2>
-                      <div className="relative w-48 h-48 mx-auto animate-scale-in">
+                      <div className="relative w-48 h-48 mx-auto animate-scale-in rounded-full overflow-hidden bg-transparent">
                         <img 
                           src={flipAnimation.result === 'heads' ? coinHeads : coinTails} 
                           alt={flipAnimation.result} 
-                          className="w-full h-full"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                       <p className="text-6xl font-bold text-primary uppercase animate-fade-in">
@@ -643,11 +655,13 @@ const Coinflip = () => {
                           {/* Creator Section - Compact */}
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             {/* Coin Image */}
-                            <img 
-                              src={game.creator_side === 'heads' ? coinHeads : coinTails} 
-                              alt={game.creator_side}
-                              className="w-12 h-12 flex-shrink-0"
-                            />
+                            <div className="w-12 h-12 rounded-full overflow-hidden bg-transparent flex-shrink-0">
+                              <img 
+                                src={game.creator_side === 'heads' ? coinHeads : coinTails} 
+                                alt={game.creator_side}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
                             
                             {/* Creator Info */}
                             <div className="flex items-center gap-2 min-w-0">
