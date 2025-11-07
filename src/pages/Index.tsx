@@ -3,9 +3,10 @@ import { TopBar } from "@/components/TopBar";
 import { GameModeCard } from "@/components/GameModeCard";
 import { LiveBets } from "@/components/LiveBets";
 import { LiveChat } from "@/components/LiveChat";
-import { Button } from "@/components/ui/button";
-import { Coins, Trophy, Users } from "lucide-react";
+import { Coins, Trophy } from "lucide-react";
 import discordBanner from "@/assets/discord-banner.png";
+import coinflipImg from "@/assets/coinflip.png";
+import jackpotImg from "@/assets/jackpot.png";
 
 const Index = () => {
   return (
@@ -34,13 +35,14 @@ const Index = () => {
               <h2 className="text-2xl font-bold">Game Modes</h2>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
               <GameModeCard
                 title="COINFLIP"
                 subtitle="MM2 PVP Originals"
                 icon={Coins}
                 isNew
                 route="/coinflip"
+                image={coinflipImg}
               />
               <GameModeCard
                 title="JACKPOT"
@@ -48,13 +50,7 @@ const Index = () => {
                 icon={Trophy}
                 isNew
                 route="/jackpot"
-              />
-              <GameModeCard
-                title="TEAM SHOWDOWN"
-                subtitle="MM2 PVP Originals"
-                icon={Users}
-                comingSoon
-                route="/team-showdown"
+                image={jackpotImg}
               />
             </div>
           </section>

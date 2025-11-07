@@ -9,42 +9,42 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --background: 0 0% 5%;
-    --foreground: 45 100% 50%;
+    --foreground: 0 0% 95%;
 
     --card: 0 0% 8%;
-    --card-foreground: 45 100% 50%;
+    --card-foreground: 0 0% 95%;
 
     --popover: 0 0% 10%;
-    --popover-foreground: 45 100% 50%;
+    --popover-foreground: 0 0% 95%;
 
     --primary: 45 100% 50%;
     --primary-foreground: 0 0% 0%;
 
     --secondary: 0 0% 12%;
-    --secondary-foreground: 45 100% 50%;
+    --secondary-foreground: 0 0% 95%;
 
     --muted: 0 0% 15%;
-    --muted-foreground: 45 80% 60%;
+    --muted-foreground: 0 0% 70%;
 
     --accent: 45 100% 50%;
     --accent-foreground: 0 0% 0%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 45 100% 50%;
+    --destructive-foreground: 0 0% 95%;
 
-    --border: 45 100% 50% / 0.2;
+    --border: 0 0% 20%;
     --input: 0 0% 12%;
     --ring: 45 100% 50%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 45 100% 50%;
+    --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 45 100% 50%;
     --sidebar-primary-foreground: 0 0% 0%;
     --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 45 100% 50%;
-    --sidebar-border: 45 100% 50% / 0.2;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 20%;
     --sidebar-ring: 45 100% 50%;
 
     /* Gaming specific tokens */
