@@ -180,18 +180,28 @@ const Coinflip = () => {
       rarity: si.item.rarity
     }));
 
-    const { error } = await supabase.from("coinflip_games").insert({
+    const { data: newGame, error } = await supabase.from("coinflip_games").insert({
       creator_id: user.id,
       bet_amount: getTotalValue(),
       creator_side: selectedSide,
       creator_items: itemsData,
       status: 'waiting'
-    });
+    }).select().single();
 
     if (error) {
       toast({ title: "Error creating game", description: error.message, variant: "destructive" });
       return;
     }
+
+    // Record bet transaction
+    await supabase.from("transactions").insert({
+      user_id: user.id,
+      amount: -getTotalValue(),
+      type: 'bet',
+      game_type: 'coinflip',
+      game_id: newGame.id,
+      description: `Created coinflip game (${selectedSide})`
+    });
 
     setSelectedItems([]);
     toast({ title: "Game created!", description: "Waiting for opponent..." });
@@ -261,6 +271,16 @@ const Coinflip = () => {
       rarity: si.item.rarity
     }));
 
+    // Record joiner bet transaction
+    await supabase.from("transactions").insert({
+      user_id: user.id,
+      amount: -joinerTotal,
+      type: 'bet',
+      game_type: 'coinflip',
+      game_id: game.id,
+      description: `Joined coinflip game`
+    });
+
     // Update game
     await supabase
       .from("coinflip_games")
@@ -273,6 +293,31 @@ const Coinflip = () => {
         completed_at: new Date().toISOString()
       })
       .eq("id", game.id);
+
+    // Calculate total pot value (with 5% house edge)
+    const totalPot = creatorTotal + joinerTotal;
+    const winnerAmount = totalPot * 0.95;
+
+    // Record winner transaction
+    await supabase.from("transactions").insert({
+      user_id: winnerId,
+      amount: winnerAmount,
+      type: 'win',
+      game_type: 'coinflip',
+      game_id: game.id,
+      description: `Won coinflip (${result})`
+    });
+
+    // Record loser transaction
+    const loserId = winnerId === game.creator_id ? user.id : game.creator_id;
+    await supabase.from("transactions").insert({
+      user_id: loserId,
+      amount: 0,
+      type: 'loss',
+      game_type: 'coinflip',
+      game_id: game.id,
+      description: `Lost coinflip (${result})`
+    });
 
     // Give all items to winner (95% of total, 5% house edge)
     const allItems = [...game.creator_items, ...joinerItemsData];
@@ -424,7 +469,7 @@ const Coinflip = () => {
                   <p className="text-muted-foreground">No active games. Create one to get started!</p>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="space-y-4">
                   {games.map((game) => {
                     const betAmount = parseFloat(game.bet_amount);
                     const minBet = betAmount * 0.9;
@@ -439,81 +484,89 @@ const Coinflip = () => {
                           canJoin ? 'border-primary/50 hover:border-primary shadow-glow' : 'border-border'
                         }`}
                       >
-                        {/* Header with creator info */}
-                        <div className="bg-gradient-to-br from-card to-muted/50 p-4 border-b border-border">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                <span className="text-xs font-bold text-primary">
-                                  {(game.profiles?.username || 'U')[0].toUpperCase()}
-                                </span>
-                              </div>
-                              <p className="font-semibold">{game.profiles?.username || 'Unknown'}</p>
-                            </div>
-                            <Badge variant={game.creator_side === 'heads' ? 'default' : 'secondary'}>
-                              {game.creator_side.toUpperCase()}
-                            </Badge>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-3xl font-bold text-primary">${betAmount.toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Match within: ${minBet.toFixed(2)} - ${maxBet.toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Items display */}
-                        {game.creator_items && game.creator_items.length > 0 && (
-                          <div className="p-4 bg-muted/30">
-                            <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto scrollbar-hide">
-                              {game.creator_items.slice(0, 6).map((item: any, idx: number) => (
-                                <div key={idx} className="relative group">
-                                  <div className="aspect-square bg-card rounded-lg border border-border overflow-hidden">
-                                    {item.image_url ? (
-                                      <img 
-                                        src={item.image_url} 
-                                        alt={item.name} 
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-muted">
-                                        <Package className="w-6 h-6 text-muted-foreground" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  {item.quantity > 1 && (
-                                    <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                                      x{item.quantity}
-                                    </div>
-                                  )}
+                        <div className="flex flex-col md:flex-row">
+                          {/* Creator Section */}
+                          <div className="flex-1 bg-gradient-to-br from-card to-muted/50 p-6 border-r border-border">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                                  <span className="text-sm font-bold text-primary">
+                                    {(game.profiles?.username || 'U')[0].toUpperCase()}
+                                  </span>
                                 </div>
-                              ))}
+                                <div>
+                                  <p className="font-semibold">{game.profiles?.username || 'Unknown'}</p>
+                                  <Badge variant={game.creator_side === 'heads' ? 'default' : 'secondary'} className="mt-1">
+                                    {game.creator_side.toUpperCase()}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-3xl font-bold text-primary">${betAmount.toFixed(2)}</p>
+                              </div>
                             </div>
-                            {game.creator_items.length > 6 && (
-                              <p className="text-xs text-center text-muted-foreground mt-2">
-                                +{game.creator_items.length - 6} more items
-                              </p>
+                            
+                            {/* Creator Items */}
+                            {game.creator_items && game.creator_items.length > 0 && (
+                              <div className="grid grid-cols-4 gap-2">
+                                {game.creator_items.slice(0, 8).map((item: any, idx: number) => (
+                                  <div key={idx} className="relative group">
+                                    <div className="aspect-square bg-card rounded-lg border border-border overflow-hidden">
+                                      {item.image_url ? (
+                                        <img 
+                                          src={item.image_url} 
+                                          alt={item.name} 
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-muted">
+                                          <Package className="w-4 h-4 text-muted-foreground" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             )}
                           </div>
-                        )}
 
-                        {/* Join button */}
-                        <div className="p-4">
-                          <Button
-                            onClick={() => joinGame(game)}
-                            disabled={!canJoin}
-                            className="w-full"
-                            size="lg"
-                          >
-                            {game.creator_id === user?.id 
-                              ? 'Your Game' 
-                              : selectedItems.length === 0 
-                                ? 'Select Items' 
-                                : !canJoin && selectedItems.length > 0
-                                  ? 'Invalid Bet Amount'
-                                  : 'Join Battle'
-                            }
-                          </Button>
+                          {/* VS Divider */}
+                          <div className="flex items-center justify-center p-4 bg-background">
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-2xl font-bold shadow-glow">
+                              VS
+                            </div>
+                          </div>
+
+                          {/* Join Section */}
+                          <div className="flex-1 bg-gradient-to-br from-muted/50 to-card p-6 border-l border-border">
+                            <div className="h-full flex flex-col justify-between">
+                              <div>
+                                <p className="text-sm text-muted-foreground mb-2">Match Range</p>
+                                <p className="text-lg font-semibold mb-4">
+                                  ${minBet.toFixed(2)} - ${maxBet.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Your bet: <span className="font-bold text-foreground">${userTotal.toFixed(2)}</span>
+                                </p>
+                              </div>
+                              
+                              <Button
+                                onClick={() => joinGame(game)}
+                                disabled={!canJoin}
+                                className="w-full mt-4"
+                                size="lg"
+                              >
+                                {game.creator_id === user?.id 
+                                  ? 'Your Game' 
+                                  : !canJoin && selectedItems.length === 0
+                                  ? 'Select Items to Join'
+                                  : !canJoin
+                                  ? 'Bet Outside Range'
+                                  : 'Join Game'
+                                }
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </Card>
                     );

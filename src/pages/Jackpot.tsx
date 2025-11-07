@@ -214,6 +214,16 @@ const Jackpot = () => {
       return;
     }
 
+    // Record bet transaction
+    await supabase.from("transactions").insert({
+      user_id: user.id,
+      amount: -amount,
+      type: 'bet',
+      game_type: 'jackpot',
+      game_id: currentGame.id,
+      description: `Entered jackpot with $${amount.toFixed(2)}`
+    });
+
     // Update game total
     await supabase
       .from("jackpot_games")
@@ -256,6 +266,31 @@ const Jackpot = () => {
         completed_at: new Date().toISOString()
       })
       .eq("id", currentGame.id);
+
+    // Record winner transaction
+    const winnerAmount = totalPot * 0.95;
+    await supabase.from("transactions").insert({
+      user_id: winnerId,
+      amount: winnerAmount,
+      type: 'win',
+      game_type: 'jackpot',
+      game_id: currentGame.id,
+      description: `Won jackpot with ${updatedEntries.find(e => e.user_id === winnerId)?.win_chance.toFixed(2)}% chance`
+    });
+
+    // Record loss transactions for all non-winners
+    for (const entry of entries) {
+      if (entry.user_id !== winnerId) {
+        await supabase.from("transactions").insert({
+          user_id: entry.user_id,
+          amount: 0,
+          type: 'loss',
+          game_type: 'jackpot',
+          game_id: currentGame.id,
+          description: `Lost jackpot`
+        });
+      }
+    }
 
     // Collect all items from all entries
     const allItems: any[] = [];
