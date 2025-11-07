@@ -424,46 +424,100 @@ const Coinflip = () => {
                   <p className="text-muted-foreground">No active games. Create one to get started!</p>
                 </Card>
               ) : (
-                <div className="grid gap-4">
-                  {games.map((game) => (
-                    <Card key={game.id} className="p-6">
-                      <div className="space-y-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium">{game.profiles?.username || 'Unknown'}</p>
-                            <p className="text-2xl font-bold text-primary">${parseFloat(game.bet_amount).toFixed(2)}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Chose: {game.creator_side.toUpperCase()}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {games.map((game) => {
+                    const betAmount = parseFloat(game.bet_amount);
+                    const minBet = betAmount * 0.9;
+                    const maxBet = betAmount * 1.1;
+                    const userTotal = getTotalValue();
+                    const canJoin = userTotal >= minBet && userTotal <= maxBet && selectedItems.length > 0 && game.creator_id !== user?.id;
+
+                    return (
+                      <Card 
+                        key={game.id} 
+                        className={`overflow-hidden border-2 transition-all duration-300 ${
+                          canJoin ? 'border-primary/50 hover:border-primary shadow-glow' : 'border-border'
+                        }`}
+                      >
+                        {/* Header with creator info */}
+                        <div className="bg-gradient-to-br from-card to-muted/50 p-4 border-b border-border">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                                <span className="text-xs font-bold text-primary">
+                                  {(game.profiles?.username || 'U')[0].toUpperCase()}
+                                </span>
+                              </div>
+                              <p className="font-semibold">{game.profiles?.username || 'Unknown'}</p>
+                            </div>
+                            <Badge variant={game.creator_side === 'heads' ? 'default' : 'secondary'}>
+                              {game.creator_side.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-3xl font-bold text-primary">${betAmount.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Match within: ${minBet.toFixed(2)} - ${maxBet.toFixed(2)}
                             </p>
                           </div>
-                          <Button
-                            onClick={() => joinGame(game)}
-                            disabled={game.creator_id === user?.id || selectedItems.length === 0}
-                            size="lg"
-                          >
-                            Join Game
-                          </Button>
                         </div>
 
+                        {/* Items display */}
                         {game.creator_items && game.creator_items.length > 0 && (
-                          <div>
-                            <p className="text-sm font-semibold mb-2">Items in pot:</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                              {game.creator_items.map((item: any, idx: number) => (
-                                <div key={idx} className="p-2 bg-muted/30 rounded border border-border">
-                                  {item.image_url && (
-                                    <img src={item.image_url} alt={item.name} className="w-full aspect-square object-cover rounded mb-1" />
+                          <div className="p-4 bg-muted/30">
+                            <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto scrollbar-hide">
+                              {game.creator_items.slice(0, 6).map((item: any, idx: number) => (
+                                <div key={idx} className="relative group">
+                                  <div className="aspect-square bg-card rounded-lg border border-border overflow-hidden">
+                                    {item.image_url ? (
+                                      <img 
+                                        src={item.image_url} 
+                                        alt={item.name} 
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-muted">
+                                        <Package className="w-6 h-6 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  {item.quantity > 1 && (
+                                    <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                      x{item.quantity}
+                                    </div>
                                   )}
-                                  <p className="text-xs font-semibold truncate">{item.name}</p>
-                                  <p className="text-xs text-muted-foreground">x{item.quantity}</p>
                                 </div>
                               ))}
                             </div>
+                            {game.creator_items.length > 6 && (
+                              <p className="text-xs text-center text-muted-foreground mt-2">
+                                +{game.creator_items.length - 6} more items
+                              </p>
+                            )}
                           </div>
                         )}
-                      </div>
-                    </Card>
-                  ))}
+
+                        {/* Join button */}
+                        <div className="p-4">
+                          <Button
+                            onClick={() => joinGame(game)}
+                            disabled={!canJoin}
+                            className="w-full"
+                            size="lg"
+                          >
+                            {game.creator_id === user?.id 
+                              ? 'Your Game' 
+                              : selectedItems.length === 0 
+                                ? 'Select Items' 
+                                : !canJoin && selectedItems.length > 0
+                                  ? 'Invalid Bet Amount'
+                                  : 'Join Battle'
+                            }
+                          </Button>
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </div>
