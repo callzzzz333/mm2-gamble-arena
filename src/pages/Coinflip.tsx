@@ -47,17 +47,17 @@ interface FlipAnimation {
   gameId: string;
   isFlipping: boolean;
   countdown: number;
-  result: 'heads' | 'tails' | null;
+  result: "heads" | "tails" | null;
 }
 
 const Coinflip = () => {
   const [games, setGames] = useState<CoinflipGame[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-  const [selectedSide, setSelectedSide] = useState<'heads' | 'tails'>('heads');
+  const [selectedSide, setSelectedSide] = useState<"heads" | "tails">("heads");
   const [user, setUser] = useState<any>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [flipAnimation, setFlipAnimation] = useState<FlipAnimation | null>(null);
-  const [recentFlips, setRecentFlips] = useState<Array<'heads' | 'tails'>>([]);
+  const [recentFlips, setRecentFlips] = useState<Array<"heads" | "tails">>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [gameToJoin, setGameToJoin] = useState<CoinflipGame | null>(null);
@@ -66,113 +66,124 @@ const Coinflip = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-
   useEffect(() => {
     checkUser();
     fetchGames();
     fetchRecentFlips();
-    
+
     // Track active countdown intervals to clean up properly
     const activeIntervals = new Map<string, number>();
-    
+
     const gamesChannel = supabase
-      .channel('coinflip-games-changes')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'coinflip_games' 
-      }, (payload) => {
-        const updatedGame = payload.new as CoinflipGame;
-        
-        // When a game gets a joiner, start animation for both users
-        if (updatedGame.joiner_id && updatedGame.status === 'waiting' && !activeIntervals.has(updatedGame.id)) {
-          console.log('Game joined, starting animation for game:', updatedGame.id);
-          setGameToJoinRef(updatedGame);
-          setFlipAnimation({ 
-            gameId: updatedGame.id, 
-            isFlipping: false, 
-            countdown: 5, 
-            result: null 
-          });
-          
-          // Start countdown
-          let countdown = 5;
-          const countdownInterval = window.setInterval(() => {
-            countdown--;
-            setFlipAnimation(prev => {
-              if (!prev || prev.gameId !== updatedGame.id) {
-                clearInterval(countdownInterval);
-                activeIntervals.delete(updatedGame.id);
-                return prev;
-              }
-              
-              if (countdown === 0) {
-                clearInterval(countdownInterval);
-                activeIntervals.delete(updatedGame.id);
-                return { ...prev, isFlipping: true, countdown: 0 };
-              }
-              
-              return { ...prev, countdown };
+      .channel("coinflip-games-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "coinflip_games",
+        },
+        (payload) => {
+          const updatedGame = payload.new as CoinflipGame;
+
+          // When a game gets a joiner, start animation for both users
+          if (updatedGame.joiner_id && updatedGame.status === "waiting" && !activeIntervals.has(updatedGame.id)) {
+            console.log("Game joined, starting animation for game:", updatedGame.id);
+            setGameToJoinRef(updatedGame);
+            setFlipAnimation({
+              gameId: updatedGame.id,
+              isFlipping: false,
+              countdown: 5,
+              result: null,
             });
-          }, 1000);
-          
-          activeIntervals.set(updatedGame.id, countdownInterval);
-        }
-        
-        // When game is completed, show result
-        if (updatedGame.status === 'completed' && updatedGame.result) {
-          console.log('Game completed, showing result:', updatedGame.result);
-          setFlipAnimation(prev => {
-            if (!prev || prev.gameId !== updatedGame.id) return prev;
-            return { ...prev, isFlipping: false, result: updatedGame.result as 'heads' | 'tails' };
-          });
-          
-          if (user && (updatedGame.creator_id === user.id || updatedGame.joiner_id === user.id)) {
-            toast({
-              title: updatedGame.winner_id === user.id ? 'You won! 🎉' : 'You lost 😢',
-              description: `Result: ${updatedGame.result.toUpperCase()}. Items have been paid out.`,
-              duration: 5000,
-            });
+
+            // Start countdown
+            let countdown = 5;
+            const countdownInterval = window.setInterval(() => {
+              countdown--;
+              setFlipAnimation((prev) => {
+                if (!prev || prev.gameId !== updatedGame.id) {
+                  clearInterval(countdownInterval);
+                  activeIntervals.delete(updatedGame.id);
+                  return prev;
+                }
+
+                if (countdown === 0) {
+                  clearInterval(countdownInterval);
+                  activeIntervals.delete(updatedGame.id);
+                  return { ...prev, isFlipping: true, countdown: 0 };
+                }
+
+                return { ...prev, countdown };
+              });
+            }, 1000);
+
+            activeIntervals.set(updatedGame.id, countdownInterval);
           }
-          
-          fetchRecentFlips();
-          
-          setTimeout(() => {
-            setFlipAnimation(prev => prev?.gameId === updatedGame.id ? null : prev);
-            setGameToJoinRef(prev => prev?.id === updatedGame.id ? null : prev);
-          }, 3000);
-        }
-        
-        fetchGames();
-      })
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'coinflip_games' 
-      }, () => {
-        fetchGames();
-      })
-      .on('postgres_changes', { 
-        event: 'DELETE', 
-        schema: 'public', 
-        table: 'coinflip_games' 
-      }, (payload) => {
-        const deletedGame = payload.old as CoinflipGame;
-        console.log('Game deleted:', deletedGame.id);
-        
-        // Clean up any active intervals
-        const interval = activeIntervals.get(deletedGame.id);
-        if (interval) {
-          clearInterval(interval);
-          activeIntervals.delete(deletedGame.id);
-        }
-        
-        // Clean up state if this was the active game
-        setFlipAnimation(prev => prev?.gameId === deletedGame.id ? null : prev);
-        setGameToJoinRef(prev => prev?.id === deletedGame.id ? null : prev);
-        
-        fetchGames();
-      })
+
+          // When game is completed, show result
+          if (updatedGame.status === "completed" && updatedGame.result) {
+            console.log("Game completed, showing result:", updatedGame.result);
+            setFlipAnimation((prev) => {
+              if (!prev || prev.gameId !== updatedGame.id) return prev;
+              return { ...prev, isFlipping: false, result: updatedGame.result as "heads" | "tails" };
+            });
+
+            if (user && (updatedGame.creator_id === user.id || updatedGame.joiner_id === user.id)) {
+              toast({
+                title: updatedGame.winner_id === user.id ? "You won! 🎉" : "You lost 😢",
+                description: `Result: ${updatedGame.result.toUpperCase()}. Items have been paid out.`,
+                duration: 5000,
+              });
+            }
+
+            fetchRecentFlips();
+
+            setTimeout(() => {
+              setFlipAnimation((prev) => (prev?.gameId === updatedGame.id ? null : prev));
+              setGameToJoinRef((prev) => (prev?.id === updatedGame.id ? null : prev));
+            }, 3000);
+          }
+
+          fetchGames();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "coinflip_games",
+        },
+        () => {
+          fetchGames();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "coinflip_games",
+        },
+        (payload) => {
+          const deletedGame = payload.old as CoinflipGame;
+          console.log("Game deleted:", deletedGame.id);
+
+          // Clean up any active intervals
+          const interval = activeIntervals.get(deletedGame.id);
+          if (interval) {
+            clearInterval(interval);
+            activeIntervals.delete(deletedGame.id);
+          }
+
+          // Clean up state if this was the active game
+          setFlipAnimation((prev) => (prev?.gameId === deletedGame.id ? null : prev));
+          setGameToJoinRef((prev) => (prev?.id === deletedGame.id ? null : prev));
+
+          fetchGames();
+        },
+      )
       .subscribe();
 
     return () => {
@@ -183,9 +194,10 @@ const Coinflip = () => {
     };
   }, [user]);
 
-
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const user = session?.user;
     if (!user) {
       navigate("/auth");
@@ -208,13 +220,13 @@ const Coinflip = () => {
       // Extract unique games with their results
       const seenGames = new Set();
       const flips = data
-        .map(t => {
+        .map((t) => {
           if (seenGames.has(t.game_id)) return null;
           seenGames.add(t.game_id);
           const match = t.description?.match(/\((\w+)\)/);
-          return match ? match[1] as 'heads' | 'tails' : null;
+          return match ? (match[1] as "heads" | "tails") : null;
         })
-        .filter((f): f is 'heads' | 'tails' => f !== null)
+        .filter((f): f is "heads" | "tails" => f !== null)
         .slice(0, 100);
       setRecentFlips(flips);
     }
@@ -234,29 +246,29 @@ const Coinflip = () => {
 
     // Fetch creator profiles separately
     if (data && data.length > 0) {
-      const creatorIds = data.map(game => game.creator_id);
+      const creatorIds = data.map((game) => game.creator_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, username, avatar_url, roblox_username")
         .in("id", creatorIds);
 
-      const gamesWithProfiles = data.map(game => ({
+      const gamesWithProfiles = data.map((game) => ({
         ...game,
-        profiles: profiles?.find(p => p.id === game.creator_id)
+        profiles: profiles?.find((p) => p.id === game.creator_id),
       }));
 
-      setGames(gamesWithProfiles as any || []);
+      setGames((gamesWithProfiles as any) || []);
     } else {
-      setGames(data as any || []);
+      setGames((data as any) || []);
     }
   };
 
   const handleSelectItem = (itemWithQty: Item & { quantity: number }) => {
-    const existing = selectedItems.find(si => si.item.id === itemWithQty.id);
+    const existing = selectedItems.find((si) => si.item.id === itemWithQty.id);
     if (existing) {
-      setSelectedItems(selectedItems.map(si =>
-        si.item.id === itemWithQty.id ? { ...si, quantity: si.quantity + 1 } : si
-      ));
+      setSelectedItems(
+        selectedItems.map((si) => (si.item.id === itemWithQty.id ? { ...si, quantity: si.quantity + 1 } : si)),
+      );
     } else {
       const { quantity, ...item } = itemWithQty;
       setSelectedItems([...selectedItems, { item, quantity: 1 }]);
@@ -265,23 +277,21 @@ const Coinflip = () => {
   };
 
   const removeItem = (itemId: string) => {
-    const existing = selectedItems.find(si => si.item.id === itemId);
+    const existing = selectedItems.find((si) => si.item.id === itemId);
     if (existing && existing.quantity > 1) {
-      setSelectedItems(selectedItems.map(si =>
-        si.item.id === itemId ? { ...si, quantity: si.quantity - 1 } : si
-      ));
+      setSelectedItems(selectedItems.map((si) => (si.item.id === itemId ? { ...si, quantity: si.quantity - 1 } : si)));
     } else {
-      setSelectedItems(selectedItems.filter(si => si.item.id !== itemId));
+      setSelectedItems(selectedItems.filter((si) => si.item.id !== itemId));
     }
   };
 
   const getTotalValue = () => {
-    return selectedItems.reduce((sum, si) => sum + (si.item.value * si.quantity), 0);
+    return selectedItems.reduce((sum, si) => sum + si.item.value * si.quantity, 0);
   };
 
   const createGame = async () => {
     if (isCreating) return;
-    
+
     if (!user) {
       toast({ title: "Please login first", variant: "destructive" });
       return;
@@ -294,30 +304,30 @@ const Coinflip = () => {
 
     setIsCreating(true);
 
-    const itemsData = selectedItems.map(si => ({
+    const itemsData = selectedItems.map((si) => ({
       item_id: si.item.id,
       name: si.item.name,
       value: si.item.value,
       quantity: si.quantity,
       image_url: si.item.image_url,
-      rarity: si.item.rarity
+      rarity: si.item.rarity,
     }));
 
     try {
-      const { data, error } = await supabase.functions.invoke('coinflip-create', {
-        body: { items: itemsData, side: selectedSide }
-      })
+      const { data, error } = await supabase.functions.invoke("coinflip-create", {
+        body: { items: itemsData, side: selectedSide },
+      });
 
-      if (error) throw new Error(error.message)
+      if (error) throw new Error(error.message);
 
-      setSelectedItems([])
-      setIsCreating(false)
-      toast({ title: "Game created!", description: "Waiting for opponent..." })
-      fetchGames()
+      setSelectedItems([]);
+      setIsCreating(false);
+      toast({ title: "Game created!", description: "Waiting for opponent..." });
+      fetchGames();
     } catch (e: any) {
-      console.error('Error creating game:', e)
-      toast({ title: 'Error creating game', description: e.message || 'Please try again', variant: 'destructive' })
-      setIsCreating(false)
+      console.error("Error creating game:", e);
+      toast({ title: "Error creating game", description: e.message || "Please try again", variant: "destructive" });
+      setIsCreating(false);
     }
   };
 
@@ -338,7 +348,7 @@ const Coinflip = () => {
 
   const joinGame = async (game: CoinflipGame, joinerItems: SelectedItem[]) => {
     if (isJoining) return;
-    
+
     setIsJoining(true);
     setJoinDialogOpen(false);
     setGameToJoin(null);
@@ -347,99 +357,96 @@ const Coinflip = () => {
       // Verify user still has the items before proceeding
       for (const si of joinerItems) {
         const { data: userItem, error: checkError } = await supabase
-          .from('user_items')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('item_id', si.item.id)
+          .from("user_items")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("item_id", si.item.id)
           .single();
 
         if (checkError || !userItem || userItem.quantity < si.quantity) {
-          toast({ 
-            title: `Not enough ${si.item.name}`, 
+          toast({
+            title: `Not enough ${si.item.name}`,
             description: "Please refresh and try again",
-            variant: "destructive" 
+            variant: "destructive",
           });
           setIsJoining(false);
           return;
         }
       }
 
-      const joinerItemsData = joinerItems.map(si => ({
+      const joinerItemsData = joinerItems.map((si) => ({
         item_id: si.item.id,
         name: si.item.name,
         value: si.item.value,
         quantity: si.quantity,
         image_url: si.item.image_url,
-        rarity: si.item.rarity
+        rarity: si.item.rarity,
       }));
 
       // Call edge function which will trigger realtime updates
       completeGame(game, joinerItemsData);
     } catch (error: any) {
-      console.error('Error joining game:', error);
-      toast({ 
-        title: "Error joining game", 
+      console.error("Error joining game:", error);
+      toast({
+        title: "Error joining game",
         description: error.message || "Something went wrong",
-        variant: "destructive" 
+        variant: "destructive",
       });
       setIsJoining(false);
     }
   };
 
-  const completeGame = async (
-    game: CoinflipGame,
-    joinerItemsData: any[]
-  ) => {
+  const completeGame = async (game: CoinflipGame, joinerItemsData: any[]) => {
     try {
       // Call server to perform join, payout and cleanup
-      const { data, error } = await supabase.functions.invoke('coinflip-join', {
+      const { data, error } = await supabase.functions.invoke("coinflip-join", {
         body: {
           gameId: game.id,
           joinerItems: joinerItemsData,
         },
-      })
+      });
 
       if (error) {
-        throw new Error(error.message || 'Server error')
+        throw new Error(error.message || "Server error");
       }
 
       // Realtime will handle showing the animation and result
-      setSelectedItems([])
-      setIsJoining(false)
+      setSelectedItems([]);
+      setIsJoining(false);
     } catch (error: any) {
-      console.error('Error completing game:', error)
+      console.error("Error completing game:", error);
       toast({
-        title: 'Error completing game',
-        description: error.message || 'Something went wrong. Please refresh and try again.',
-        variant: 'destructive',
+        title: "Error completing game",
+        description: error.message || "Something went wrong. Please refresh and try again.",
+        variant: "destructive",
         duration: 5000,
-      })
-      setIsJoining(false)
-      setFlipAnimation(null)
-      setGameToJoinRef(null)
-      fetchGames()
+      });
+      setIsJoining(false);
+      setFlipAnimation(null);
+      setGameToJoinRef(null);
+      fetchGames();
     }
   };
 
   const getRarityColor = (rarity: string) => {
     const colors: any = {
-      'Godly': 'bg-red-500/20 text-red-500',
-      'Ancient': 'bg-purple-500/20 text-purple-500',
-      'Legendary': 'bg-orange-500/20 text-orange-500',
-      'Rare': 'bg-blue-500/20 text-blue-500',
-      'Uncommon': 'bg-green-500/20 text-green-500',
-      'Common': 'bg-gray-500/20 text-gray-500'
+      Godly: "bg-red-500/20 text-red-500",
+      Ancient: "bg-purple-500/20 text-purple-500",
+      Legendary: "bg-orange-500/20 text-orange-500",
+      Rare: "bg-blue-500/20 text-blue-500",
+      Uncommon: "bg-green-500/20 text-green-500",
+      Common: "bg-gray-500/20 text-gray-500",
     };
-    return colors[rarity] || 'bg-gray-500/20 text-gray-500';
+    return colors[rarity] || "bg-gray-500/20 text-gray-500";
   };
 
   return (
     <div className="min-h-screen w-full flex">
       <Sidebar />
-      
+
       <div className="flex-1 ml-64 mr-96">
         <TopBar />
-        
+
         <main className="pt-16 px-12 py-8">
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="flex items-center gap-3">
@@ -458,19 +465,19 @@ const Coinflip = () => {
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Last 100 Flips</h3>
                 <div className="flex gap-1 overflow-x-auto scrollbar-hide">
                   {recentFlips.map((flip, idx) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className="relative w-6 h-6 rounded-full overflow-hidden bg-transparent flex-shrink-0"
                       title={flip}
                     >
-                      <img 
-                        src={flip === 'heads' ? coinHeads : coinTails} 
+                      <img
+                        src={flip === "heads" ? coinHeads : coinTails}
                         alt={flip}
                         className="w-full h-full object-contain"
                       />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-xs font-black text-white drop-shadow-[0_0_4px_rgba(0,0,0,1)]">
-                          {flip === 'heads' ? 'H' : 'T'}
+                          {flip === "heads" ? "H" : "T"}
                         </span>
                       </div>
                     </div>
@@ -485,13 +492,13 @@ const Coinflip = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Select Items to Bet</label>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full justify-start gap-2"
                     onClick={() => setInventoryOpen(true)}
                   >
                     <Package className="w-4 h-4" />
-                    {selectedItems.length === 0 ? 'Select from inventory' : `${selectedItems.length} items selected`}
+                    {selectedItems.length === 0 ? "Select from inventory" : `${selectedItems.length} items selected`}
                   </Button>
 
                   {selectedItems.length > 0 && (
@@ -499,7 +506,11 @@ const Coinflip = () => {
                       {selectedItems.map((si) => (
                         <div key={si.item.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                           {si.item.image_url && (
-                            <img src={si.item.image_url} alt={si.item.name} className="w-12 h-12 object-cover rounded" />
+                            <img
+                              src={si.item.image_url}
+                              alt={si.item.name}
+                              className="w-12 h-12 object-cover rounded"
+                            />
                           )}
                           <div className="flex-1">
                             <p className="font-semibold text-sm">{si.item.name}</p>
@@ -510,18 +521,16 @@ const Coinflip = () => {
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-primary">${(si.item.value * si.quantity).toFixed(2)}</p>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => removeItem(si.item.id)}
-                            >
+                            <Button size="sm" variant="ghost" onClick={() => removeItem(si.item.id)}>
                               <Minus className="w-3 h-3" />
                             </Button>
                           </div>
                         </div>
                       ))}
                       <div className="pt-2 border-t border-border">
-                        <p className="text-lg font-bold">Total: <span className="text-primary">${getTotalValue().toFixed(2)}</span></p>
+                        <p className="text-lg font-bold">
+                          Total: <span className="text-primary">${getTotalValue().toFixed(2)}</span>
+                        </p>
                       </div>
                     </div>
                   )}
@@ -531,24 +540,29 @@ const Coinflip = () => {
                   <label className="text-sm font-medium mb-2 block">Choose Side</label>
                   <div className="flex gap-3">
                     <Button
-                      variant={selectedSide === 'heads' ? 'default' : 'outline'}
+                      variant={selectedSide === "heads" ? "default" : "outline"}
                       className="flex-1"
-                      onClick={() => setSelectedSide('heads')}
+                      onClick={() => setSelectedSide("heads")}
                     >
                       Heads
                     </Button>
                     <Button
-                      variant={selectedSide === 'tails' ? 'default' : 'outline'}
+                      variant={selectedSide === "tails" ? "default" : "outline"}
                       className="flex-1"
-                      onClick={() => setSelectedSide('tails')}
+                      onClick={() => setSelectedSide("tails")}
                     >
                       Tails
                     </Button>
                   </div>
                 </div>
 
-                <Button onClick={createGame} className="w-full" size="lg" disabled={selectedItems.length === 0 || isCreating}>
-                  {isCreating ? 'Creating...' : 'Create Game'}
+                <Button
+                  onClick={createGame}
+                  className="w-full"
+                  size="lg"
+                  disabled={selectedItems.length === 0 || isCreating}
+                >
+                  {isCreating ? "Creating..." : "Create Game"}
                 </Button>
               </div>
             </Card>
@@ -562,22 +576,19 @@ const Coinflip = () => {
                 </Card>
               ) : (
                 <div className="space-y-3">
-                   {games.map((game) => {
+                  {games.map((game) => {
                     const betAmount = parseFloat(game.bet_amount);
                     const minBet = betAmount * 0.9;
                     const maxBet = betAmount * 1.1;
                     const isAnimating = flipAnimation?.gameId === game.id;
-                    const progress = isAnimating && flipAnimation.countdown > 0 
-                      ? ((5 - flipAnimation.countdown) / 5) * 100 
-                      : 0;
+                    const progress =
+                      isAnimating && flipAnimation.countdown > 0 ? ((5 - flipAnimation.countdown) / 5) * 100 : 0;
 
                     return (
-                      <Card 
-                        key={game.id} 
+                      <Card
+                        key={game.id}
                         className={`overflow-hidden border transition-all duration-300 ${
-                          isAnimating 
-                            ? 'border-primary shadow-glow scale-105' 
-                            : 'border-border hover:border-primary/50'
+                          isAnimating ? "border-primary shadow-glow scale-105" : "border-border hover:border-primary/50"
                         }`}
                       >
                         <div className="flex items-center gap-4 p-4">
@@ -612,38 +623,43 @@ const Coinflip = () => {
                                   />
                                 </svg>
                               )}
-                              
+
                               <div className="relative w-full h-full rounded-full overflow-hidden bg-transparent">
-                                <img 
+                                <img
                                   src={
                                     isAnimating && flipAnimation.isFlipping
                                       ? coinHeads
                                       : isAnimating && flipAnimation.result
-                                      ? flipAnimation.result === 'heads' ? coinHeads : coinTails
-                                      : game.creator_side === 'heads' ? coinHeads : coinTails
-                                  } 
+                                        ? flipAnimation.result === "heads"
+                                          ? coinHeads
+                                          : coinTails
+                                        : game.creator_side === "heads"
+                                          ? coinHeads
+                                          : coinTails
+                                  }
                                   alt={game.creator_side}
                                   className={`w-full h-full object-contain ${
-                                    isAnimating && flipAnimation.isFlipping 
-                                      ? 'animate-[spin_0.3s_linear_infinite]' 
-                                      : ''
+                                    isAnimating && flipAnimation.isFlipping ? "animate-[spin_5.0s_linear_infinite]" : ""
                                   }`}
                                 />
-                                <div className={`absolute inset-0 flex items-center justify-center ${
-                                  isAnimating && flipAnimation.isFlipping 
-                                    ? 'animate-[spin_0.3s_linear_infinite]' 
-                                    : ''
-                                }`}>
+                                <div
+                                  className={`absolute inset-0 flex items-center justify-center ${
+                                    isAnimating && flipAnimation.isFlipping ? "animate-[spin_0.3s_linear_infinite]" : ""
+                                  }`}
+                                >
                                   <span className="text-2xl font-black text-white drop-shadow-[0_0_6px_rgba(0,0,0,1)]">
                                     {isAnimating && flipAnimation.isFlipping
-                                      ? 'H'
+                                      ? "H"
                                       : isAnimating && flipAnimation.result
-                                      ? flipAnimation.result === 'heads' ? 'H' : 'T'
-                                      : game.creator_side === 'heads' ? 'H' : 'T'
-                                    }
+                                        ? flipAnimation.result === "heads"
+                                          ? "H"
+                                          : "T"
+                                        : game.creator_side === "heads"
+                                          ? "H"
+                                          : "T"}
                                   </span>
                                 </div>
-                                
+
                                 {/* Countdown Overlay */}
                                 {isAnimating && flipAnimation.countdown > 0 && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
@@ -654,21 +670,23 @@ const Coinflip = () => {
                                 )}
                               </div>
                             </div>
-                            
+
                             {/* Creator Info */}
                             <div className="flex items-center gap-2 min-w-0">
                               <Avatar className="w-8 h-8 flex-shrink-0">
                                 <AvatarImage src={game.profiles?.avatar_url || undefined} />
                                 <AvatarFallback className="text-xs bg-primary/20 text-primary font-bold">
-                                  {(game.profiles?.roblox_username || game.profiles?.username || 'U')[0].toUpperCase()}
+                                  {(game.profiles?.roblox_username || game.profiles?.username || "U")[0].toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0">
-                                <p className="font-semibold text-sm truncate">{game.profiles?.roblox_username || game.profiles?.username || 'Unknown'}</p>
+                                <p className="font-semibold text-sm truncate">
+                                  {game.profiles?.roblox_username || game.profiles?.username || "Unknown"}
+                                </p>
                                 <p className="text-xs text-muted-foreground">{game.creator_side.toUpperCase()}</p>
                               </div>
                             </div>
-                            
+
                             {/* Bet Amount & Items */}
                             <div className="text-right flex-shrink-0">
                               <div className="flex items-center gap-2 justify-end">
@@ -676,14 +694,14 @@ const Coinflip = () => {
                                 {game.creator_items && game.creator_items.length > 0 && (
                                   <div className="flex items-center gap-0.5">
                                     {game.creator_items.slice(0, 3).map((item: any, idx: number) => (
-                                      <div 
+                                      <div
                                         key={idx}
                                         className="relative w-5 h-5 rounded bg-muted border border-border/50 overflow-hidden"
                                         title={`${item.name} x${item.quantity}`}
                                       >
                                         {item.image_url ? (
-                                          <img 
-                                            src={item.image_url} 
+                                          <img
+                                            src={item.image_url}
                                             alt={item.name}
                                             className="w-full h-full object-cover"
                                           />
@@ -728,12 +746,7 @@ const Coinflip = () => {
                               size="sm"
                               className="min-w-[100px]"
                             >
-                              {isJoining
-                                ? 'Joining...'
-                                : game.creator_id === user?.id
-                                ? 'Your Game' 
-                                : 'Join'
-                              }
+                              {isJoining ? "Joining..." : game.creator_id === user?.id ? "Your Game" : "Join"}
                             </Button>
                           </div>
                         </div>
@@ -748,13 +761,13 @@ const Coinflip = () => {
       </div>
 
       <LiveChat />
-      
-      <UserInventoryDialog 
-        open={inventoryOpen} 
+
+      <UserInventoryDialog
+        open={inventoryOpen}
         onOpenChange={setInventoryOpen}
         onSelectItem={handleSelectItem}
         multiSelect={true}
-        selectedItems={selectedItems.map(si => si.item.id)}
+        selectedItems={selectedItems.map((si) => si.item.id)}
       />
 
       <JoinCoinflipDialog
