@@ -54,9 +54,8 @@ export const LiveBets = () => {
         *,
         profiles!transactions_user_id_fkey(username)
       `)
-      .in('type', ['bet', 'win', 'loss'])
       .order('created_at', { ascending: false })
-      .limit(15);
+      .limit(20);
 
     if (data) {
       setLiveBets(data as any);

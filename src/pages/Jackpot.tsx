@@ -57,6 +57,12 @@ const Jackpot = () => {
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [spinState, setSpinState] = useState<SpinState>({ isSpinning: false, currentIndex: 0, slowDown: false });
   const [winner, setWinner] = useState<JackpotEntry | null>(null);
+  const [spinAudio] = useState(() => {
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3');
+    audio.loop = true;
+    audio.volume = 0.3;
+    return audio;
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -253,8 +259,9 @@ const Jackpot = () => {
   const drawWinner = async () => {
     if (!currentGame || entries.length === 0) return;
 
-    // Start spinning animation
+    // Start spinning animation and sound
     setSpinState({ isSpinning: true, currentIndex: 0, slowDown: false });
+    spinAudio.play().catch(e => console.log('Audio play failed:', e));
     
     // Update game status to rolling
     await supabase
@@ -306,6 +313,9 @@ const Jackpot = () => {
       
       if (elapsed >= spinDuration) {
         clearInterval(spinInterval);
+        // Stop sound
+        spinAudio.pause();
+        spinAudio.currentTime = 0;
         // Land on winner
         setSpinState({ isSpinning: false, currentIndex: winnerIndex, slowDown: false });
         completeWinnerSelection(winnerId, updatedEntries, winnerIndex);
