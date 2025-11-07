@@ -416,26 +416,23 @@ const Coinflip = () => {
         return;
       }
 
-      // Remove joiner's items from inventory
+      // Verify user still has the items before proceeding
       for (const si of selectedItems) {
-        const { data: userItem } = await supabase
+        const { data: userItem, error: checkError } = await supabase
           .from('user_items')
           .select('*')
           .eq('user_id', user.id)
           .eq('item_id', si.item.id)
           .single();
 
-        if (!userItem || userItem.quantity < si.quantity) {
-          toast({ title: `Not enough ${si.item.name}`, variant: "destructive" });
+        if (checkError || !userItem || userItem.quantity < si.quantity) {
+          toast({ 
+            title: `Not enough ${si.item.name}`, 
+            description: "Please refresh and try again",
+            variant: "destructive" 
+          });
           setIsJoining(false);
           return;
-        }
-
-        const newQty = userItem.quantity - si.quantity;
-        if (newQty === 0) {
-          await supabase.from('user_items').delete().eq('id', userItem.id);
-        } else {
-          await supabase.from('user_items').update({ quantity: newQty }).eq('id', userItem.id);
         }
       }
 
@@ -448,8 +445,7 @@ const Coinflip = () => {
         rarity: si.item.rarity
       }));
 
-      // Start flip animation with countdown
-      // Use crypto API for cryptographically secure randomness
+      // Generate result using crypto-secure randomness
       const randomArray = new Uint32Array(1);
       crypto.getRandomValues(randomArray);
       const result: 'heads' | 'tails' = (randomArray[0] % 2) === 0 ? 'heads' : 'tails';
@@ -476,6 +472,7 @@ const Coinflip = () => {
         }
       }, 1000);
     } catch (error: any) {
+      console.error('Error joining game:', error);
       toast({ 
         title: "Error joining game", 
         description: error.message || "Something went wrong",
@@ -491,117 +488,172 @@ const Coinflip = () => {
     winnerId: string, 
     result: 'heads' | 'tails'
   ) => {
-    const creatorTotal = parseFloat(game.bet_amount);
-    const joinerTotal = joinerItemsData.reduce((sum, item) => sum + (item.value * item.quantity), 0);
+    try {
+      const creatorTotal = parseFloat(game.bet_amount);
+      const joinerTotal = joinerItemsData.reduce((sum, item) => sum + (item.value * item.quantity), 0);
 
-    // Record joiner bet transaction
-    await supabase.from("transactions").insert({
-      user_id: user?.id,
-      amount: -joinerTotal,
-      type: 'bet',
-      game_type: 'coinflip',
-      game_id: game.id,
-      description: `Joined coinflip game`
-    });
+      // Remove joiner's items from inventory first
+      for (const si of selectedItems) {
+        const { data: userItem, error: fetchError } = await supabase
+          .from('user_items')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('item_id', si.item.id)
+          .single();
 
-    // Update game
-    const { error: updateError } = await supabase
-      .from("coinflip_games")
-      .update({
-        joiner_id: user.id,
-        joiner_items: joinerItemsData,
-        winner_id: winnerId,
-        result: result,
-        status: 'completed',
-        completed_at: new Date().toISOString()
-      })
-      .eq("id", game.id);
+        if (fetchError || !userItem || userItem.quantity < si.quantity) {
+          throw new Error(`Item ${si.item.name} not available`);
+        }
 
-    if (updateError) {
-      console.error('Failed to update coinflip game:', updateError);
-      toast({ title: 'Failed to complete game', description: updateError.message, variant: 'destructive' });
-      setIsJoining(false);
-      return;
-    }
+        const newQty = userItem.quantity - si.quantity;
+        if (newQty === 0) {
+          const { error: delError } = await supabase
+            .from('user_items')
+            .delete()
+            .eq('id', userItem.id);
+          if (delError) throw delError;
+        } else {
+          const { error: updateError } = await supabase
+            .from('user_items')
+            .update({ quantity: newQty })
+            .eq('id', userItem.id);
+          if (updateError) throw updateError;
+        }
+      }
 
-    // Calculate total pot value (with 5% house edge)
-    const totalPot = creatorTotal + joinerTotal;
-    const winnerAmount = totalPot * 0.95;
+      // Update game with results
+      const { error: updateError } = await supabase
+        .from("coinflip_games")
+        .update({
+          joiner_id: user.id,
+          joiner_items: joinerItemsData,
+          winner_id: winnerId,
+          result: result,
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq("id", game.id);
 
-    // Record winner transaction
-    await supabase.from("transactions").insert({
-      user_id: winnerId,
-      amount: winnerAmount,
-      type: 'win',
-      game_type: 'coinflip',
-      game_id: game.id,
-      description: `Won coinflip (${result})`
-    });
+      if (updateError) {
+        console.error('Failed to update coinflip game:', updateError);
+        throw new Error('Failed to complete game: ' + updateError.message);
+      }
 
-    // Record loser transaction
-    const loserId = winnerId === game.creator_id ? user.id : game.creator_id;
-    await supabase.from("transactions").insert({
-      user_id: loserId,
-      amount: 0,
-      type: 'loss',
-      game_type: 'coinflip',
-      game_id: game.id,
-      description: `Lost coinflip (${result})`
-    });
+      // Record joiner bet transaction
+      await supabase.from("transactions").insert({
+        user_id: user?.id,
+        amount: -joinerTotal,
+        type: 'bet',
+        game_type: 'coinflip',
+        game_id: game.id,
+        description: `Joined coinflip game`
+      });
 
-    // Give all items to winner (95% of total, 5% house edge)
-    const allItems = [...game.creator_items, ...joinerItemsData];
-    for (const item of allItems) {
-      const adjustedQty = Math.floor(item.quantity * 0.95);
-      if (adjustedQty > 0) {
-        const { data: existingItem } = await supabase
+      // Record winner transaction (no house edge on transaction, but on items)
+      await supabase.from("transactions").insert({
+        user_id: winnerId,
+        amount: creatorTotal + joinerTotal,
+        type: 'win',
+        game_type: 'coinflip',
+        game_id: game.id,
+        description: `Won coinflip (${result})`
+      });
+
+      // Record loser transaction
+      const loserId = winnerId === game.creator_id ? user.id : game.creator_id;
+      await supabase.from("transactions").insert({
+        user_id: loserId,
+        amount: 0,
+        type: 'loss',
+        game_type: 'coinflip',
+        game_id: game.id,
+        description: `Lost coinflip (${result})`
+      });
+
+      // Give ALL items to winner (winner takes all, no house edge)
+      const allItems = [...game.creator_items, ...joinerItemsData];
+      
+      for (const item of allItems) {
+        const { data: existingItem, error: fetchError } = await supabase
           .from('user_items')
           .select('*')
           .eq('user_id', winnerId)
           .eq('item_id', item.item_id)
           .single();
 
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error('Error fetching existing item:', fetchError);
+          continue;
+        }
+
         if (existingItem) {
-          await supabase
+          const { error: updateError } = await supabase
             .from('user_items')
-            .update({ quantity: existingItem.quantity + adjustedQty })
+            .update({ quantity: existingItem.quantity + item.quantity })
             .eq('id', existingItem.id);
+          
+          if (updateError) {
+            console.error('Error updating item quantity:', updateError);
+          }
         } else {
-          await supabase
+          const { error: insertError } = await supabase
             .from('user_items')
             .insert({
               user_id: winnerId,
               item_id: item.item_id,
-              quantity: adjustedQty
+              quantity: item.quantity
             });
+          
+          if (insertError) {
+            console.error('Error inserting new item:', insertError);
+          }
         }
       }
-    }
 
-    // Delete the completed game from database
-    const { error: deleteError } = await supabase.from("coinflip_games").delete().eq("id", game.id);
-    if (deleteError) {
-      console.error('Failed to delete coinflip game:', deleteError);
-    }
+      // Delete the completed game from database
+      const { error: deleteError } = await supabase
+        .from("coinflip_games")
+        .delete()
+        .eq("id", game.id);
+      
+      if (deleteError) {
+        console.error('Failed to delete coinflip game:', deleteError);
+      }
 
-    toast({
-      title: winnerId === user?.id ? "You won! 🎉" : "You lost 😢",
-      description: `Result: ${result.toUpperCase()}`
-    });
+      toast({
+        title: winnerId === user?.id ? "You won! 🎉" : "You lost 😢",
+        description: `Result: ${result.toUpperCase()}. All items ${winnerId === user?.id ? 'added to your inventory!' : 'went to the winner.'}`,
+        duration: 5000
+      });
 
-    // Remove the game from local list immediately
-    setGames((prev) => prev.filter((g) => g.id !== game.id));
+      // Remove the game from local list immediately
+      setGames((prev) => prev.filter((g) => g.id !== game.id));
 
-    // Refresh recent flips
-    fetchRecentFlips();
+      // Refresh recent flips
+      fetchRecentFlips();
 
-    setSelectedItems([]);
-    setIsJoining(false);
-    
-    // Clear flip animation after showing result
-    setTimeout(() => {
+      setSelectedItems([]);
+      setIsJoining(false);
+      
+      // Clear flip animation after showing result
+      setTimeout(() => {
+        setFlipAnimation(null);
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('Error completing game:', error);
+      toast({
+        title: "Error completing game",
+        description: error.message || "Something went wrong. Please refresh the page.",
+        variant: "destructive",
+        duration: 5000
+      });
+      setIsJoining(false);
       setFlipAnimation(null);
-    }, 3000);
+      
+      // Refresh the page data
+      fetchGames();
+    }
   };
 
   const getRarityColor = (rarity: string) => {
