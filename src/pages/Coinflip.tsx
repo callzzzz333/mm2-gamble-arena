@@ -84,6 +84,7 @@ const Coinflip = () => {
   const checkExpiredGames = async () => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
+    // Check for waiting games that have expired
     const { data: expiredGames } = await supabase
       .from("coinflip_games")
       .select("*")
@@ -95,6 +96,13 @@ const Coinflip = () => {
         await refundGame(game);
       }
     }
+
+    // Also purge any old expired/completed games from database (cleanup failsafe)
+    await supabase
+      .from("coinflip_games")
+      .delete()
+      .in("status", ["expired", "completed"])
+      .lt("created_at", fiveMinutesAgo);
   };
 
   const refundGame = async (game: any) => {
@@ -136,6 +144,9 @@ const Coinflip = () => {
         }
       }
     }
+
+    // Delete the expired game from database
+    await supabase.from("coinflip_games").delete().eq("id", game.id);
 
     // Remove the expired game locally right away
     setGames((prev) => prev.filter((g) => g.id !== game.id));
@@ -461,6 +472,9 @@ const Coinflip = () => {
         }
       }
     }
+
+    // Delete the completed game from database
+    await supabase.from("coinflip_games").delete().eq("id", game.id);
 
     toast({
       title: winnerId === user?.id ? "You won! 🎉" : "You lost 😢",
