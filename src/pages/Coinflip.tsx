@@ -61,6 +61,7 @@ const Coinflip = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [gameToJoin, setGameToJoin] = useState<CoinflipGame | null>(null);
+  const [gameToJoinRef, setGameToJoinRef] = useState<CoinflipGame | null>(null);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -242,6 +243,7 @@ const Coinflip = () => {
     setIsJoining(true);
     setJoinDialogOpen(false);
     setGameToJoin(null);
+    setGameToJoinRef(game);
 
     try {
       // Verify user still has the items before proceeding
@@ -332,7 +334,10 @@ const Coinflip = () => {
       setSelectedItems([])
       setIsJoining(false)
 
-      setTimeout(() => setFlipAnimation(null), 3000)
+      setTimeout(() => {
+        setFlipAnimation(null)
+        setGameToJoinRef(null)
+      }, 3000)
     } catch (error: any) {
       console.error('Error completing game:', error)
       toast({
@@ -343,6 +348,7 @@ const Coinflip = () => {
       })
       setIsJoining(false)
       setFlipAnimation(null)
+      setGameToJoinRef(null)
       fetchGames()
     }
   };
@@ -479,53 +485,69 @@ const Coinflip = () => {
               </div>
             </Card>
 
-            {/* Flip Animation Modal */}
+            {/* Flip Animation Card */}
             {flipAnimation && (
-              <div className="fixed inset-0 bg-background/95 z-50 flex items-center justify-center">
-                <div className="text-center space-y-8">
-                  {flipAnimation.countdown > 0 ? (
-                    <>
-                      <h2 className="text-4xl font-bold">Flipping in...</h2>
-                      <div className="text-8xl font-bold text-primary animate-pulse">
-                        {flipAnimation.countdown}
-                      </div>
-                    </>
-                   ) : flipAnimation.isFlipping ? (
-                    <>
-                      <h2 className="text-4xl font-bold">Flipping Coin...</h2>
-                      <div className="relative w-48 h-48 mx-auto rounded-full overflow-hidden bg-transparent">
-                        <img 
-                          src={coinHeads} 
-                          alt="Coin" 
-                          className="absolute inset-0 w-full h-full object-contain animate-[spin_0.5s_linear_infinite]"
-                          style={{ backfaceVisibility: 'hidden' }}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-8xl font-black text-white drop-shadow-[0_0_8px_rgba(0,0,0,0.9)] animate-[spin_0.5s_linear_infinite]">H</span>
+              <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <Card className="p-8 max-w-md w-full bg-card border-primary/50 shadow-glow">
+                  <div className="text-center space-y-6">
+                    {flipAnimation.countdown > 0 ? (
+                      <>
+                        <h2 className="text-2xl font-bold">Coin Flip</h2>
+                        <div className="relative w-32 h-32 mx-auto">
+                          <img 
+                            src={gameToJoinRef?.creator_side === 'heads' ? coinHeads : coinTails} 
+                            alt="Coin" 
+                            className="w-full h-full object-contain"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-2xl font-black text-white drop-shadow-[0_0_6px_rgba(0,0,0,1)]">
+                              {gameToJoinRef?.creator_side === 'heads' ? 'H' : 'T'}
+                            </span>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
+                            <span className="text-5xl font-bold text-white drop-shadow-lg">
+                              {flipAnimation.countdown}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  ) : flipAnimation.result ? (
-                    <>
-                      <h2 className="text-4xl font-bold mb-4">Result:</h2>
-                      <div className="relative w-48 h-48 mx-auto animate-scale-in rounded-full overflow-hidden bg-transparent">
-                        <img 
-                          src={flipAnimation.result === 'heads' ? coinHeads : coinTails} 
-                          alt={flipAnimation.result} 
-                          className="w-full h-full object-contain"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-8xl font-black text-white drop-shadow-[0_0_10px_rgba(0,0,0,1)]">
-                            {flipAnimation.result === 'heads' ? 'H' : 'T'}
-                          </span>
+                        <p className="text-muted-foreground">Flipping in {flipAnimation.countdown}...</p>
+                      </>
+                     ) : flipAnimation.isFlipping ? (
+                      <>
+                        <h2 className="text-2xl font-bold">Flipping...</h2>
+                        <div className="relative w-32 h-32 mx-auto">
+                          <img 
+                            src={coinHeads} 
+                            alt="Coin" 
+                            className="absolute inset-0 w-full h-full object-contain animate-[spin_0.3s_linear_infinite]"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center animate-[spin_0.3s_linear_infinite]">
+                            <span className="text-2xl font-black text-white drop-shadow-[0_0_6px_rgba(0,0,0,1)]">H</span>
+                          </div>
                         </div>
-                      </div>
-                      <p className="text-6xl font-bold text-primary uppercase animate-fade-in">
-                        {flipAnimation.result}!
-                      </p>
-                    </>
-                  ) : null}
-                </div>
+                      </>
+                    ) : flipAnimation.result ? (
+                      <>
+                        <h2 className="text-2xl font-bold mb-2">Result</h2>
+                        <div className="relative w-32 h-32 mx-auto animate-scale-in">
+                          <img 
+                            src={flipAnimation.result === 'heads' ? coinHeads : coinTails} 
+                            alt={flipAnimation.result} 
+                            className="w-full h-full object-contain"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-2xl font-black text-white drop-shadow-[0_0_6px_rgba(0,0,0,1)]">
+                              {flipAnimation.result === 'heads' ? 'H' : 'T'}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-3xl font-bold text-primary uppercase animate-fade-in">
+                          {flipAnimation.result}!
+                        </p>
+                      </>
+                    ) : null}
+                  </div>
+                </Card>
               </div>
             )}
 
