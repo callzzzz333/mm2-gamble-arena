@@ -74,10 +74,10 @@ const Coinflip = () => {
       })
       .subscribe();
 
-    // Check for expired games every 10 seconds
+    // Check for expired games every second to handle UI timer expiry
     const expiryInterval = setInterval(() => {
       checkExpiredGames();
-    }, 10000);
+    }, 1000);
 
     return () => {
       supabase.removeChannel(gamesChannel);
@@ -88,12 +88,12 @@ const Coinflip = () => {
   const checkExpiredGames = async () => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
-    // Check for waiting games that have expired
+    // Check for waiting games that have expired (exactly at or past 5 minutes)
     const { data: expiredGames } = await supabase
       .from("coinflip_games")
       .select("*")
       .eq("status", "waiting")
-      .lt("created_at", fiveMinutesAgo);
+      .lte("created_at", fiveMinutesAgo);
 
     if (expiredGames && expiredGames.length > 0) {
       for (const game of expiredGames) {
@@ -102,11 +102,12 @@ const Coinflip = () => {
     }
 
     // Also purge any old expired/completed games from database (cleanup failsafe)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     await supabase
       .from("coinflip_games")
       .delete()
       .in("status", ["expired", "completed"])
-      .lt("created_at", fiveMinutesAgo);
+      .lt("created_at", tenMinutesAgo);
   };
 
   const refundGame = async (game: any) => {
@@ -737,7 +738,7 @@ const Coinflip = () => {
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {games.map((game) => {
+                   {games.map((game) => {
                     const timeLeft = Math.max(0, 300 - Math.floor((Date.now() - new Date(game.created_at).getTime()) / 1000));
                     const minutes = Math.floor(timeLeft / 60);
                     const seconds = timeLeft % 60;
@@ -746,6 +747,11 @@ const Coinflip = () => {
                     const maxBet = betAmount * 1.1;
                     const userTotal = getTotalValue();
                     const canJoin = userTotal >= minBet && userTotal <= maxBet && selectedItems.length > 0 && game.creator_id !== user?.id;
+
+                    // If timer reached 0:00, trigger refund immediately
+                    if (timeLeft === 0 && game.status === 'waiting') {
+                      refundGame(game);
+                    }
 
                     return (
                       <Card 
