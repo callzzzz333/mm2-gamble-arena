@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Trophy, Package, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface Item {
   id: string;
@@ -485,15 +486,12 @@ const Jackpot = () => {
                   <div className="space-y-3 animate-fade-in">
                     <p className="text-lg font-semibold text-green-500">🏆 Winner!</p>
                     <div className="flex items-center justify-center gap-3 p-4 bg-primary/10 rounded-xl border border-primary/30">
-                      {winner.profiles?.avatar_url ? (
-                        <img src={winner.profiles.avatar_url} alt={winner.profiles.username} className="w-12 h-12 rounded-full border-2 border-primary" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                          <span className="text-lg font-bold text-primary">
-                            {(winner.profiles?.username || 'U')[0].toUpperCase()}
-                          </span>
-                        </div>
-                      )}
+                      <Avatar className="w-12 h-12 border-2 border-primary">
+                        <AvatarImage src={winner.profiles?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-lg font-bold">
+                          {(winner.profiles?.username || 'U')[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <p className="font-bold text-lg">{winner.profiles?.username}</p>
                         <p className="text-sm text-muted-foreground">Won ${(parseFloat(currentGame.total_pot) * 0.95).toFixed(2)}</p>
@@ -586,19 +584,12 @@ const Jackpot = () => {
                         <div className="flex items-start gap-4">
                           {/* Avatar */}
                           <div className="flex-shrink-0">
-                            {entry.profiles?.avatar_url ? (
-                              <img 
-                                src={entry.profiles.avatar_url} 
-                                alt={entry.profiles.username} 
-                                className="w-16 h-16 rounded-full border-2 border-primary/50"
-                              />
-                            ) : (
-                              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/50">
-                                <span className="text-xl font-bold text-primary">
-                                  {(entry.profiles?.username || 'U')[0].toUpperCase()}
-                                </span>
-                              </div>
-                            )}
+                            <Avatar className="w-16 h-16 border-2 border-primary/50">
+                              <AvatarImage src={entry.profiles?.avatar_url || undefined} />
+                              <AvatarFallback className="bg-primary/20 text-primary text-xl font-bold">
+                                {(entry.profiles?.username || 'U')[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
                           </div>
 
                           {/* User Info and Items */}

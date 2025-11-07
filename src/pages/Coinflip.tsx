@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Coins, Package, Plus, Minus, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import coinHeads from "@/assets/coin-heads.png";
 import coinTails from "@/assets/coin-tails.png";
 
@@ -164,7 +165,7 @@ const Coinflip = () => {
       const creatorIds = data.map(game => game.creator_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, username")
+        .select("id, username, avatar_url, roblox_username")
         .in("id", creatorIds);
 
       const gamesWithProfiles = data.map(game => ({
@@ -650,13 +651,14 @@ const Coinflip = () => {
                             
                             {/* Creator Info */}
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs font-bold text-primary">
-                                  {(game.profiles?.username || 'U')[0].toUpperCase()}
-                                </span>
-                              </div>
+                              <Avatar className="w-8 h-8 flex-shrink-0">
+                                <AvatarImage src={game.profiles?.avatar_url || undefined} />
+                                <AvatarFallback className="text-xs bg-primary/20 text-primary font-bold">
+                                  {(game.profiles?.roblox_username || game.profiles?.username || 'U')[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
                               <div className="min-w-0">
-                                <p className="font-semibold text-sm truncate">{game.profiles?.username || 'Unknown'}</p>
+                                <p className="font-semibold text-sm truncate">{game.profiles?.roblox_username || game.profiles?.username || 'Unknown'}</p>
                                 <p className="text-xs text-muted-foreground">{game.creator_side.toUpperCase()}</p>
                               </div>
                             </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, Trophy, Timer } from "lucide-react";
 
@@ -14,6 +15,8 @@ interface Transaction {
   created_at: string;
   profiles: {
     username: string;
+    avatar_url: string | null;
+    roblox_username: string | null;
   };
 }
 
@@ -52,7 +55,7 @@ export const LiveBets = () => {
       .from('transactions')
       .select(`
         *,
-        profiles!transactions_user_id_fkey(username)
+        profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
       `)
       .order('created_at', { ascending: false })
       .limit(20);
@@ -67,7 +70,7 @@ export const LiveBets = () => {
       .from('transactions')
       .select(`
         *,
-        profiles!transactions_user_id_fkey(username)
+        profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
       `)
       .eq('type', 'win')
       .order('amount', { ascending: false })
@@ -84,7 +87,7 @@ export const LiveBets = () => {
       .from('transactions')
       .select(`
         *,
-        profiles!transactions_user_id_fkey(username)
+        profiles!transactions_user_id_fkey(username, avatar_url, roblox_username)
       `)
       .eq('type', 'win')
       .gte('amount', 50) // Only show wins over $50
@@ -147,7 +150,13 @@ export const LiveBets = () => {
               liveBets.map((bet) => (
                 <div key={bet.id} className="p-3 bg-muted/30 rounded-lg border border-border hover:border-primary/30 transition-all">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-sm">{bet.profiles?.username || 'Unknown'}</span>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={bet.profiles?.avatar_url || undefined} />
+                        <AvatarFallback className="text-xs">{(bet.profiles?.roblox_username || bet.profiles?.username || 'U')[0].toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-semibold text-sm">{bet.profiles?.roblox_username || bet.profiles?.username || 'Unknown'}</span>
+                    </div>
                     <Badge className={getGameTypeColor(bet.game_type)}>
                       {formatGameType(bet.game_type)}
                     </Badge>
@@ -181,7 +190,11 @@ export const LiveBets = () => {
                           {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
                         </span>
                       )}
-                      <span className="font-semibold text-sm">{win.profiles?.username || 'Unknown'}</span>
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={win.profiles?.avatar_url || undefined} />
+                        <AvatarFallback className="text-xs">{(win.profiles?.roblox_username || win.profiles?.username || 'U')[0].toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-semibold text-sm">{win.profiles?.roblox_username || win.profiles?.username || 'Unknown'}</span>
                     </div>
                     <Badge className={getGameTypeColor(win.game_type)}>
                       {formatGameType(win.game_type)}
@@ -208,9 +221,14 @@ export const LiveBets = () => {
               luckyWins.map((win) => (
                 <div key={win.id} className="p-3 bg-muted/30 rounded-lg border border-border hover:border-primary/30 transition-all">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-sm flex items-center gap-1">
-                      🍀 {win.profiles?.username || 'Unknown'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span>🍀</span>
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={win.profiles?.avatar_url || undefined} />
+                        <AvatarFallback className="text-xs">{(win.profiles?.roblox_username || win.profiles?.username || 'U')[0].toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-semibold text-sm">{win.profiles?.roblox_username || win.profiles?.username || 'Unknown'}</span>
+                    </div>
                     <Badge className={getGameTypeColor(win.game_type)}>
                       {formatGameType(win.game_type)}
                     </Badge>
