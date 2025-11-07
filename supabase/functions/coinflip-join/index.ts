@@ -106,22 +106,36 @@ Deno.serve(async (req) => {
     const result: 'heads' | 'tails' = (arr[0] % 2) === 0 ? 'heads' : 'tails'
     const winnerId = result === game.creator_side ? game.creator_id : user.id
 
-    // Atomically update game to completed if still waiting
-    const { error: updateGameError } = await supabaseAdmin
+    // Step 1: Update game with joiner_id to trigger animation start for both users
+    const { error: updateJoinerError } = await supabaseAdmin
       .from('coinflip_games')
       .update({
         joiner_id: user.id,
         joiner_items: joinerItems,
+      })
+      .eq('id', gameId)
+      .eq('status', 'waiting')
+
+    if (updateJoinerError) {
+      return new Response(JSON.stringify({ error: 'Could not join game' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // Wait 5 seconds for animation countdown
+    await new Promise(resolve => setTimeout(resolve, 5000))
+
+    // Step 2: Update game to completed with result (triggers result display for both users)
+    const { error: updateGameError } = await supabaseAdmin
+      .from('coinflip_games')
+      .update({
         winner_id: winnerId,
         result,
         status: 'completed',
         completed_at: new Date().toISOString(),
       })
       .eq('id', gameId)
-      .eq('status', 'waiting')
 
     if (updateGameError) {
-      return new Response(JSON.stringify({ error: 'Could not update game' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      console.error('Error updating game to completed:', updateGameError)
     }
 
     // Deduct joiner items
@@ -213,8 +227,10 @@ Deno.serve(async (req) => {
       description: `Lost coinflip (${result})`,
     })
 
-    // Remove game row
-    await supabaseAdmin.from('coinflip_games').delete().eq('id', gameId)
+    // Remove game row after a delay (allows clients to see final state)
+    setTimeout(async () => {
+      await supabaseAdmin.from('coinflip_games').delete().eq('id', gameId)
+    }, 3000)
 
     return new Response(JSON.stringify({ result, winnerId }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (e: any) {

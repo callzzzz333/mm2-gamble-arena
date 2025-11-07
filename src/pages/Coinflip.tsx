@@ -72,17 +72,116 @@ const Coinflip = () => {
     fetchGames();
     fetchRecentFlips();
     
+    // Track active countdown intervals to clean up properly
+    const activeIntervals = new Map<string, number>();
+    
     const gamesChannel = supabase
       .channel('coinflip-games-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'coinflip_games' }, () => {
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'coinflip_games' 
+      }, (payload) => {
+        const updatedGame = payload.new as CoinflipGame;
+        
+        // When a game gets a joiner, start animation for both users
+        if (updatedGame.joiner_id && updatedGame.status === 'waiting' && !activeIntervals.has(updatedGame.id)) {
+          console.log('Game joined, starting animation for game:', updatedGame.id);
+          setGameToJoinRef(updatedGame);
+          setFlipAnimation({ 
+            gameId: updatedGame.id, 
+            isFlipping: false, 
+            countdown: 5, 
+            result: null 
+          });
+          
+          // Start countdown
+          let countdown = 5;
+          const countdownInterval = window.setInterval(() => {
+            countdown--;
+            setFlipAnimation(prev => {
+              if (!prev || prev.gameId !== updatedGame.id) {
+                clearInterval(countdownInterval);
+                activeIntervals.delete(updatedGame.id);
+                return prev;
+              }
+              
+              if (countdown === 0) {
+                clearInterval(countdownInterval);
+                activeIntervals.delete(updatedGame.id);
+                return { ...prev, isFlipping: true, countdown: 0 };
+              }
+              
+              return { ...prev, countdown };
+            });
+          }, 1000);
+          
+          activeIntervals.set(updatedGame.id, countdownInterval);
+        }
+        
+        // When game is completed, show result
+        if (updatedGame.status === 'completed' && updatedGame.result) {
+          console.log('Game completed, showing result:', updatedGame.result);
+          setFlipAnimation(prev => {
+            if (!prev || prev.gameId !== updatedGame.id) return prev;
+            return { ...prev, isFlipping: false, result: updatedGame.result as 'heads' | 'tails' };
+          });
+          
+          if (user && (updatedGame.creator_id === user.id || updatedGame.joiner_id === user.id)) {
+            toast({
+              title: updatedGame.winner_id === user.id ? 'You won! 🎉' : 'You lost 😢',
+              description: `Result: ${updatedGame.result.toUpperCase()}. Items have been paid out.`,
+              duration: 5000,
+            });
+          }
+          
+          fetchRecentFlips();
+          
+          setTimeout(() => {
+            setFlipAnimation(prev => prev?.gameId === updatedGame.id ? null : prev);
+            setGameToJoinRef(prev => prev?.id === updatedGame.id ? null : prev);
+          }, 3000);
+        }
+        
+        fetchGames();
+      })
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'coinflip_games' 
+      }, () => {
+        fetchGames();
+      })
+      .on('postgres_changes', { 
+        event: 'DELETE', 
+        schema: 'public', 
+        table: 'coinflip_games' 
+      }, (payload) => {
+        const deletedGame = payload.old as CoinflipGame;
+        console.log('Game deleted:', deletedGame.id);
+        
+        // Clean up any active intervals
+        const interval = activeIntervals.get(deletedGame.id);
+        if (interval) {
+          clearInterval(interval);
+          activeIntervals.delete(deletedGame.id);
+        }
+        
+        // Clean up state if this was the active game
+        setFlipAnimation(prev => prev?.gameId === deletedGame.id ? null : prev);
+        setGameToJoinRef(prev => prev?.id === deletedGame.id ? null : prev);
+        
         fetchGames();
       })
       .subscribe();
 
     return () => {
+      // Clean up all active intervals
+      activeIntervals.forEach((interval) => clearInterval(interval));
+      activeIntervals.clear();
       supabase.removeChannel(gamesChannel);
     };
-  }, []);
+  }, [user]);
 
 
   const checkUser = async () => {
@@ -243,7 +342,6 @@ const Coinflip = () => {
     setIsJoining(true);
     setJoinDialogOpen(false);
     setGameToJoin(null);
-    setGameToJoinRef(game);
 
     try {
       // Verify user still has the items before proceeding
@@ -275,21 +373,8 @@ const Coinflip = () => {
         rarity: si.item.rarity
       }));
 
-      // Start countdown & flip animation while server decides the result
-      setFlipAnimation({ gameId: game.id, isFlipping: false, countdown: 5, result: null });
-      
-      let countdown = 5;
-      const countdownInterval = setInterval(() => {
-        countdown--;
-        setFlipAnimation(prev => prev ? { ...prev, countdown } : null);
-        if (countdown === 0) {
-          clearInterval(countdownInterval);
-          setFlipAnimation(prev => prev ? { ...prev, isFlipping: true, countdown: 0 } : null);
-          
-          // Ask server to join & payout
-          completeGame(game, joinerItemsData);
-        }
-      }, 1000);
+      // Call edge function which will trigger realtime updates
+      completeGame(game, joinerItemsData);
     } catch (error: any) {
       console.error('Error joining game:', error);
       toast({ 
@@ -318,27 +403,9 @@ const Coinflip = () => {
         throw new Error(error.message || 'Server error')
       }
 
-      const { result, winnerId } = data as { result: 'heads' | 'tails'; winnerId: string }
-
-      // Show result and finalize UI
-      setFlipAnimation(prev => prev ? { ...prev, isFlipping: false, result } : null)
-
-      toast({
-        title: winnerId === user?.id ? 'You won! 🎉' : 'You lost 😢',
-        description: `Result: ${result.toUpperCase()}. Items have been paid out.`,
-        duration: 5000,
-      })
-
-      fetchRecentFlips()
+      // Realtime will handle showing the animation and result
       setSelectedItems([])
       setIsJoining(false)
-
-      // Keep showing result for 3 seconds before removing game
-      setTimeout(() => {
-        setFlipAnimation(null)
-        setGameToJoinRef(null)
-        setGames(prev => prev.filter(g => g.id !== game.id))
-      }, 3000)
     } catch (error: any) {
       console.error('Error completing game:', error)
       toast({
