@@ -7,9 +7,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, Package, Plus, Minus } from "lucide-react";
+import { Coins, Package, Plus, Minus, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
+import coinHeads from "@/assets/coin-heads.png";
+import coinTails from "@/assets/coin-tails.png";
 
 interface Item {
   id: string;
@@ -39,12 +41,20 @@ interface CoinflipGame {
   profiles: any;
 }
 
+interface FlipAnimation {
+  gameId: string;
+  isFlipping: boolean;
+  countdown: number;
+  result: 'heads' | 'tails' | null;
+}
+
 const Coinflip = () => {
   const [games, setGames] = useState<CoinflipGame[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [selectedSide, setSelectedSide] = useState<'heads' | 'tails'>('heads');
   const [user, setUser] = useState<any>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [flipAnimation, setFlipAnimation] = useState<FlipAnimation | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -59,10 +69,73 @@ const Coinflip = () => {
       })
       .subscribe();
 
+    // Check for expired games every 10 seconds
+    const expiryInterval = setInterval(() => {
+      checkExpiredGames();
+    }, 10000);
+
     return () => {
       supabase.removeChannel(gamesChannel);
+      clearInterval(expiryInterval);
     };
   }, []);
+
+  const checkExpiredGames = async () => {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    
+    const { data: expiredGames } = await supabase
+      .from("coinflip_games")
+      .select("*")
+      .eq("status", "waiting")
+      .lt("created_at", fiveMinutesAgo);
+
+    if (expiredGames && expiredGames.length > 0) {
+      for (const game of expiredGames) {
+        await refundGame(game);
+      }
+    }
+  };
+
+  const refundGame = async (game: any) => {
+    // Refund items to creator
+    if (game.creator_items && game.creator_items.length > 0) {
+      for (const item of game.creator_items) {
+        const { data: existingItem } = await supabase
+          .from('user_items')
+          .select('*')
+          .eq('user_id', game.creator_id)
+          .eq('item_id', item.item_id)
+          .single();
+
+        if (existingItem) {
+          await supabase
+            .from('user_items')
+            .update({ quantity: existingItem.quantity + item.quantity })
+            .eq('id', existingItem.id);
+        } else {
+          await supabase
+            .from('user_items')
+            .insert({
+              user_id: game.creator_id,
+              item_id: item.item_id,
+              quantity: item.quantity
+            });
+        }
+      }
+    }
+
+    // Update game status
+    await supabase
+      .from("coinflip_games")
+      .update({ status: 'expired' })
+      .eq("id", game.id);
+
+    toast({ 
+      title: "Game Expired", 
+      description: "Your coinflip game timed out and items were refunded.",
+      variant: "default" 
+    });
+  };
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -258,10 +331,6 @@ const Coinflip = () => {
       }
     }
 
-    // Determine winner
-    const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
-    const winnerId = result === game.creator_side ? game.creator_id : user.id;
-
     const joinerItemsData = selectedItems.map(si => ({
       item_id: si.item.id,
       name: si.item.name,
@@ -271,9 +340,44 @@ const Coinflip = () => {
       rarity: si.item.rarity
     }));
 
+    // Start flip animation with countdown
+    const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
+    const winnerId = result === game.creator_side ? game.creator_id : user.id;
+
+    // Show countdown and flip animation
+    setFlipAnimation({ gameId: game.id, isFlipping: false, countdown: 5, result: null });
+    
+    // Countdown
+    let countdown = 5;
+    const countdownInterval = setInterval(() => {
+      countdown--;
+      setFlipAnimation(prev => prev ? { ...prev, countdown } : null);
+      if (countdown === 0) {
+        clearInterval(countdownInterval);
+        // Start flip
+        setFlipAnimation(prev => prev ? { ...prev, isFlipping: true, countdown: 0 } : null);
+        
+        // Show result after flip animation
+        setTimeout(() => {
+          setFlipAnimation(prev => prev ? { ...prev, result, isFlipping: false } : null);
+          completeGame(game, joinerItemsData, winnerId, result);
+        }, 2000);
+      }
+    }, 1000);
+  };
+
+  const completeGame = async (
+    game: CoinflipGame,
+    joinerItemsData: any[], 
+    winnerId: string, 
+    result: 'heads' | 'tails'
+  ) => {
+    const creatorTotal = parseFloat(game.bet_amount);
+    const joinerTotal = joinerItemsData.reduce((sum, item) => sum + (item.value * item.quantity), 0);
+
     // Record joiner bet transaction
     await supabase.from("transactions").insert({
-      user_id: user.id,
+      user_id: user?.id,
       amount: -joinerTotal,
       type: 'bet',
       game_type: 'coinflip',
@@ -349,11 +453,16 @@ const Coinflip = () => {
     }
 
     toast({
-      title: winnerId === user.id ? "You won! 🎉" : "You lost 😢",
+      title: winnerId === user?.id ? "You won! 🎉" : "You lost 😢",
       description: `Result: ${result.toUpperCase()}`
     });
 
     setSelectedItems([]);
+    
+    // Clear flip animation after showing result
+    setTimeout(() => {
+      setFlipAnimation(null);
+    }, 3000);
   };
 
   const getRarityColor = (rarity: string) => {
@@ -461,6 +570,48 @@ const Coinflip = () => {
               </div>
             </Card>
 
+            {/* Flip Animation Modal */}
+            {flipAnimation && (
+              <div className="fixed inset-0 bg-background/95 z-50 flex items-center justify-center">
+                <div className="text-center space-y-8">
+                  {flipAnimation.countdown > 0 ? (
+                    <>
+                      <h2 className="text-4xl font-bold">Flipping in...</h2>
+                      <div className="text-8xl font-bold text-primary animate-pulse">
+                        {flipAnimation.countdown}
+                      </div>
+                    </>
+                  ) : flipAnimation.isFlipping ? (
+                    <>
+                      <h2 className="text-4xl font-bold">Flipping Coin...</h2>
+                      <div className="relative w-48 h-48 mx-auto">
+                        <img 
+                          src={coinHeads} 
+                          alt="Coin" 
+                          className="absolute inset-0 w-full h-full animate-[spin_0.5s_linear_infinite]"
+                          style={{ backfaceVisibility: 'hidden' }}
+                        />
+                      </div>
+                    </>
+                  ) : flipAnimation.result ? (
+                    <>
+                      <h2 className="text-4xl font-bold mb-4">Result:</h2>
+                      <div className="relative w-48 h-48 mx-auto animate-scale-in">
+                        <img 
+                          src={flipAnimation.result === 'heads' ? coinHeads : coinTails} 
+                          alt={flipAnimation.result} 
+                          className="w-full h-full"
+                        />
+                      </div>
+                      <p className="text-6xl font-bold text-primary uppercase animate-fade-in">
+                        {flipAnimation.result}!
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
             {/* Active Games */}
             <div>
               <h2 className="text-xl font-bold mb-4">Active Games</h2>
@@ -469,8 +620,11 @@ const Coinflip = () => {
                   <p className="text-muted-foreground">No active games. Create one to get started!</p>
                 </Card>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {games.map((game) => {
+                    const timeLeft = Math.max(0, 300 - Math.floor((Date.now() - new Date(game.created_at).getTime()) / 1000));
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
                     const betAmount = parseFloat(game.bet_amount);
                     const minBet = betAmount * 0.9;
                     const maxBet = betAmount * 1.1;
@@ -480,92 +634,74 @@ const Coinflip = () => {
                     return (
                       <Card 
                         key={game.id} 
-                        className={`overflow-hidden border-2 transition-all duration-300 ${
+                        className={`overflow-hidden border transition-all duration-300 ${
                           canJoin ? 'border-primary/50 hover:border-primary shadow-glow' : 'border-border'
                         }`}
                       >
-                        <div className="flex flex-col md:flex-row">
-                          {/* Creator Section */}
-                          <div className="flex-1 bg-gradient-to-br from-card to-muted/50 p-6 border-r border-border">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                                  <span className="text-sm font-bold text-primary">
-                                    {(game.profiles?.username || 'U')[0].toUpperCase()}
-                                  </span>
-                                </div>
-                                <div>
-                                  <p className="font-semibold">{game.profiles?.username || 'Unknown'}</p>
-                                  <Badge variant={game.creator_side === 'heads' ? 'default' : 'secondary'} className="mt-1">
-                                    {game.creator_side.toUpperCase()}
-                                  </Badge>
-                                </div>
+                        <div className="flex items-center gap-4 p-4">
+                          {/* Creator Section - Compact */}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {/* Coin Image */}
+                            <img 
+                              src={game.creator_side === 'heads' ? coinHeads : coinTails} 
+                              alt={game.creator_side}
+                              className="w-12 h-12 flex-shrink-0"
+                            />
+                            
+                            {/* Creator Info */}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs font-bold text-primary">
+                                  {(game.profiles?.username || 'U')[0].toUpperCase()}
+                                </span>
                               </div>
-                              <div className="text-right">
-                                <p className="text-3xl font-bold text-primary">${betAmount.toFixed(2)}</p>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm truncate">{game.profiles?.username || 'Unknown'}</p>
+                                <p className="text-xs text-muted-foreground">{game.creator_side.toUpperCase()}</p>
                               </div>
                             </div>
                             
-                            {/* Creator Items */}
-                            {game.creator_items && game.creator_items.length > 0 && (
-                              <div className="grid grid-cols-4 gap-2">
-                                {game.creator_items.slice(0, 8).map((item: any, idx: number) => (
-                                  <div key={idx} className="relative group">
-                                    <div className="aspect-square bg-card rounded-lg border border-border overflow-hidden">
-                                      {item.image_url ? (
-                                        <img 
-                                          src={item.image_url} 
-                                          alt={item.name} 
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-muted">
-                                          <Package className="w-4 h-4 text-muted-foreground" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                            {/* Bet Amount */}
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-xl font-bold text-primary">${betAmount.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                ${minBet.toFixed(0)}-${maxBet.toFixed(0)}
+                              </p>
+                            </div>
                           </div>
 
-                          {/* VS Divider */}
-                          <div className="flex items-center justify-center p-4 bg-background">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-2xl font-bold shadow-glow">
+                          {/* Timer */}
+                          <div className="flex items-center gap-2 px-3 border-l border-border">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm font-mono">
+                              {minutes}:{String(seconds).padStart(2, '0')}
+                            </span>
+                          </div>
+
+                          {/* VS Icon */}
+                          <div className="flex items-center justify-center px-3 border-l border-border">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-bold shadow-glow">
                               VS
                             </div>
                           </div>
 
-                          {/* Join Section */}
-                          <div className="flex-1 bg-gradient-to-br from-muted/50 to-card p-6 border-l border-border">
-                            <div className="h-full flex flex-col justify-between">
-                              <div>
-                                <p className="text-sm text-muted-foreground mb-2">Match Range</p>
-                                <p className="text-lg font-semibold mb-4">
-                                  ${minBet.toFixed(2)} - ${maxBet.toFixed(2)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Your bet: <span className="font-bold text-foreground">${userTotal.toFixed(2)}</span>
-                                </p>
-                              </div>
-                              
-                              <Button
-                                onClick={() => joinGame(game)}
-                                disabled={!canJoin}
-                                className="w-full mt-4"
-                                size="lg"
-                              >
-                                {game.creator_id === user?.id 
-                                  ? 'Your Game' 
-                                  : !canJoin && selectedItems.length === 0
-                                  ? 'Select Items to Join'
-                                  : !canJoin
-                                  ? 'Bet Outside Range'
-                                  : 'Join Game'
-                                }
-                              </Button>
-                            </div>
+                          {/* Join Button */}
+                          <div className="flex items-center px-3">
+                            <Button
+                              onClick={() => joinGame(game)}
+                              disabled={!canJoin}
+                              size="sm"
+                              className="min-w-[100px]"
+                            >
+                              {game.creator_id === user?.id 
+                                ? 'Waiting' 
+                                : !canJoin && selectedItems.length === 0
+                                ? 'Select Items'
+                                : !canJoin
+                                ? 'Out of Range'
+                                : 'Join'
+                              }
+                            </Button>
                           </div>
                         </div>
                       </Card>
