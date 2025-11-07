@@ -445,30 +445,19 @@ const Coinflip = () => {
         rarity: si.item.rarity
       }));
 
-      // Generate result using crypto-secure randomness
-      const randomArray = new Uint32Array(1);
-      crypto.getRandomValues(randomArray);
-      const result: 'heads' | 'tails' = (randomArray[0] % 2) === 0 ? 'heads' : 'tails';
-      const winnerId = result === game.creator_side ? game.creator_id : user.id;
-
-      // Show countdown and flip animation
+      // Start countdown & flip animation while server decides the result
       setFlipAnimation({ gameId: game.id, isFlipping: false, countdown: 5, result: null });
       
-      // Countdown
       let countdown = 5;
       const countdownInterval = setInterval(() => {
         countdown--;
         setFlipAnimation(prev => prev ? { ...prev, countdown } : null);
         if (countdown === 0) {
           clearInterval(countdownInterval);
-          // Start flip
           setFlipAnimation(prev => prev ? { ...prev, isFlipping: true, countdown: 0 } : null);
           
-          // Show result after flip animation
-          setTimeout(() => {
-            setFlipAnimation(prev => prev ? { ...prev, result, isFlipping: false } : null);
-            completeGame(game, joinerItemsData, winnerId, result);
-          }, 2000);
+          // Ask server to join & payout
+          completeGame(game, joinerItemsData);
         }
       }, 1000);
     } catch (error: any) {
@@ -484,175 +473,49 @@ const Coinflip = () => {
 
   const completeGame = async (
     game: CoinflipGame,
-    joinerItemsData: any[], 
-    winnerId: string, 
-    result: 'heads' | 'tails'
+    joinerItemsData: any[]
   ) => {
     try {
-      const creatorTotal = parseFloat(game.bet_amount);
-      const joinerTotal = joinerItemsData.reduce((sum, item) => sum + (item.value * item.quantity), 0);
+      // Call server to perform join, payout and cleanup
+      const { data, error } = await supabase.functions.invoke('coinflip-join', {
+        body: {
+          gameId: game.id,
+          joinerItems: joinerItemsData,
+        },
+      })
 
-      // Remove joiner's items from inventory first
-      for (const si of selectedItems) {
-        const { data: userItem, error: fetchError } = await supabase
-          .from('user_items')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('item_id', si.item.id)
-          .single();
-
-        if (fetchError || !userItem || userItem.quantity < si.quantity) {
-          throw new Error(`Item ${si.item.name} not available`);
-        }
-
-        const newQty = userItem.quantity - si.quantity;
-        if (newQty === 0) {
-          const { error: delError } = await supabase
-            .from('user_items')
-            .delete()
-            .eq('id', userItem.id);
-          if (delError) throw delError;
-        } else {
-          const { error: updateError } = await supabase
-            .from('user_items')
-            .update({ quantity: newQty })
-            .eq('id', userItem.id);
-          if (updateError) throw updateError;
-        }
+      if (error) {
+        throw new Error(error.message || 'Server error')
       }
 
-      // Update game with results
-      const { error: updateError } = await supabase
-        .from("coinflip_games")
-        .update({
-          joiner_id: user.id,
-          joiner_items: joinerItemsData,
-          winner_id: winnerId,
-          result: result,
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq("id", game.id);
+      const { result, winnerId } = data as { result: 'heads' | 'tails'; winnerId: string }
 
-      if (updateError) {
-        console.error('Failed to update coinflip game:', updateError);
-        throw new Error('Failed to complete game: ' + updateError.message);
-      }
-
-      // Record joiner bet transaction
-      await supabase.from("transactions").insert({
-        user_id: user?.id,
-        amount: -joinerTotal,
-        type: 'bet',
-        game_type: 'coinflip',
-        game_id: game.id,
-        description: `Joined coinflip game`
-      });
-
-      // Record winner transaction (no house edge on transaction, but on items)
-      await supabase.from("transactions").insert({
-        user_id: winnerId,
-        amount: creatorTotal + joinerTotal,
-        type: 'win',
-        game_type: 'coinflip',
-        game_id: game.id,
-        description: `Won coinflip (${result})`
-      });
-
-      // Record loser transaction
-      const loserId = winnerId === game.creator_id ? user.id : game.creator_id;
-      await supabase.from("transactions").insert({
-        user_id: loserId,
-        amount: 0,
-        type: 'loss',
-        game_type: 'coinflip',
-        game_id: game.id,
-        description: `Lost coinflip (${result})`
-      });
-
-      // Give ALL items to winner (winner takes all, no house edge)
-      const allItems = [...game.creator_items, ...joinerItemsData];
-      
-      for (const item of allItems) {
-        const { data: existingItem, error: fetchError } = await supabase
-          .from('user_items')
-          .select('*')
-          .eq('user_id', winnerId)
-          .eq('item_id', item.item_id)
-          .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          console.error('Error fetching existing item:', fetchError);
-          continue;
-        }
-
-        if (existingItem) {
-          const { error: updateError } = await supabase
-            .from('user_items')
-            .update({ quantity: existingItem.quantity + item.quantity })
-            .eq('id', existingItem.id);
-          
-          if (updateError) {
-            console.error('Error updating item quantity:', updateError);
-          }
-        } else {
-          const { error: insertError } = await supabase
-            .from('user_items')
-            .insert({
-              user_id: winnerId,
-              item_id: item.item_id,
-              quantity: item.quantity
-            });
-          
-          if (insertError) {
-            console.error('Error inserting new item:', insertError);
-          }
-        }
-      }
-
-      // Delete the completed game from database
-      const { error: deleteError } = await supabase
-        .from("coinflip_games")
-        .delete()
-        .eq("id", game.id);
-      
-      if (deleteError) {
-        console.error('Failed to delete coinflip game:', deleteError);
-      }
+      // Show result and finalize UI
+      setFlipAnimation(prev => prev ? { ...prev, isFlipping: false, result } : null)
 
       toast({
-        title: winnerId === user?.id ? "You won! 🎉" : "You lost 😢",
-        description: `Result: ${result.toUpperCase()}. All items ${winnerId === user?.id ? 'added to your inventory!' : 'went to the winner.'}`,
-        duration: 5000
-      });
+        title: winnerId === user?.id ? 'You won! 🎉' : 'You lost 😢',
+        description: `Result: ${result.toUpperCase()}. Items have been paid out.`,
+        duration: 5000,
+      })
 
-      // Remove the game from local list immediately
-      setGames((prev) => prev.filter((g) => g.id !== game.id));
+      setGames(prev => prev.filter(g => g.id !== game.id))
+      fetchRecentFlips()
+      setSelectedItems([])
+      setIsJoining(false)
 
-      // Refresh recent flips
-      fetchRecentFlips();
-
-      setSelectedItems([]);
-      setIsJoining(false);
-      
-      // Clear flip animation after showing result
-      setTimeout(() => {
-        setFlipAnimation(null);
-      }, 3000);
-
+      setTimeout(() => setFlipAnimation(null), 3000)
     } catch (error: any) {
-      console.error('Error completing game:', error);
+      console.error('Error completing game:', error)
       toast({
-        title: "Error completing game",
-        description: error.message || "Something went wrong. Please refresh the page.",
-        variant: "destructive",
-        duration: 5000
-      });
-      setIsJoining(false);
-      setFlipAnimation(null);
-      
-      // Refresh the page data
-      fetchGames();
+        title: 'Error completing game',
+        description: error.message || 'Something went wrong. Please refresh and try again.',
+        variant: 'destructive',
+        duration: 5000,
+      })
+      setIsJoining(false)
+      setFlipAnimation(null)
+      fetchGames()
     }
   };
 
