@@ -56,12 +56,14 @@ const Coinflip = () => {
   const [user, setUser] = useState<any>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [flipAnimation, setFlipAnimation] = useState<FlipAnimation | null>(null);
+  const [recentFlips, setRecentFlips] = useState<Array<'heads' | 'tails'>>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     checkUser();
     fetchGames();
+    fetchRecentFlips();
     
     const gamesChannel = supabase
       .channel('coinflip-games-changes')
@@ -166,6 +168,24 @@ const Coinflip = () => {
       return;
     }
     setUser(user);
+  };
+
+  const fetchRecentFlips = async () => {
+    const { data } = await supabase
+      .from("transactions")
+      .select("description")
+      .eq("game_type", "coinflip")
+      .in("type", ["win", "loss"])
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (data) {
+      const flips = data.map(t => {
+        const match = t.description?.match(/\((\w+)\)/);
+        return match ? match[1] as 'heads' | 'tails' : null;
+      }).filter((f): f is 'heads' | 'tails' => f !== null);
+      setRecentFlips(flips);
+    }
   };
 
   const fetchGames = async () => {
@@ -484,6 +504,9 @@ const Coinflip = () => {
     // Remove the game from local list immediately
     setGames((prev) => prev.filter((g) => g.id !== game.id));
 
+    // Refresh recent flips
+    fetchRecentFlips();
+
     setSelectedItems([]);
     
     // Clear flip animation after showing result
@@ -522,6 +545,28 @@ const Coinflip = () => {
                 <p className="text-muted-foreground">50/50 chance to double your items</p>
               </div>
             </div>
+
+            {/* Last 100 Flips */}
+            {recentFlips.length > 0 && (
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Last 100 Flips</h3>
+                <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+                  {recentFlips.map((flip, idx) => (
+                    <div 
+                      key={idx} 
+                      className="w-6 h-6 rounded-full overflow-hidden bg-transparent flex-shrink-0"
+                      title={flip}
+                    >
+                      <img 
+                        src={flip === 'heads' ? coinHeads : coinTails} 
+                        alt={flip}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             {/* Create Game Section */}
             <Card className="p-6">
