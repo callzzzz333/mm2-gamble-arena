@@ -171,19 +171,27 @@ const Coinflip = () => {
   };
 
   const fetchRecentFlips = async () => {
+    // Get unique coinflip game results from transactions
     const { data } = await supabase
       .from("transactions")
-      .select("description")
+      .select("game_id, description")
       .eq("game_type", "coinflip")
-      .in("type", ["win", "loss"])
+      .eq("type", "win")
       .order("created_at", { ascending: false })
       .limit(100);
 
     if (data) {
-      const flips = data.map(t => {
-        const match = t.description?.match(/\((\w+)\)/);
-        return match ? match[1] as 'heads' | 'tails' : null;
-      }).filter((f): f is 'heads' | 'tails' => f !== null);
+      // Extract unique games with their results
+      const seenGames = new Set();
+      const flips = data
+        .map(t => {
+          if (seenGames.has(t.game_id)) return null;
+          seenGames.add(t.game_id);
+          const match = t.description?.match(/\((\w+)\)/);
+          return match ? match[1] as 'heads' | 'tails' : null;
+        })
+        .filter((f): f is 'heads' | 'tails' => f !== null)
+        .slice(0, 100);
       setRecentFlips(flips);
     }
   };
