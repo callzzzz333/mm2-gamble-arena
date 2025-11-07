@@ -38,7 +38,7 @@ const Index = () => {
             <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
               <GameModeCard
                 title="COINFLIP"
-                subtitle="MM2 PVP Originals"
+                subtitle="RBXROYALE ORIGINALS"
                 icon={Coins}
                 isNew
                 route="/coinflip"
@@ -46,7 +46,7 @@ const Index = () => {
               />
               <GameModeCard
                 title="JACKPOT"
-                subtitle="MM2 PVP Originals"
+                subtitle="RBXROYALE ORIGINALS"
                 icon={Trophy}
                 isNew
                 route="/jackpot"

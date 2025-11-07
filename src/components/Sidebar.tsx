@@ -42,12 +42,6 @@ export const Sidebar = () => {
   const gameMenuItems: GameMenuItem[] = [
     { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
     { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
-    { title: "Russian Roulette", icon: Skull, path: "/russian-roulette", isNew: true },
-    { title: "King of the Hill", icon: Crown, path: "/king-of-hill", isNew: true },
-    { title: "Draft Battle", icon: Target, path: "/draft-battle", isNew: true },
-    { title: "Team Showdown", icon: Users, path: "/team-showdown", isNew: true },
-    { title: "Item Duel", icon: Swords, path: "/item-duel", isNew: true },
-    { title: "Rakeback", icon: Percent, comingSoon: true },
   ];
 
   return (
@@ -182,7 +176,7 @@ export const Sidebar = () => {
       {/* Footer */}
       <div className="px-6 pt-4 border-t border-border">
         <p className="text-xs text-muted-foreground text-center">
-          © 2024 MM2 PVP
+          © 2024 RBXROYALE
         </p>
       </div>
     </div>

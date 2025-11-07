@@ -23,7 +23,7 @@ export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon, r
   };
 
   return (
-    <div className="group relative bg-card rounded-xl border border-border overflow-hidden transition-all duration-300 hover:border-primary/50 hover:shadow-glow min-w-[300px]">
+    <div className="group relative bg-card rounded-xl border border-border overflow-hidden transition-all duration-300 hover:border-primary/50 hover:shadow-glow min-w-[240px] max-w-[280px]">
       <div className="relative h-full">
         {isNew && (
           <Badge className="absolute top-3 right-3 z-10 bg-primary text-primary-foreground">
@@ -37,7 +37,7 @@ export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon, r
         )}
         
         {image ? (
-          <div className="relative h-48 overflow-hidden">
+          <div className="relative h-40 overflow-hidden">
             <img 
               src={image} 
               alt={title}
@@ -46,15 +46,15 @@ export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon, r
             <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
           </div>
         ) : (
-          <div className="flex items-center justify-center h-48 py-8">
+          <div className="flex items-center justify-center h-40 py-8">
             <Icon className="w-16 h-16 text-primary/60 group-hover:text-primary transition-colors" />
           </div>
         )}
         
-        <div className="p-6 space-y-4">
+        <div className="p-4 space-y-3">
           <div className="space-y-1">
-            <h3 className="text-xl font-bold text-foreground">{title}</h3>
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
+            <h3 className="text-lg font-bold text-foreground">{title}</h3>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
           
           <Button 
