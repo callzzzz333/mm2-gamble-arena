@@ -644,7 +644,7 @@ const Coinflip = () => {
                                 />
                                 <div
                                   className={`absolute inset-0 flex items-center justify-center ${
-                                    isAnimating && flipAnimation.isFlipping ? "animate-[spin_0.3s_linear_infinite]" : ""
+                                    isAnimating && flipAnimation.isFlipping ? "animate-[spin_5.3s_linear_infinite]" : ""
                                   }`}
                                 >
                                   <span className="text-2xl font-black text-white drop-shadow-[0_0_6px_rgba(0,0,0,1)]">
