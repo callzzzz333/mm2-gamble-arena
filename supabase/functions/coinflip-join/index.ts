@@ -85,17 +85,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2) Creator must still own their items (if create flow didn’t lock)
+    // 2) Creator items may already be locked during creation.
+    // If they are still present in inventory, we'll deduct them; otherwise we skip.
+    const creatorInventorySnapshot: Record<string, { id: string; quantity: number }> = {}
     for (const it of (game.creator_items as JoinItem[])) {
-      const { data: inv, error } = await supabaseAdmin
+      const { data: inv } = await supabaseAdmin
         .from('user_items')
         .select('id, quantity')
         .eq('user_id', game.creator_id)
         .eq('item_id', it.item_id)
         .maybeSingle()
-      if (error || !inv || inv.quantity < it.quantity) {
-        return new Response(JSON.stringify({ error: `Creator no longer has ${it.name}` }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
+      if (inv) creatorInventorySnapshot[it.item_id] = inv
     }
 
     // Random result (server authoritative)
@@ -140,21 +140,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Deduct creator items
+    // Deduct creator items only if they still exist (skip if already locked)
     for (const it of (game.creator_items as JoinItem[])) {
-      const { data: inv } = await supabaseAdmin
-        .from('user_items')
-        .select('id, quantity')
-        .eq('user_id', game.creator_id)
-        .eq('item_id', it.item_id)
-        .maybeSingle()
-      const newQty = (inv?.quantity ?? 0) - it.quantity
-      if (inv && newQty >= 0) {
-        if (newQty === 0) {
-          await supabaseAdmin.from('user_items').delete().eq('id', inv.id)
-        } else {
-          await supabaseAdmin.from('user_items').update({ quantity: newQty }).eq('id', inv.id)
-        }
+      const inv = creatorInventorySnapshot[it.item_id]
+      if (!inv) continue
+      const newQty = (inv.quantity ?? 0) - it.quantity
+      if (newQty === 0) {
+        await supabaseAdmin.from('user_items').delete().eq('id', inv.id)
+      } else if (newQty > 0) {
+        await supabaseAdmin.from('user_items').update({ quantity: newQty }).eq('id', inv.id)
       }
     }
 

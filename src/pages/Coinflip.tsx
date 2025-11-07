@@ -298,33 +298,6 @@ const Coinflip = () => {
 
     setIsCreating(true);
 
-    // Remove items from inventory
-    for (const si of selectedItems) {
-      const { data: userItem } = await supabase
-        .from('user_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('item_id', si.item.id)
-        .single();
-
-      if (!userItem) {
-        toast({ title: "Item not found in inventory", variant: "destructive" });
-        return;
-      }
-
-      if (userItem.quantity < si.quantity) {
-        toast({ title: `Not enough ${si.item.name}`, variant: "destructive" });
-        return;
-      }
-
-      const newQty = userItem.quantity - si.quantity;
-      if (newQty === 0) {
-        await supabase.from('user_items').delete().eq('id', userItem.id);
-      } else {
-        await supabase.from('user_items').update({ quantity: newQty }).eq('id', userItem.id);
-      }
-    }
-
     const itemsData = selectedItems.map(si => ({
       item_id: si.item.id,
       name: si.item.name,
@@ -334,45 +307,22 @@ const Coinflip = () => {
       rarity: si.item.rarity
     }));
 
-    const { data: newGame, error } = await supabase.from("coinflip_games").insert({
-      creator_id: user.id,
-      bet_amount: getTotalValue(),
-      creator_side: selectedSide,
-      creator_items: itemsData,
-      status: 'waiting'
-    }).select().single();
+    try {
+      const { data, error } = await supabase.functions.invoke('coinflip-create', {
+        body: { items: itemsData, side: selectedSide }
+      })
 
-    if (error) {
-      toast({ title: "Error creating game", description: error.message, variant: "destructive" });
-      return;
+      if (error) throw new Error(error.message)
+
+      setSelectedItems([])
+      setIsCreating(false)
+      toast({ title: "Game created!", description: "Waiting for opponent..." })
+      fetchGames()
+    } catch (e: any) {
+      console.error('Error creating game:', e)
+      toast({ title: 'Error creating game', description: e.message || 'Please try again', variant: 'destructive' })
+      setIsCreating(false)
     }
-
-    // Record bet transaction for live activity
-    const betAmount = getTotalValue();
-    console.log('Creating coinflip bet transaction:', { 
-      user_id: user.id, 
-      amount: betAmount, 
-      game_id: newGame.id 
-    });
-    
-    const { error: transactionError } = await supabase.from("transactions").insert({
-      user_id: user.id,
-      amount: betAmount,
-      type: 'bet',
-      game_type: 'coinflip',
-      game_id: newGame.id,
-      description: `Created coinflip game (${selectedSide})`
-    });
-
-    if (transactionError) {
-      console.error('Error creating transaction:', transactionError);
-    } else {
-      console.log('Transaction created successfully!');
-    }
-
-    setSelectedItems([]);
-    setIsCreating(false);
-    toast({ title: "Game created!", description: "Waiting for opponent..." });
   };
 
   const handleJoinClick = (game: CoinflipGame) => {
