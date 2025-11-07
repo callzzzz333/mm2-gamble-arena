@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Send, FileText, Gift, Timer, Plus } from "lucide-react";
+import { Send, FileText, Gift, Timer, Plus, ChevronRight, ChevronLeft } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +36,9 @@ export const LiveChat = () => {
   const [tosOpen, setTosOpen] = useState(false);
   const [giveawayOpen, setGiveawayOpen] = useState(false);
   const [selectedGiveawayItem, setSelectedGiveawayItem] = useState<string>("");
+  const [isChatOpen, setIsChatOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -112,9 +114,7 @@ export const LiveChat = () => {
 
   useEffect(() => {
     // Auto scroll to bottom
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const fetchMessages = async () => {
@@ -264,7 +264,22 @@ export const LiveChat = () => {
   };
 
   return (
-    <div className="fixed right-0 top-0 h-screen w-96 bg-card/95 backdrop-blur-sm border-l border-border flex flex-col shadow-2xl z-40">
+    <>
+      {/* Toggle Button - Always Visible */}
+      <Button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className="fixed right-2 top-1/2 -translate-y-1/2 z-50 h-12 w-8 p-0 shadow-glow"
+        style={{ right: isChatOpen ? '384px' : '8px' }}
+      >
+        {isChatOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+      </Button>
+
+      {/* Chat Panel */}
+      <div 
+        className={`fixed right-0 top-0 h-screen w-96 bg-card/95 backdrop-blur-sm border-l border-border flex flex-col shadow-2xl z-40 transition-transform duration-300 ${
+          isChatOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
       <div className="p-4 border-b border-border/50 bg-gradient-to-r from-card to-card/80">
         <div className="flex items-center justify-center mb-3">
           <img src={logo} alt="RBXRoyale" className="h-12" />
@@ -486,7 +501,7 @@ export const LiveChat = () => {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {/* Chat Messages */}
           {messages.map((msg) => (
@@ -517,6 +532,7 @@ export const LiveChat = () => {
               </div>
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
@@ -541,5 +557,6 @@ export const LiveChat = () => {
         </div>
       </form>
     </div>
+    </>
   );
 };
