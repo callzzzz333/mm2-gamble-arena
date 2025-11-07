@@ -59,6 +59,7 @@ const Coinflip = () => {
   const [recentFlips, setRecentFlips] = useState<Array<'heads' | 'tails'>>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -74,6 +75,11 @@ const Coinflip = () => {
       })
       .subscribe();
 
+    // Update current time every second for live countdown
+    const timeInterval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
     // Check for expired games every second to handle UI timer expiry
     const expiryInterval = setInterval(() => {
       checkExpiredGames();
@@ -81,6 +87,7 @@ const Coinflip = () => {
 
     return () => {
       supabase.removeChannel(gamesChannel);
+      clearInterval(timeInterval);
       clearInterval(expiryInterval);
     };
   }, []);
@@ -739,7 +746,7 @@ const Coinflip = () => {
               ) : (
                 <div className="space-y-3">
                    {games.map((game) => {
-                    const timeLeft = Math.max(0, 300 - Math.floor((Date.now() - new Date(game.created_at).getTime()) / 1000));
+                    const timeLeft = Math.max(0, 300 - Math.floor((currentTime - new Date(game.created_at).getTime()) / 1000));
                     const minutes = Math.floor(timeLeft / 60);
                     const seconds = timeLeft % 60;
                     const betAmount = parseFloat(game.bet_amount);
