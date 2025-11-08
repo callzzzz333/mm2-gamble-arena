@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -28,33 +28,10 @@ interface Transaction {
   }> | null;
 }
 
-export const LiveBets = () => {
+export const LiveBets = memo(() => {
   const [liveBets, setLiveBets] = useState<Transaction[]>([]);
 
-  useEffect(() => {
-    fetchLiveBets();
-
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel('transactions-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, () => {
-        console.log('New transaction detected, refreshing...');
-        fetchLiveBets();
-      })
-      .subscribe();
-
-    // Refresh every 10 seconds
-    const interval = setInterval(() => {
-      fetchLiveBets();
-    }, 10000);
-
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
-  }, []);
-
-  const fetchLiveBets = async () => {
+  const fetchLiveBets = useCallback(async () => {
     console.log('Fetching live bets...');
     const { data: txs, error: txError } = await supabase
       .from('transactions')
@@ -124,9 +101,32 @@ export const LiveBets = () => {
 
     console.log('Fetched live bets count:', merged.length);
     setLiveBets(merged as any);
-  };
+  }, []);
 
-  const getGameTypeColor = (gameType: string) => {
+  useEffect(() => {
+    fetchLiveBets();
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('transactions-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, () => {
+        console.log('New transaction detected, refreshing...');
+        fetchLiveBets();
+      })
+      .subscribe();
+
+    // Refresh every 10 seconds
+    const interval = setInterval(() => {
+      fetchLiveBets();
+    }, 10000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [fetchLiveBets]);
+
+  const getGameTypeColor = useCallback((gameType: string) => {
     const colors: any = {
       'coinflip': 'bg-blue-500/20 text-blue-500',
       'jackpot': 'bg-purple-500/20 text-purple-500',
@@ -137,20 +137,20 @@ export const LiveBets = () => {
       'draft_battle': 'bg-pink-500/20 text-pink-500',
     };
     return colors[gameType] || 'bg-gray-500/20 text-gray-500';
-  };
+  }, []);
 
-  const formatGameType = (gameType: string) => {
+  const formatGameType = useCallback((gameType: string) => {
     return gameType?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Unknown';
-  };
+  }, []);
 
-  const formatTime = (timestamp: string) => {
+  const formatTime = useCallback((timestamp: string) => {
     const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
     if (seconds < 60) return `${seconds}s ago`;
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
     const hours = Math.floor(minutes / 60);
     return `${hours}h ago`;
-  };
+  }, []);
 
   return (
     <div className="bg-card rounded-xl border border-border p-6">
@@ -230,4 +230,6 @@ export const LiveBets = () => {
       </div>
     </div>
   );
-};
+});
+
+LiveBets.displayName = 'LiveBets';

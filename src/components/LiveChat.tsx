@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,21 @@ export const LiveChat = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const fetchMessages = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select(`
+        *,
+        profiles!chat_messages_user_id_fkey(avatar_url, roblox_username, level)
+      `)
+      .order("created_at", { ascending: true })
+      .limit(100);
+
+    if (!error && data) {
+      setMessages(data as any);
+    }
+  }, []);
 
   useEffect(() => {
     // Get current user
@@ -86,30 +101,14 @@ export const LiveChat = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchMessages]);
 
   useEffect(() => {
     // Auto scroll to bottom
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const fetchMessages = async () => {
-    const { data, error } = await supabase
-      .from("chat_messages")
-      .select(`
-        *,
-        profiles!chat_messages_user_id_fkey(avatar_url, roblox_username, level)
-      `)
-      .order("created_at", { ascending: true })
-      .limit(100);
-
-    if (!error && data) {
-      setMessages(data as any);
-    }
-  };
-
-
-  const sendMessage = async (e: React.FormEvent) => {
+  const sendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newMessage.trim() || !user || !profile) {
@@ -138,7 +137,7 @@ export const LiveChat = () => {
     } else {
       setNewMessage("");
     }
-  };
+  }, [user, profile, newMessage, toast]);
 
   return (
     <>

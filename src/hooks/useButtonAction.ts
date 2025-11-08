@@ -1,78 +1,31 @@
-import { useState, useCallback, useRef } from 'react';
-import { useToast } from '@/hooks/use-toast';
-
-interface UseButtonActionOptions {
-  onSuccess?: (data?: any) => void;
-  onError?: (error: any) => void;
-  successMessage?: string;
-  errorMessage?: string;
-}
+import { useState, useCallback } from 'react';
 
 /**
- * Hook to prevent double-clicks and handle button loading states
- * Automatically prevents duplicate requests and manages UI feedback
+ * Custom hook to prevent duplicate button clicks and actions
+ * Useful for preventing race conditions in async operations
  */
-export const useButtonAction = (options: UseButtonActionOptions = {}) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const requestIdRef = useRef<string | null>(null);
-  const { toast } = useToast();
+export const useButtonAction = () => {
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const execute = useCallback(
-    async (action: () => Promise<any>) => {
-      // Prevent duplicate requests
-      if (isLoading) {
-        console.log('Request already in progress, ignoring duplicate click');
-        return;
-      }
+  const executeAction = useCallback(async <T>(
+    action: () => Promise<T>,
+    onSuccess?: (result: T) => void,
+    onError?: (error: Error) => void
+  ) => {
+    if (isProcessing) return;
 
-      // Generate unique request ID
-      const requestId = `${Date.now()}-${Math.random()}`;
-      requestIdRef.current = requestId;
+    setIsProcessing(true);
+    try {
+      const result = await action();
+      onSuccess?.(result);
+      return result;
+    } catch (error) {
+      onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [isProcessing]);
 
-      setIsLoading(true);
-
-      try {
-        const result = await action();
-
-        // Only process if this is still the current request
-        if (requestIdRef.current === requestId) {
-          if (options.successMessage) {
-            toast({ 
-              title: options.successMessage,
-              duration: 2000,
-            });
-          }
-          options.onSuccess?.(result);
-        }
-
-        return result;
-      } catch (error: any) {
-        // Only process if this is still the current request
-        if (requestIdRef.current === requestId) {
-          console.error('Button action error:', error);
-          toast({
-            title: options.errorMessage || error.message || 'An error occurred',
-            variant: 'destructive',
-            duration: 3000,
-          });
-          options.onError?.(error);
-        }
-        throw error;
-      } finally {
-        // Only reset loading if this is still the current request
-        if (requestIdRef.current === requestId) {
-          setIsLoading(false);
-          requestIdRef.current = null;
-        }
-      }
-    },
-    [isLoading, options, toast]
-  );
-
-  const reset = useCallback(() => {
-    setIsLoading(false);
-    requestIdRef.current = null;
-  }, []);
-
-  return { execute, isLoading, reset };
+  return { isProcessing, executeAction };
 };

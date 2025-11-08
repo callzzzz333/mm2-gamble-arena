@@ -3,9 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useButtonAction } from "@/hooks/useButtonAction";
 import { ChevronLeft, ChevronRight, Gift, Users, Clock } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
 interface Giveaway {
   id: string;
@@ -41,10 +41,7 @@ export const GiveawayWidget = () => {
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [winnerAnimation, setWinnerAnimation] = useState<WinnerAnimation | null>(null);
   const [spinningAvatar, setSpinningAvatar] = useState<any>(null);
-  const { execute: joinGiveaway, isLoading: isJoining } = useButtonAction({
-    successMessage: "Successfully joined giveaway!",
-    onSuccess: () => fetchGiveaways(),
-  });
+  const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -270,24 +267,23 @@ export const GiveawayWidget = () => {
 
   const handleJoinGiveaway = async (giveawayId: string) => {
     if (!user) {
-      throw new Error("Please login to join giveaways");
+      toast.error("Please login to join giveaways");
+      return;
     }
-
-    await joinGiveaway(async () => {
+    if (isJoining) return;
+    setIsJoining(true);
+    try {
       const { data, error } = await supabase.functions.invoke("giveaway-join", {
         body: { giveawayId },
       });
-
-      if (error) {
-        console.error("Error joining giveaway:", error);
-        throw error;
-      }
-
-      // Check if already entered
-      if (data?.alreadyEntered) {
-        console.log("Already entered this giveaway");
-      }
-    });
+      if (error) throw error;
+      toast.success("Successfully joined giveaway!");
+      fetchGiveaways();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to join");
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   const getRarityColor = (rarity: string) => {

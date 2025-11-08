@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useButtonAction } from "@/hooks/useButtonAction";
 import { Gift, Plus, Minus } from "lucide-react";
+import { toast } from "sonner";
 
 interface Item {
   id: string;
@@ -30,17 +30,7 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
   const [userItems, setUserItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [user, setUser] = useState<any>(null);
-  const { execute: createGiveaway, isLoading: isCreating } = useButtonAction({
-    successMessage: "Giveaway created!",
-    onSuccess: () => {
-      setOpen(false);
-      setSelectedItems([]);
-      setDurationMinutes(5);
-      if (user?.id) {
-        fetchUserItems(user.id);
-      }
-    },
-  });
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -98,34 +88,38 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
 
   const handleCreateGiveaway = async () => {
     if (!user) {
-      throw new Error("Please login to create giveaways");
+      toast.error("Please login to create giveaways");
+      return;
     }
-
     if (selectedItems.length === 0) {
-      throw new Error("Please select at least one item");
+      toast.error("Please select at least one item");
+      return;
     }
-
-    const itemsData = selectedItems.map((si) => ({
-      item_id: si.item.id,
-      name: si.item.name,
-      value: si.item.value,
-      quantity: si.quantity,
-      image_url: si.item.image_url,
-      rarity: si.item.rarity,
-    }));
-
-    await createGiveaway(async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      const itemsData = selectedItems.map((si) => ({
+        item_id: si.item.id,
+        name: si.item.name,
+        value: si.item.value,
+        quantity: si.quantity,
+        image_url: si.item.image_url,
+        rarity: si.item.rarity,
+      }));
       const { error } = await supabase.functions.invoke("giveaway-create", {
-        body: {
-          items: itemsData,
-          title: "Item Giveaway",
-          description: null,
-          durationMinutes,
-        },
+        body: { items: itemsData, title: "Item Giveaway", description: null, durationMinutes },
       });
-
       if (error) throw error;
-    });
+      toast.success("Giveaway created!");
+      setOpen(false);
+      setSelectedItems([]);
+      setDurationMinutes(5);
+      if (user?.id) fetchUserItems(user.id);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const getRarityColor = (rarity: string) => {

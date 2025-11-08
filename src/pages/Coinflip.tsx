@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
@@ -82,13 +82,23 @@ const Coinflip = () => {
           schema: "public",
           table: "coinflip_games",
         },
-        (payload) => {
+        async (payload) => {
           const updatedGame = payload.new as CoinflipGame;
 
           // When a game gets a joiner, start animation for both users
           if (updatedGame.joiner_id && updatedGame.status === "waiting" && !activeIntervals.has(updatedGame.id)) {
             console.log("Game joined, starting animation for game:", updatedGame.id);
-            setGameToJoinRef(updatedGame);
+            
+            // Fetch profile data for complete game object
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("id, username, avatar_url, roblox_username")
+              .eq("id", updatedGame.creator_id)
+              .single();
+
+            const gameWithProfile = { ...updatedGame, profiles: profile };
+            setGameToJoinRef(gameWithProfile);
+            
             setFlipAnimation({
               gameId: updatedGame.id,
               isFlipping: false,
@@ -208,7 +218,7 @@ const Coinflip = () => {
       activeIntervals.clear();
       supabase.removeChannel(gamesChannel);
     };
-  }, [user]);
+  }, [user, flipAnimation, toast]);
 
   const fetchRecentFlips = async () => {
     // Get unique coinflip game results from transactions
@@ -267,31 +277,32 @@ const Coinflip = () => {
     }
   };
 
-  const handleSelectItem = (itemWithQty: Item & { quantity: number }) => {
-    const existing = selectedItems.find((si) => si.item.id === itemWithQty.id);
-    if (existing) {
-      setSelectedItems(
-        selectedItems.map((si) => (si.item.id === itemWithQty.id ? { ...si, quantity: si.quantity + 1 } : si)),
-      );
-    } else {
-      const { quantity, ...item } = itemWithQty;
-      setSelectedItems([...selectedItems, { item, quantity: 1 }]);
-    }
-    // Don't close dialog - let user select multiple items
-  };
+  const handleSelectItem = useCallback((itemWithQty: Item & { quantity: number }) => {
+    setSelectedItems((prev) => {
+      const existing = prev.find((si) => si.item.id === itemWithQty.id);
+      if (existing) {
+        return prev.map((si) => (si.item.id === itemWithQty.id ? { ...si, quantity: si.quantity + 1 } : si));
+      } else {
+        const { quantity, ...item } = itemWithQty;
+        return [...prev, { item, quantity: 1 }];
+      }
+    });
+  }, []);
 
-  const removeItem = (itemId: string) => {
-    const existing = selectedItems.find((si) => si.item.id === itemId);
-    if (existing && existing.quantity > 1) {
-      setSelectedItems(selectedItems.map((si) => (si.item.id === itemId ? { ...si, quantity: si.quantity - 1 } : si)));
-    } else {
-      setSelectedItems(selectedItems.filter((si) => si.item.id !== itemId));
-    }
-  };
+  const removeItem = useCallback((itemId: string) => {
+    setSelectedItems((prev) => {
+      const existing = prev.find((si) => si.item.id === itemId);
+      if (existing && existing.quantity > 1) {
+        return prev.map((si) => (si.item.id === itemId ? { ...si, quantity: si.quantity - 1 } : si));
+      } else {
+        return prev.filter((si) => si.item.id !== itemId);
+      }
+    });
+  }, []);
 
-  const getTotalValue = () => {
+  const getTotalValue = useCallback(() => {
     return selectedItems.reduce((sum, si) => sum + si.item.value * si.quantity, 0);
-  };
+  }, [selectedItems]);
 
   const createGame = async () => {
     if (isCreating) return;
@@ -432,7 +443,7 @@ const Coinflip = () => {
     }
   };
 
-  const getRarityColor = (rarity: string) => {
+  const getRarityColor = useCallback((rarity: string) => {
     const colors: any = {
       Godly: "bg-red-500/20 text-red-500",
       Ancient: "bg-purple-500/20 text-purple-500",
@@ -442,10 +453,15 @@ const Coinflip = () => {
       Common: "bg-gray-500/20 text-gray-500",
     };
     return colors[rarity] || "bg-gray-500/20 text-gray-500";
-  };
+  }, []);
 
   // Keep animating game visible even if it leaves 'waiting'
-  const displayedGames = gameToJoinRef && !games.some(g => g.id === gameToJoinRef.id) ? [gameToJoinRef, ...games] : games;
+  const displayedGames = useMemo(() => {
+    if (gameToJoinRef && !games.some(g => g.id === gameToJoinRef.id)) {
+      return [gameToJoinRef, ...games];
+    }
+    return games;
+  }, [games, gameToJoinRef]);
 
   return (
     <div className="min-h-screen w-full flex">
