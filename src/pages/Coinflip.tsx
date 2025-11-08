@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
@@ -7,8 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Coins, Package, Plus, Minus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import { JoinCoinflipDialog } from "@/components/JoinCoinflipDialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -55,7 +55,7 @@ const Coinflip = () => {
   const [games, setGames] = useState<CoinflipGame[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [selectedSide, setSelectedSide] = useState<"heads" | "tails">("heads");
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth();
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [flipAnimation, setFlipAnimation] = useState<FlipAnimation | null>(null);
   const [recentFlips, setRecentFlips] = useState<Array<"heads" | "tails">>([]);
@@ -65,10 +65,8 @@ const Coinflip = () => {
   const [gameToJoinRef, setGameToJoinRef] = useState<CoinflipGame | null>(null);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
-    checkUser();
     fetchGames();
     fetchRecentFlips();
 
@@ -211,18 +209,6 @@ const Coinflip = () => {
       supabase.removeChannel(gamesChannel);
     };
   }, [user]);
-
-  const checkUser = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    setUser(user);
-  };
 
   const fetchRecentFlips = async () => {
     // Get unique coinflip game results from transactions

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
@@ -12,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Swords, Users, Trophy, Play, Eye, Info } from "lucide-react";
 
@@ -60,7 +61,7 @@ interface Participant {
 
 export default function CaseBattles() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth();
   const [battles, setBattles] = useState<Battle[]>([]);
   const [participants, setParticipants] = useState<Record<string, Participant[]>>({});
   const [crates, setCrates] = useState<Crate[]>([]);
@@ -76,7 +77,6 @@ export default function CaseBattles() {
   const [previewCrate, setPreviewCrate] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
-    checkUser();
     fetchBattles();
     fetchCrates();
   }, []);
@@ -178,17 +178,6 @@ export default function CaseBattles() {
     setCurrentRoundResults(results);
     setShowingAnimations(true);
     setAnimationsCompleted(0);
-  };
-
-  const checkUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    setUser(user);
   };
 
   const fetchBattles = async () => {

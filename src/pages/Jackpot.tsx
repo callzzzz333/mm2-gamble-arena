@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Trophy, Package, Minus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -53,7 +53,7 @@ const Jackpot = () => {
   const [currentGame, setCurrentGame] = useState<JackpotGame | null>(null);
   const [entries, setEntries] = useState<JackpotEntry[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth();
   const [timeLeft, setTimeLeft] = useState(0);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [spinState, setSpinState] = useState<SpinState>({ isSpinning: false, currentIndex: 0, slowDown: false });
@@ -65,10 +65,8 @@ const Jackpot = () => {
     return audio;
   });
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
-    checkUser();
     fetchCurrentGame();
 
     const interval = setInterval(() => {
@@ -97,16 +95,6 @@ const Jackpot = () => {
       supabase.removeChannel(channel);
     };
   }, [currentGame]);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    setUser(user);
-  };
 
   const fetchCurrentGame = async () => {
     const { data: game } = await supabase

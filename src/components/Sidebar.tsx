@@ -1,9 +1,9 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Home, Trophy, DollarSign, Shield, Coins, Dices, Zap, Gift, Swords, Star, CircleDot, Percent, Skull, Crown, Target, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import logo from "@/assets/logo.png";
 
 interface GameMenuItem {
@@ -17,26 +17,8 @@ interface GameMenuItem {
 export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    checkAdminStatus();
-  }, []);
-
-  const checkAdminStatus = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .single();
-
-    setIsAdmin(!!data);
-  };
+  const { user } = useAuth(false);
+  const { isAdmin } = useAdminCheck(user);
 
   const isActive = (path: string) => location.pathname === path;
 
