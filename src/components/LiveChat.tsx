@@ -11,6 +11,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { OnlineCounter } from "@/components/OnlineCounter";
+import { GiveawayWidget } from "@/components/GiveawayWidget";
+import { CreateGiveawayDialog } from "@/components/CreateGiveawayDialog";
 import logo from "@/assets/logo.png";
 
 interface Message {
@@ -288,6 +290,14 @@ export const LiveChat = () => {
           <OnlineCounter />
           
           <div className="flex gap-2">
+            <CreateGiveawayDialog 
+              trigger={
+                <Button variant="outline" size="icon">
+                  <Gift className="w-4 h-4" />
+                </Button>
+              }
+            />
+            
             <Dialog open={tosOpen} onOpenChange={setTosOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -500,6 +510,8 @@ export const LiveChat = () => {
           </div>
         </div>
       </div>
+
+      <GiveawayWidget />
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">

@@ -224,31 +224,46 @@ export type Database = {
         Row: {
           created_at: string | null
           creator_id: string
+          description: string | null
           ended_at: string | null
           ends_at: string | null
           id: string
           item_id: string
+          prize_items: Json | null
           status: string
+          title: string | null
+          total_value: number | null
+          type: string | null
           winner_id: string | null
         }
         Insert: {
           created_at?: string | null
           creator_id: string
+          description?: string | null
           ended_at?: string | null
           ends_at?: string | null
           id?: string
           item_id: string
+          prize_items?: Json | null
           status?: string
+          title?: string | null
+          total_value?: number | null
+          type?: string | null
           winner_id?: string | null
         }
         Update: {
           created_at?: string | null
           creator_id?: string
+          description?: string | null
           ended_at?: string | null
           ends_at?: string | null
           id?: string
           item_id?: string
+          prize_items?: Json | null
           status?: string
+          title?: string | null
+          total_value?: number | null
+          type?: string | null
           winner_id?: string | null
         }
         Relationships: [
