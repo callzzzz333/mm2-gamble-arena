@@ -20,6 +20,7 @@ const Items = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRarity, setSelectedRarity] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"value-desc" | "value-asc" | "name">("value-desc");
 
   useEffect(() => {
     fetchItems();
@@ -39,25 +40,59 @@ const Items = () => {
     setItems(data || []);
   };
 
+  // Real-time subscription for items
+  useEffect(() => {
+    const channel = supabase
+      .channel('items-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'items'
+        },
+        () => {
+          fetchItems();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const rarities = ["all", ...new Set(items.map(item => item.rarity))];
 
-  const filteredItems = items.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRarity = selectedRarity === "all" || item.rarity === selectedRarity;
-    return matchesSearch && matchesRarity;
-  });
+  const filteredItems = items
+    .filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRarity = selectedRarity === "all" || item.rarity === selectedRarity;
+      return matchesSearch && matchesRarity;
+    })
+    .sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "value-asc") return a.value - b.value;
+      return b.value - a.value; // value-desc
+    });
 
   const getRarityColor = (rarity: string) => {
     const colors: Record<string, string> = {
+      "Chroma": "bg-gradient-to-r from-red-500 via-yellow-500 to-purple-500",
+      "Ancient": "bg-red-600",
+      "Godly": "bg-purple-600",
       "Legendary": "bg-yellow-500",
-      "Godly": "bg-purple-500",
-      "Ancient": "bg-red-500",
       "Unique": "bg-blue-500",
       "Rare": "bg-green-500",
       "Uncommon": "bg-gray-500",
       "Common": "bg-slate-500"
     };
     return colors[rarity] || "bg-gray-500";
+  };
+
+  const getRarityCount = (rarity: string) => {
+    if (rarity === "all") return items.length;
+    return items.filter(item => item.rarity === rarity).length;
   };
 
   return (
@@ -82,13 +117,28 @@ const Items = () => {
             {/* Filters */}
             <Card className="p-6">
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Search Items</label>
-                  <Input
-                    placeholder="Search by name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Search Items</label>
+                    <Input
+                      placeholder="Search by name..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Sort By</label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="w-full px-3 py-2 rounded-md border bg-background text-foreground"
+                    >
+                      <option value="value-desc">Value (High to Low)</option>
+                      <option value="value-asc">Value (Low to High)</option>
+                      <option value="name">Name (A-Z)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -98,13 +148,19 @@ const Items = () => {
                       <Badge
                         key={rarity}
                         variant={selectedRarity === rarity ? "default" : "outline"}
-                        className="cursor-pointer capitalize"
+                        className={`cursor-pointer capitalize hover:scale-105 transition-transform ${
+                          selectedRarity === rarity && rarity !== "all" ? getRarityColor(rarity) : ""
+                        }`}
                         onClick={() => setSelectedRarity(rarity)}
                       >
-                        {rarity}
+                        {rarity} ({getRarityCount(rarity)})
                       </Badge>
                     ))}
                   </div>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredItems.length} of {items.length} items
                 </div>
               </div>
             </Card>
