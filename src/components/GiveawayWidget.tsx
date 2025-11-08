@@ -179,12 +179,9 @@ export const GiveawayWidget = () => {
       return;
     }
 
-    // Filter out giveaways with empty prize_items AND giveaways created by current user
+    // Filter out giveaways with empty prize_items
     const validGiveaways = giveawaysData.filter(
-      (g) => g.prize_items && 
-             Array.isArray(g.prize_items) && 
-             g.prize_items.length > 0 &&
-             g.creator_id !== user?.id // Exclude user's own giveaways
+      (g) => g.prize_items && Array.isArray(g.prize_items) && g.prize_items.length > 0
     );
 
     // Fetch creator profiles
@@ -257,6 +254,7 @@ export const GiveawayWidget = () => {
 
   const currentGiveaway = giveaways[currentIndex];
   const isDrawing = winnerAnimation?.giveawayId === currentGiveaway?.id;
+  const isOwnGiveaway = user?.id === currentGiveaway?.creator_id;
 
   return (
     <Card className="p-2 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 border-primary/20 shadow-sm">
@@ -360,11 +358,11 @@ export const GiveawayWidget = () => {
 
           <Button
             onClick={() => handleJoinGiveaway(currentGiveaway.id)}
-            disabled={currentGiveaway.userEntered || isJoining}
+            disabled={currentGiveaway.userEntered || isJoining || isOwnGiveaway}
             className="flex-1 text-[11px] h-6 font-semibold"
             size="sm"
           >
-            {isJoining ? "Joining..." : currentGiveaway.userEntered ? "✓ Entered" : "Join Giveaway"}
+            {isOwnGiveaway ? "Your Giveaway" : isJoining ? "Joining..." : currentGiveaway.userEntered ? "✓ Entered" : "Join Giveaway"}
           </Button>
 
           <Button
