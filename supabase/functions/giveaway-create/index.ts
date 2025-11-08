@@ -84,6 +84,75 @@ serve(async (req) => {
 
     if (giveawayError) throw giveawayError;
 
+    // Send Discord webhook notification
+    try {
+      const webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
+      if (webhookUrl) {
+        const timestamp = Math.floor(endsAt.getTime() / 1000);
+
+        // Get creator profile for username
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("roblox_username, username")
+          .eq("id", user.id)
+          .single();
+
+        const creatorName = profile?.roblox_username || profile?.username || "Unknown";
+
+        // Build items description
+        const itemsList = items.slice(0, 10).map((item: any) => 
+          `• **${item.name}** (x${item.quantity}) - ${item.rarity} - 🪙${item.value}`
+        ).join("\n");
+
+        const moreItems = items.length > 10 ? `\n*... and ${items.length - 10} more items*` : "";
+
+        const embed = {
+          title: "🎉 New Giveaway Created!",
+          description: `**${creatorName}** is giving away **${items.length}** item(s)!\n\n**Prize Items:**\n${itemsList}${moreItems}`,
+          color: 0x3b82f6, // Blue color
+          fields: [
+            {
+              name: "💎 Total Value",
+              value: `🪙${totalValue.toFixed(2)}`,
+              inline: true,
+            },
+            {
+              name: "⏰ Ends",
+              value: `<t:${timestamp}:R>`,
+              inline: true,
+            },
+            {
+              name: "👥 Entries",
+              value: "0",
+              inline: true,
+            },
+          ],
+          thumbnail: {
+            url: items[0]?.image_url || "",
+          },
+          footer: {
+            text: "Join the giveaway now on MM2PVP!",
+          },
+          timestamp: new Date().toISOString(),
+        };
+
+        const webhookResponse = await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] }),
+        });
+
+        if (!webhookResponse.ok) {
+          console.error("Discord webhook failed:", await webhookResponse.text());
+        } else {
+          console.log("Discord webhook sent successfully");
+        }
+      }
+    } catch (webhookError) {
+      console.error("Error sending Discord webhook:", webhookError);
+      // Don't fail the giveaway creation if webhook fails
+    }
+
     return new Response(JSON.stringify({ success: true, giveaway }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
