@@ -26,8 +26,6 @@ interface CreateGiveawayDialogProps {
 
 export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(5);
   const [userItems, setUserItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
@@ -118,8 +116,8 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
       const { data, error } = await supabase.functions.invoke("giveaway-create", {
         body: {
           items: itemsData,
-          title: title || "Item Giveaway",
-          description: description || null,
+          title: "Item Giveaway",
+          description: null,
           durationMinutes,
         },
       });
@@ -131,8 +129,6 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
 
       toast({ title: "Giveaway created! 🎉", description: "Users can now join" });
       setOpen(false);
-      setTitle("");
-      setDescription("");
       setSelectedItems([]);
       setDurationMinutes(5);
       if (user?.id) {
@@ -172,26 +168,6 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-2 block">Title</label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter giveaway title"
-              maxLength={100}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-2 block">Description (optional)</label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add a description"
-              maxLength={200}
-            />
-          </div>
-
           <div>
             <label className="text-sm font-medium mb-2 block">Duration (minutes)</label>
             <Input

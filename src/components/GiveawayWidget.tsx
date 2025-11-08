@@ -21,6 +21,11 @@ interface Giveaway {
   created_at: string;
   entries?: number;
   userEntered?: boolean;
+  profiles?: {
+    username: string;
+    roblox_username: string | null;
+    avatar_url: string | null;
+  };
 }
 
 export const GiveawayWidget = () => {
@@ -119,6 +124,15 @@ export const GiveawayWidget = () => {
       (g) => g.prize_items && Array.isArray(g.prize_items) && g.prize_items.length > 0
     );
 
+    // Fetch creator profiles
+    const creatorIds = validGiveaways.map((g) => g.creator_id).filter(Boolean);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username, roblox_username, avatar_url")
+      .in("id", creatorIds);
+
+    const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
     // Fetch entry counts and user entries
     const giveawaysWithEntries = await Promise.all(
       validGiveaways.map(async (giveaway) => {
@@ -142,6 +156,7 @@ export const GiveawayWidget = () => {
           ...giveaway,
           entries: count || 0,
           userEntered,
+          profiles: profileMap.get(giveaway.creator_id || ""),
         } as Giveaway;
       })
     );
@@ -198,51 +213,52 @@ export const GiveawayWidget = () => {
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-start gap-2">
-          <div className="flex-1">
-            <h4 className="font-medium text-sm text-foreground">{currentGiveaway.title}</h4>
-            {currentGiveaway.description && (
-              <p className="text-xs text-muted-foreground mt-0.5">{currentGiveaway.description}</p>
-            )}
-          </div>
-          {currentGiveaway.type === "auto" && (
-            <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30 text-[10px] px-1.5 py-0">
-              AUTO
-            </Badge>
-          )}
-        </div>
-
-        {/* Prize Items */}
-        <div className="grid grid-cols-3 gap-1.5">
-          {currentGiveaway.prize_items.map((item: any, idx: number) => (
-            <div
-              key={idx}
-              className="relative rounded border border-border/50 overflow-hidden bg-card/50 backdrop-blur-sm"
-            >
-              {item.image_url && (
-                <img src={item.image_url} alt={item.name} className="w-full h-14 object-cover" />
-              )}
-              <div className="p-1.5 space-y-0.5">
-                <p className="text-[10px] font-semibold truncate">{item.name}</p>
-                <Badge className={`${getRarityColor(item.rarity)} text-[8px] px-1 py-0`}>
-                  {item.rarity}
-                </Badge>
-                <p className="text-[10px] text-primary font-bold">${item.value.toFixed(2)}</p>
+        <div className="flex items-center gap-3">
+          {/* Left side: Host and info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Avatar className="w-6 h-6">
+                <AvatarImage src={currentGiveaway.profiles?.avatar_url || undefined} />
+                <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                  {(currentGiveaway.profiles?.username || currentGiveaway.profiles?.roblox_username || "U")[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-xs font-medium text-muted-foreground truncate">
+                {currentGiveaway.profiles?.roblox_username || currentGiveaway.profiles?.username || "Host"}'s Giveaway
+              </p>
+            </div>
+            
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3 h-3 text-muted-foreground" />
+                <span className="text-sm font-bold text-primary">{timeLeft}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Users className="w-3 h-3 text-muted-foreground" />
+                <span className="text-xs font-medium">{currentGiveaway.entries} entries</span>
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Stats */}
-        <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1">
-            <Users className="w-3 h-3 text-muted-foreground" />
-            <span className="font-semibold">{currentGiveaway.entries}</span>
-            <span className="text-muted-foreground">entries</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Clock className="w-3 h-3 text-muted-foreground" />
-            <span className="font-semibold text-primary">{timeLeft}</span>
+
+          {/* Right side: Prize items */}
+          <div className="flex-shrink-0">
+            <div className="grid grid-cols-2 gap-1">
+              {currentGiveaway.prize_items.slice(0, 4).map((item: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="relative w-12 h-12 rounded border border-border/50 overflow-hidden bg-card/50"
+                >
+                  {item.image_url && (
+                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                  )}
+                </div>
+              ))}
+            </div>
+            {currentGiveaway.prize_items.length > 4 && (
+              <p className="text-[9px] text-center text-muted-foreground mt-0.5">
+                +{currentGiveaway.prize_items.length - 4} more
+              </p>
+            )}
           </div>
         </div>
 
