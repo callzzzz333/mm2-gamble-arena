@@ -18,7 +18,14 @@ Deno.serve(async (req) => {
       throw new Error('No authorization header provided');
     }
 
-    const supabase = createClient(
+    // Create client with service role to perform operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Verify user with anon key client
+    const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
@@ -28,7 +35,7 @@ Deno.serve(async (req) => {
       }
     );
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     
     if (authError) {
       console.error('Auth error:', authError);
@@ -54,7 +61,7 @@ Deno.serve(async (req) => {
     const itemsToExchange: any[] = [];
 
     for (const item of items) {
-      const { data: itemData } = await supabase
+      const { data: itemData } = await supabaseAdmin
         .from('items')
         .select('*')
         .eq('id', item.item_id)
@@ -65,7 +72,7 @@ Deno.serve(async (req) => {
       }
 
       // Check user has this item
-      const { data: userItem } = await supabase
+      const { data: userItem } = await supabaseAdmin
         .from('user_items')
         .select('*')
         .eq('user_id', user.id)
@@ -98,7 +105,7 @@ Deno.serve(async (req) => {
 
     // Remove items from user inventory
     for (const item of items) {
-      const { data: userItem } = await supabase
+      const { data: userItem } = await supabaseAdmin
         .from('user_items')
         .select('*')
         .eq('user_id', user.id)
@@ -106,13 +113,13 @@ Deno.serve(async (req) => {
         .single();
 
       if (userItem.quantity === item.quantity) {
-        await supabase
+        await supabaseAdmin
           .from('user_items')
           .delete()
           .eq('user_id', user.id)
           .eq('item_id', item.item_id);
       } else {
-        await supabase
+        await supabaseAdmin
           .from('user_items')
           .update({ quantity: userItem.quantity - item.quantity })
           .eq('user_id', user.id)
@@ -121,7 +128,7 @@ Deno.serve(async (req) => {
     }
 
     // Update or insert raffle tickets
-    const { data: existingTickets } = await supabase
+    const { data: existingTickets } = await supabaseAdmin
       .from('christmas_raffle_tickets')
       .select('*')
       .eq('user_id', user.id)
@@ -129,7 +136,7 @@ Deno.serve(async (req) => {
 
     if (existingTickets) {
       const updatedItems = [...existingTickets.items_exchanged, ...itemsToExchange];
-      await supabase
+      await supabaseAdmin
         .from('christmas_raffle_tickets')
         .update({
           total_tickets: existingTickets.total_tickets + ticketsEarned,
@@ -138,7 +145,7 @@ Deno.serve(async (req) => {
         })
         .eq('user_id', user.id);
     } else {
-      await supabase
+      await supabaseAdmin
         .from('christmas_raffle_tickets')
         .insert({
           user_id: user.id,
@@ -148,7 +155,7 @@ Deno.serve(async (req) => {
     }
 
     // Update the raffle prize pool
-    const { data: raffle } = await supabase
+    const { data: raffle } = await supabaseAdmin
       .from('christmas_raffle')
       .select('*')
       .eq('year', 2024)
@@ -156,7 +163,7 @@ Deno.serve(async (req) => {
 
     if (raffle) {
       const updatedPrizeItems = [...raffle.prize_items, ...itemsToExchange];
-      await supabase
+      await supabaseAdmin
         .from('christmas_raffle')
         .update({
           total_prize_value: raffle.total_prize_value + totalValue,

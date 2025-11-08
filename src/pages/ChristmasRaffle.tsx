@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useButtonAction } from "@/hooks/useButtonAction";
 
 interface UserItem {
   id: string;
@@ -48,12 +49,12 @@ const ChristmasRaffle = () => {
   const [inventory, setInventory] = useState<UserItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<Map<string, number>>(new Map());
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [isExchanging, setIsExchanging] = useState(false);
   const [userTickets, setUserTickets] = useState(0);
   const [raffleData, setRaffleData] = useState<RaffleData | null>(null);
   const [timeLeft, setTimeLeft] = useState<string>("");
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isProcessing, executeAction } = useButtonAction();
 
   useEffect(() => {
     if (user) {
@@ -243,49 +244,46 @@ const ChristmasRaffle = () => {
       return;
     }
 
-    setIsExchanging(true);
-    try {
-      // Get the current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        toast({ 
-          title: "Authentication Error", 
-          description: "Please log out and log back in", 
-          variant: "destructive" 
-        });
-        return;
-      }
-
-      const items = Array.from(selectedItems.entries()).map(([item_id, quantity]) => ({
-        item_id,
-        quantity
-      }));
-
-      const { data, error } = await supabase.functions.invoke("christmas-raffle-exchange", {
-        body: { items },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
+    await executeAction(
+      async () => {
+        // Get the current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          throw new Error("Authentication failed. Please log out and log back in");
         }
-      });
 
-      if (error) throw error;
+        const items = Array.from(selectedItems.entries()).map(([item_id, quantity]) => ({
+          item_id,
+          quantity
+        }));
 
-      toast({ 
-        title: "Exchange successful!", 
-        description: `Earned ${data.ticketsEarned} tickets from $${data.totalValue.toFixed(2)} worth of items` 
-      });
-      
-      setSelectedItems(new Map());
-      fetchInventory();
-      fetchUserTickets();
-      fetchLeaderboard();
-    } catch (error: any) {
-      console.error("Exchange error:", error);
-      toast({ title: "Error exchanging items", description: error.message, variant: "destructive" });
-    } finally {
-      setIsExchanging(false);
-    }
+        const { data, error } = await supabase.functions.invoke("christmas-raffle-exchange", {
+          body: { items },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+
+        if (error) throw error;
+        return data;
+      },
+      (data) => {
+        toast({ 
+          title: "Exchange successful!", 
+          description: `Earned ${data.ticketsEarned} tickets from $${data.totalValue.toFixed(2)} worth of items` 
+        });
+        
+        setSelectedItems(new Map());
+        fetchInventory();
+        fetchUserTickets();
+        fetchLeaderboard();
+      },
+      (error) => {
+        console.error("Exchange error:", error);
+        toast({ title: "Error exchanging items", description: error.message, variant: "destructive" });
+      }
+    );
   };
 
   const getRarityColor = (rarity: string) => {
@@ -475,10 +473,10 @@ const ChristmasRaffle = () => {
                       </div>
                         <Button
                           onClick={handleExchange}
-                          disabled={isExchanging || ticketsToEarn === 0}
+                          disabled={isProcessing || ticketsToEarn === 0}
                           className="w-full h-12 text-lg font-bold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 flex items-center gap-2"
                         >
-                          {isExchanging ? (
+                          {isProcessing ? (
                             <>Exchanging...</>
                           ) : (
                             <>
