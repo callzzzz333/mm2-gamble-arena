@@ -40,7 +40,7 @@ serve(async (req) => {
         .select("*")
         .eq("user_id", user.id)
         .eq("item_id", item.item_id)
-        .single();
+        .maybeSingle();
 
       if (checkError || !userItem || userItem.quantity < item.quantity) {
         throw new Error(`Not enough ${item.name}`);
@@ -52,7 +52,10 @@ serve(async (req) => {
         .eq("user_id", user.id)
         .eq("item_id", item.item_id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating inventory:", updateError);
+        throw updateError;
+      }
 
       // Delete if quantity is 0
       if (userItem.quantity - item.quantity === 0) {

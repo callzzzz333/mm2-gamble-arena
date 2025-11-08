@@ -60,6 +60,7 @@ export const GiveawayWidget = () => {
           table: "giveaways",
         },
         (payload) => {
+          console.log("Giveaway update:", payload);
           const updated = payload.new as any;
           
           // Start spinning animation when status changes to "drawing"
@@ -72,11 +73,13 @@ export const GiveawayWidget = () => {
             });
 
             // Fetch all entry avatars for spinning effect
-            supabase
-              .from("giveaway_entries")
-              .select("user_id, profiles:user_id(avatar_url, username, roblox_username)")
-              .eq("giveaway_id", updated.id)
-              .then(({ data: entries }) => {
+            (async () => {
+              try {
+                const { data: entries } = await supabase
+                  .from("giveaway_entries")
+                  .select("user_id, profiles:user_id(avatar_url, username, roblox_username)")
+                  .eq("giveaway_id", updated.id);
+
                 if (entries && entries.length > 0) {
                   let spinIndex = 0;
                   const spinInterval = setInterval(() => {
@@ -85,30 +88,35 @@ export const GiveawayWidget = () => {
                   }, 100);
 
                   // Stop spinning after 4 seconds and show winner
-                  setTimeout(() => {
+                  setTimeout(async () => {
                     clearInterval(spinInterval);
-                    supabase
+                    const { data: winner } = await supabase
                       .from("profiles")
                       .select("avatar_url, username, roblox_username")
                       .eq("id", updated.winner_id)
-                      .single()
-                      .then(({ data: winner }) => {
-                        setSpinningAvatar(winner);
-                        setWinnerAnimation((prev) =>
-                          prev?.giveawayId === updated.id ? { ...prev, isSpinning: false } : prev
-                        );
-                      });
+                      .maybeSingle();
+
+                    if (winner) {
+                      setSpinningAvatar(winner);
+                      setWinnerAnimation((prev) =>
+                        prev?.giveawayId === updated.id ? { ...prev, isSpinning: false } : prev
+                      );
+                    }
                   }, 4000);
 
-                  // Clear animation after winner reveal (6 seconds total)
+                  // Clear animation after winner reveal
                   setTimeout(() => {
                     setWinnerAnimation(null);
                     setSpinningAvatar(null);
                   }, 8000);
                 }
-              });
+              } catch (err) {
+                console.error("Error fetching entries for animation:", err);
+              }
+            })();
           }
 
+          // Refresh giveaways on any change
           fetchGiveaways();
         }
       )
@@ -120,6 +128,7 @@ export const GiveawayWidget = () => {
           table: "giveaway_entries",
         },
         () => {
+          console.log("Giveaway entries updated");
           fetchGiveaways();
         }
       )
@@ -132,6 +141,11 @@ export const GiveawayWidget = () => {
 
   useEffect(() => {
     if (giveaways.length === 0) return;
+
+    // Reset index if it's out of bounds
+    if (currentIndex >= giveaways.length) {
+      setCurrentIndex(0);
+    }
 
     const timer = setInterval(() => {
       const current = giveaways[currentIndex];
@@ -162,66 +176,86 @@ export const GiveawayWidget = () => {
   };
 
   const fetchGiveaways = async () => {
-    const { data: giveawaysData, error: giveawawayError } = await supabase
-      .from("giveaways")
-      .select("*")
-      .eq("status", "active")
-      .gt("ends_at", new Date().toISOString())
-      .order("created_at", { ascending: false });
+    try {
+      const { data: giveawaysData, error: giveawawayError } = await supabase
+        .from("giveaways")
+        .select("*")
+        .eq("status", "active")
+        .gt("ends_at", new Date().toISOString())
+        .order("created_at", { ascending: false });
 
-    if (giveawawayError) {
-      console.error("Error fetching giveaways:", giveawawayError);
-      return;
-    }
+      if (giveawawayError) {
+        console.error("Error fetching giveaways:", giveawawayError);
+        return;
+      }
 
-    if (!giveawaysData || giveawaysData.length === 0) {
+      if (!giveawaysData || giveawaysData.length === 0) {
+        setGiveaways([]);
+        return;
+      }
+
+      // Filter out giveaways with empty prize_items
+      const validGiveaways = giveawaysData.filter(
+        (g) => g.prize_items && Array.isArray(g.prize_items) && g.prize_items.length > 0
+      );
+
+      if (validGiveaways.length === 0) {
+        setGiveaways([]);
+        return;
+      }
+
+      // Fetch creator profiles
+      const creatorIds = validGiveaways.map((g) => g.creator_id).filter(Boolean);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username, roblox_username, avatar_url")
+        .in("id", creatorIds);
+
+      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+      // Fetch entry counts and user entries
+      const giveawaysWithEntries = await Promise.all(
+        validGiveaways.map(async (giveaway) => {
+          try {
+            const { count } = await supabase
+              .from("giveaway_entries")
+              .select("*", { count: "exact", head: true })
+              .eq("giveaway_id", giveaway.id);
+
+            let userEntered = false;
+            if (user) {
+              const { data: userEntry } = await supabase
+                .from("giveaway_entries")
+                .select("*")
+                .eq("giveaway_id", giveaway.id)
+                .eq("user_id", user.id)
+                .maybeSingle();
+              userEntered = !!userEntry;
+            }
+
+            return {
+              ...giveaway,
+              entries: count || 0,
+              userEntered,
+              profiles: profileMap.get(giveaway.creator_id || ""),
+            } as Giveaway;
+          } catch (err) {
+            console.error(`Error fetching data for giveaway ${giveaway.id}:`, err);
+            return {
+              ...giveaway,
+              entries: 0,
+              userEntered: false,
+              profiles: profileMap.get(giveaway.creator_id || ""),
+            } as Giveaway;
+          }
+        })
+      );
+
+      setGiveaways(giveawaysWithEntries);
+    } catch (error) {
+      console.error("Fatal error fetching giveaways:", error);
       setGiveaways([]);
-      return;
     }
-
-    // Filter out giveaways with empty prize_items
-    const validGiveaways = giveawaysData.filter(
-      (g) => g.prize_items && Array.isArray(g.prize_items) && g.prize_items.length > 0
-    );
-
-    // Fetch creator profiles
-    const creatorIds = validGiveaways.map((g) => g.creator_id).filter(Boolean);
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, username, roblox_username, avatar_url")
-      .in("id", creatorIds);
-
-    const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
-
-    // Fetch entry counts and user entries
-    const giveawaysWithEntries = await Promise.all(
-      validGiveaways.map(async (giveaway) => {
-        const { count } = await supabase
-          .from("giveaway_entries")
-          .select("*", { count: "exact", head: true })
-          .eq("giveaway_id", giveaway.id);
-
-        let userEntered = false;
-        if (user) {
-          const { data: userEntry } = await supabase
-            .from("giveaway_entries")
-            .select("*")
-            .eq("giveaway_id", giveaway.id)
-            .eq("user_id", user.id)
-            .single();
-          userEntered = !!userEntry;
-        }
-
-        return {
-          ...giveaway,
-          entries: count || 0,
-          userEntered,
-          profiles: profileMap.get(giveaway.creator_id || ""),
-        } as Giveaway;
-      })
-    );
-
-    setGiveaways(giveawaysWithEntries);
   };
 
   const handleJoinGiveaway = async (giveawayId: string) => {
@@ -230,11 +264,19 @@ export const GiveawayWidget = () => {
     }
 
     await joinGiveaway(async () => {
-      const { error } = await supabase.functions.invoke("giveaway-join", {
+      const { data, error } = await supabase.functions.invoke("giveaway-join", {
         body: { giveawayId },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error joining giveaway:", error);
+        throw error;
+      }
+
+      // Check if already entered
+      if (data?.alreadyEntered) {
+        console.log("Already entered this giveaway");
+      }
     });
   };
 

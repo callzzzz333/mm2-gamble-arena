@@ -30,12 +30,11 @@ serve(async (req) => {
       throw new Error("Giveaway ID is required");
     }
 
-    // Get giveaway first to check creator
-    const { data: giveaway, error: giveawayError } = await supabase
-      .from("giveaways")
-      .select("*")
-      .eq("id", giveawayId)
-      .single();
+      const { data: giveaway, error: giveawayError } = await supabase
+        .from("giveaways")
+        .select("*")
+        .eq("id", giveawayId)
+        .maybeSingle();
 
     if (giveawayError || !giveaway) {
       throw new Error("Giveaway not found");
