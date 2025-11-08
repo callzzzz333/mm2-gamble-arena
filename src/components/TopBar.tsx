@@ -105,7 +105,12 @@ export const TopBar = () => {
         {user && profile && profile.level < 99 && (
           <div className="h-1 bg-background/50">
             <div 
-              className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500"
+              className={`h-full transition-all duration-500 ${
+                profile.level >= 76 ? 'bg-gradient-to-r from-purple-500 to-violet-500' :
+                profile.level >= 51 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
+                profile.level >= 26 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                'bg-gradient-to-r from-yellow-500 to-orange-500'
+              }`}
               style={{ width: `${progressPercent}%` }}
             />
           </div>

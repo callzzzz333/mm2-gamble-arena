@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { User, LogOut, TrendingUp, Wallet, DollarSign, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getLevelColor, getLevelBgColor, getLevelFillColor } from "@/lib/levelUtils";
 
 interface Profile {
   id: string;
@@ -122,9 +123,9 @@ export const ProfileDropdown = () => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-bold text-lg">{profile.roblox_username || profile.username}</p>
-                  <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-full border border-yellow-500/30">
-                    <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                    <span className="text-xs font-bold text-yellow-500">Lv {profile.level}</span>
+                  <div className={`flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r ${getLevelBgColor(profile.level)} rounded-full border`}>
+                    <Star className={`w-3 h-3 ${getLevelColor(profile.level)} ${getLevelFillColor(profile.level)}`} />
+                    <span className={`text-xs font-bold ${getLevelColor(profile.level)}`}>Lv {profile.level}</span>
                   </div>
                 </div>
                 {profile.roblox_username && (
@@ -142,7 +143,7 @@ export const ProfileDropdown = () => {
               <div className="mt-3 px-4 space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Level Progress</span>
-                  <span className="text-yellow-500 font-semibold">${remainingToNextLevel.toFixed(2)} to Lv {profile.level + 1}</span>
+                  <span className={`${getLevelColor(profile.level)} font-semibold`}>${remainingToNextLevel.toFixed(2)} to Lv {profile.level + 1}</span>
                 </div>
                 <Progress value={progressPercent} className="h-2" />
               </div>
@@ -156,12 +157,12 @@ export const ProfileDropdown = () => {
             </DropdownMenuLabel>
             
             <div className="grid grid-cols-4 gap-2">
-              <div className="text-center p-2 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg">
+              <div className={`text-center p-2 bg-gradient-to-br ${getLevelBgColor(profile.level)} rounded-lg`}>
                 <div className="flex items-center justify-center gap-1 mb-1">
-                  <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                  <Star className={`w-3 h-3 ${getLevelColor(profile.level)} ${getLevelFillColor(profile.level)}`} />
                 </div>
                 <p className="text-xs text-muted-foreground">Level</p>
-                <p className="font-bold text-sm text-yellow-500">{profile.level}</p>
+                <p className={`font-bold text-sm ${getLevelColor(profile.level)}`}>{profile.level}</p>
               </div>
               
               <div className="text-center p-2 bg-muted/30 rounded-lg">

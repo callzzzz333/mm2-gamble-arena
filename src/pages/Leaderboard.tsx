@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy, TrendingUp, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getLevelColor, getLevelBgColor, getLevelFillColor } from "@/lib/levelUtils";
 
 interface LeaderboardProfile {
   id: string;
@@ -122,9 +123,9 @@ const Leaderboard = () => {
                         <p className="font-semibold truncate">
                           {profile.roblox_username || profile.username}
                         </p>
-                        <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-full border border-yellow-500/30">
-                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                          <span className="text-xs font-bold text-yellow-500">Lv {profile.level}</span>
+                        <div className={`flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r ${getLevelBgColor(profile.level)} rounded-full border`}>
+                          <Star className={`w-3 h-3 ${getLevelColor(profile.level)} ${getLevelFillColor(profile.level)}`} />
+                          <span className={`text-xs font-bold ${getLevelColor(profile.level)}`}>Lv {profile.level}</span>
                         </div>
                       </div>
                     </div>

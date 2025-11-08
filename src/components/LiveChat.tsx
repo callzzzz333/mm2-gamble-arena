@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Send, FileText, Gift, ChevronRight, ChevronLeft, Star } from "lucide-react";
+import { getLevelColor, getLevelBgColor, getLevelFillColor } from "@/lib/levelUtils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -285,9 +286,9 @@ export const LiveChat = () => {
                       {msg.profiles?.roblox_username || msg.username}
                     </span>
                     {msg.profiles?.level && (
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-full border border-yellow-500/30">
-                        <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
-                        <span className="text-[10px] font-bold text-yellow-500">{msg.profiles.level}</span>
+                      <div className={`flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r ${getLevelBgColor(msg.profiles.level)} rounded-full border`}>
+                        <Star className={`w-2.5 h-2.5 ${getLevelColor(msg.profiles.level)} ${getLevelFillColor(msg.profiles.level)}`} />
+                        <span className={`text-[10px] font-bold ${getLevelColor(msg.profiles.level)}`}>{msg.profiles.level}</span>
                       </div>
                     )}
                     <span className="text-xs text-muted-foreground">

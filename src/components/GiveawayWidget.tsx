@@ -50,6 +50,15 @@ export const GiveawayWidget = () => {
     checkUser();
     fetchGiveaways();
 
+    // Call auto-complete function periodically to process expired giveaways
+    const autoCompleteInterval = setInterval(async () => {
+      try {
+        await supabase.functions.invoke("giveaway-auto-complete");
+      } catch (err) {
+        console.error("Error calling auto-complete:", err);
+      }
+    }, 30000); // Every 30 seconds
+
     const giveawaysChannel = supabase
       .channel("giveaways-changes")
       .on(
@@ -136,6 +145,7 @@ export const GiveawayWidget = () => {
 
     return () => {
       supabase.removeChannel(giveawaysChannel);
+      clearInterval(autoCompleteInterval);
     };
   }, []);
 
