@@ -245,6 +245,18 @@ const ChristmasRaffle = () => {
 
     setIsExchanging(true);
     try {
+      // Get the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        toast({ 
+          title: "Authentication Error", 
+          description: "Please log out and log back in", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
       const items = Array.from(selectedItems.entries()).map(([item_id, quantity]) => ({
         item_id,
         quantity
@@ -252,6 +264,9 @@ const ChristmasRaffle = () => {
 
       const { data, error } = await supabase.functions.invoke("christmas-raffle-exchange", {
         body: { items },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (error) throw error;
@@ -266,6 +281,7 @@ const ChristmasRaffle = () => {
       fetchUserTickets();
       fetchLeaderboard();
     } catch (error: any) {
+      console.error("Exchange error:", error);
       toast({ title: "Error exchanging items", description: error.message, variant: "destructive" });
     } finally {
       setIsExchanging(false);
