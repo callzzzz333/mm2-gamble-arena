@@ -109,7 +109,7 @@ const ChristmasRaffle = () => {
       const distance = endTime - now;
 
       if (distance < 0) {
-        setTimeLeft("🎁 Drawing Winner...");
+        setTimeLeft("Drawing Winner...");
         clearInterval(timer);
         return;
       }
@@ -272,7 +272,7 @@ const ChristmasRaffle = () => {
       if (error) throw error;
 
       toast({ 
-        title: `🎟️ Exchange successful!`, 
+        title: "Exchange successful!", 
         description: `Earned ${data.ticketsEarned} tickets from $${data.totalValue.toFixed(2)} worth of items` 
       });
       
@@ -323,9 +323,11 @@ const ChristmasRaffle = () => {
               </div>
               <div className="relative z-10 flex-1">
                 <h1 className="text-3xl font-bold flex items-center gap-2">
-                  🎄 Christmas Raffle 🎟️
+                  <Gift className="w-8 h-8 text-blue-400" />
+                  Christmas Raffle
+                  <Ticket className="w-8 h-8 text-yellow-400" />
                 </h1>
-                <p className="text-muted-foreground">Exchange items for tickets • $5 = 1 ticket</p>
+                <p className="text-muted-foreground">Exchange items for tickets - $5 = 1 ticket</p>
               </div>
               {raffleData && (
                 <div className="relative z-10 text-right">
@@ -343,11 +345,14 @@ const ChristmasRaffle = () => {
               <Card className="p-6 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Gift className="w-6 h-6 text-yellow-400" />
+                    <Trophy className="w-6 h-6 text-yellow-400" />
                     Grand Prize Pool
                   </h2>
                   {raffleData.status === 'completed' && raffleData.winner_id && (
-                    <Badge className="bg-green-500">Winner Drawn!</Badge>
+                    <Badge className="bg-green-500 flex items-center gap-1">
+                      <Trophy className="w-4 h-4" />
+                      Winner Drawn
+                    </Badge>
                   )}
                 </div>
                 <div className="text-center py-4">
@@ -468,13 +473,20 @@ const ChristmasRaffle = () => {
                         <span className="text-muted-foreground">Tickets to Earn:</span>
                         <span className="text-2xl font-bold text-blue-400">{ticketsToEarn}</span>
                       </div>
-                      <Button
-                        onClick={handleExchange}
-                        disabled={isExchanging || ticketsToEarn === 0}
-                        className="w-full h-12 text-lg font-bold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                      >
-                        {isExchanging ? "Exchanging..." : `🎟️ Exchange for ${ticketsToEarn} Tickets`}
-                      </Button>
+                        <Button
+                          onClick={handleExchange}
+                          disabled={isExchanging || ticketsToEarn === 0}
+                          className="w-full h-12 text-lg font-bold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 flex items-center gap-2"
+                        >
+                          {isExchanging ? (
+                            <>Exchanging...</>
+                          ) : (
+                            <>
+                              <Ticket className="w-5 h-5" />
+                              Exchange for {ticketsToEarn} Tickets
+                            </>
+                          )}
+                        </Button>
                     </div>
                   </Card>
                 )}

@@ -133,22 +133,22 @@ Deno.serve(async (req) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           embeds: [{
-            title: '🎄 Christmas Raffle Winner! 🎁',
+            title: 'Christmas Raffle Winner',
             description: `Congratulations to **${winnerProfile?.username || 'Unknown'}**!\n\nThey won the grand prize worth **$${raffle.total_prize_value.toFixed(2)}**!`,
             color: 0xFF0000,
             fields: [
               {
-                name: '🎟️ Total Tickets',
+                name: 'Total Tickets',
                 value: weightedParticipants.length.toString(),
                 inline: true
               },
               {
-                name: '👥 Total Participants',
+                name: 'Total Participants',
                 value: participants.length.toString(),
                 inline: true
               },
               {
-                name: '🎁 Prize Value',
+                name: 'Prize Value',
                 value: `$${raffle.total_prize_value.toFixed(2)}`,
                 inline: true
               }

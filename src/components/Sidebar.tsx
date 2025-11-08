@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Trophy, DollarSign, Shield, Coins, Dices, Zap, Gift, Swords, Star, CircleDot, Percent, Skull, Crown, Target, Users } from "lucide-react";
+import { Home, Trophy, DollarSign, Shield, Coins, Dices, Zap, Gift, Swords, Star, CircleDot, Percent, Skull, Crown, Target, Users, Snowflake, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -141,18 +141,20 @@ export const Sidebar = () => {
         >
           {/* Animated snowflakes background */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-2 left-2 text-blue-300/60 animate-[float_3s_ease-in-out_infinite]">❄️</div>
-            <div className="absolute top-1/2 right-4 text-white/60 animate-[float_4s_ease-in-out_infinite]" style={{ animationDelay: "1s" }}>❄️</div>
-            <div className="absolute -bottom-1 left-1/3 text-blue-400/60 animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: "2s" }}>❄️</div>
+            <Snowflake className="absolute -top-2 left-2 w-3 h-3 text-blue-300/60 animate-[float_3s_ease-in-out_infinite]" />
+            <Snowflake className="absolute top-1/2 right-4 w-3 h-3 text-white/60 animate-[float_4s_ease-in-out_infinite]" style={{ animationDelay: "1s" }} />
+            <Snowflake className="absolute -bottom-1 left-1/3 w-3 h-3 text-blue-400/60 animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: "2s" }} />
           </div>
           
           <div className="relative flex items-center gap-3 flex-1">
             <Gift className="w-5 h-5 text-blue-500 group-hover:animate-bounce" />
-            <span className="font-medium flex-1 text-left bg-gradient-to-r from-blue-400 via-white to-blue-400 bg-clip-text text-transparent animate-pulse">
-              🎟️ Christmas Raffle
+            <span className="font-medium flex-1 text-left bg-gradient-to-r from-blue-400 via-white to-blue-400 bg-clip-text text-transparent animate-pulse flex items-center gap-2">
+              <Ticket className="w-4 h-4" />
+              Christmas Raffle
             </span>
-            <span className="px-1.5 py-0.5 bg-gradient-to-r from-blue-500 to-white text-primary-foreground text-[10px] font-bold rounded uppercase animate-pulse">
-              🎫 Live
+            <span className="px-1.5 py-0.5 bg-gradient-to-r from-blue-500 to-white text-primary-foreground text-[10px] font-bold rounded uppercase animate-pulse flex items-center gap-1">
+              <Ticket className="w-3 h-3" />
+              Live
             </span>
           </div>
         </Button>
