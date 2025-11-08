@@ -259,110 +259,138 @@ export const GiveawayWidget = () => {
   const isDrawing = winnerAnimation?.giveawayId === currentGiveaway?.id;
 
   return (
-    <Card className="p-3 bg-gradient-to-br from-accent/10 to-primary/10 border-primary/30 shadow-glow">
-      <div className="flex items-center gap-2 mb-2">
-        <Gift className="w-4 h-4 text-primary" />
-        <h3 className="font-semibold text-sm">Active Giveaway</h3>
+    <Card className="p-4 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 border-primary/20 shadow-elegant hover:shadow-glow transition-all duration-300">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20">
+            <Gift className="w-4 h-4 text-primary" />
+          </div>
+          <h3 className="font-bold text-sm bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Active Giveaway
+          </h3>
+        </div>
         {giveaways.length > 1 && (
-          <Badge variant="secondary" className="ml-auto">
+          <Badge variant="secondary" className="text-xs">
             {currentIndex + 1} / {giveaways.length}
           </Badge>
         )}
       </div>
 
       {isDrawing && winnerAnimation?.isSpinning && (
-        <div className="mb-3 p-3 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg border border-primary/40 animate-pulse">
+        <div className="mb-3 p-4 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-xl border border-primary/40 animate-pulse backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <Avatar className="w-12 h-12 animate-spin">
-              <AvatarImage src={spinningAvatar?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/30 text-primary font-bold">
-                {(spinningAvatar?.username || spinningAvatar?.roblox_username || "?")[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-14 h-14 animate-spin border-2 border-primary/50">
+                <AvatarImage src={spinningAvatar?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/30 text-primary font-bold text-lg">
+                  {(spinningAvatar?.username || spinningAvatar?.roblox_username || "?")[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+            </div>
             <div>
-              <p className="text-sm font-bold text-primary">Drawing Winner...</p>
-              <p className="text-xs text-muted-foreground">Good luck!</p>
+              <p className="text-base font-bold text-primary">🎲 Drawing Winner...</p>
+              <p className="text-xs text-muted-foreground">Good luck everyone!</p>
             </div>
           </div>
         </div>
       )}
 
       {isDrawing && !winnerAnimation?.isSpinning && spinningAvatar && (
-        <div className="mb-3 p-3 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg border border-green-500/40 animate-scale-in">
+        <div className="mb-3 p-4 bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-green-500/20 rounded-xl border-2 border-green-500/50 animate-scale-in backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <Avatar className="w-12 h-12 ring-2 ring-green-500">
-              <AvatarImage src={spinningAvatar?.avatar_url || undefined} />
-              <AvatarFallback className="bg-green-500/30 text-green-500 font-bold">
-                {(spinningAvatar?.username || spinningAvatar?.roblox_username || "?")[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-14 h-14 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30">
+                <AvatarImage src={spinningAvatar?.avatar_url || undefined} />
+                <AvatarFallback className="bg-green-500/30 text-green-500 font-bold text-lg">
+                  {(spinningAvatar?.username || spinningAvatar?.roblox_username || "?")[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute -top-1 -right-1 text-2xl animate-bounce">🎉</div>
+            </div>
             <div>
-              <p className="text-sm font-bold text-green-500">🎉 Winner!</p>
-              <p className="text-xs text-foreground">{spinningAvatar?.roblox_username || spinningAvatar?.username}</p>
+              <p className="text-base font-bold text-green-500">🏆 Winner!</p>
+              <p className="text-sm font-medium text-foreground">{spinningAvatar?.roblox_username || spinningAvatar?.username}</p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
+      <div className="space-y-3">
+        <div className="flex items-start gap-4">
           {/* Left side: Host and info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Avatar className="w-6 h-6">
+          <div className="flex-1 min-w-0 space-y-3">
+            <div className="flex items-center gap-2">
+              <Avatar className="w-8 h-8 ring-2 ring-primary/20">
                 <AvatarImage src={currentGiveaway.profiles?.avatar_url || undefined} />
-                <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                <AvatarFallback className="text-xs bg-primary/20 text-primary font-semibold">
                   {(currentGiveaway.profiles?.username || currentGiveaway.profiles?.roblox_username || "U")[0].toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <p className="text-xs font-medium text-muted-foreground truncate">
-                {currentGiveaway.profiles?.roblox_username || currentGiveaway.profiles?.username || "Host"}'s Giveaway
-              </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {currentGiveaway.profiles?.roblox_username || currentGiveaway.profiles?.username || "Host"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Host</p>
+              </div>
             </div>
             
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-3 h-3 text-muted-foreground" />
-                <span className="text-sm font-bold text-primary">{timeLeft}</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/10">
+                <Clock className="w-4 h-4 text-primary" />
+                <div className="flex-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Ends In</p>
+                  <p className="text-sm font-bold text-primary">{timeLeft}</p>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Users className="w-3 h-3 text-muted-foreground" />
-                <span className="text-xs font-medium">{currentGiveaway.entries} entries</span>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/5 border border-accent/10">
+                <Users className="w-4 h-4 text-accent" />
+                <div className="flex-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Entries</p>
+                  <p className="text-sm font-bold text-accent">{currentGiveaway.entries}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right side: Prize items */}
+          {/* Right side: Prize items grid */}
           <div className="flex-shrink-0">
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-gradient-to-br from-primary/5 to-accent/5 border border-border/50">
               {currentGiveaway.prize_items.slice(0, 4).map((item: any, idx: number) => (
                 <div
                   key={idx}
-                  className="relative w-12 h-12 rounded border border-border/50 overflow-hidden bg-card/50"
+                  className="relative w-16 h-16 rounded-lg border-2 border-primary/20 overflow-hidden bg-card shadow-sm hover:shadow-md hover:border-primary/40 hover:scale-105 transition-all duration-200 group"
                 >
                   {item.image_url && (
-                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                    <>
+                      <img 
+                        src={item.image_url} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                    </>
                   )}
                 </div>
               ))}
             </div>
             {currentGiveaway.prize_items.length > 4 && (
-              <p className="text-[9px] text-center text-muted-foreground mt-0.5">
-                +{currentGiveaway.prize_items.length - 4} more
+              <p className="text-[10px] text-center text-muted-foreground mt-1.5 font-medium">
+                +{currentGiveaway.prize_items.length - 4} more items
               </p>
             )}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2 pt-1">
           <Button
             onClick={() => joinGiveaway(currentGiveaway.id)}
             disabled={currentGiveaway.userEntered}
-            className="flex-1 text-xs h-7"
+            className="flex-1 text-sm h-9 font-semibold shadow-sm hover:shadow-md transition-all"
             size="sm"
           >
-            {currentGiveaway.userEntered ? "Entered ✓" : "Join Giveaway"}
+            {currentGiveaway.userEntered ? "✓ Entered" : "Join Giveaway"}
           </Button>
 
           {giveaways.length > 1 && (
@@ -370,18 +398,18 @@ export const GiveawayWidget = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-9 w-9 hover:bg-primary/10 hover:border-primary/30 transition-all"
                 onClick={() => setCurrentIndex((prev) => (prev === 0 ? giveaways.length - 1 : prev - 1))}
               >
-                <ChevronLeft className="w-3 h-3" />
+                <ChevronLeft className="w-4 h-4" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-9 w-9 hover:bg-primary/10 hover:border-primary/30 transition-all"
                 onClick={() => setCurrentIndex((prev) => (prev === giveaways.length - 1 ? 0 : prev + 1))}
               >
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-4 h-4" />
               </Button>
             </>
           )}
