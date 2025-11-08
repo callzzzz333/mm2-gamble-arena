@@ -180,10 +180,10 @@ export const GiveawayWidget = () => {
   const currentGiveaway = giveaways[currentIndex];
 
   return (
-    <Card className="p-4 bg-gradient-to-br from-accent/10 to-primary/10 border-primary/30 shadow-glow">
-      <div className="flex items-center gap-2 mb-3">
-        <Gift className="w-5 h-5 text-primary" />
-        <h3 className="font-bold text-lg">Active Giveaway</h3>
+    <Card className="p-3 bg-gradient-to-br from-accent/10 to-primary/10 border-primary/30 shadow-glow">
+      <div className="flex items-center gap-2 mb-2">
+        <Gift className="w-4 h-4 text-primary" />
+        <h3 className="font-semibold text-sm">Active Giveaway</h3>
         {giveaways.length > 1 && (
           <Badge variant="secondary" className="ml-auto">
             {currentIndex + 1} / {giveaways.length}
@@ -191,61 +191,61 @@ export const GiveawayWidget = () => {
         )}
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-start gap-3">
+      <div className="space-y-2">
+        <div className="flex items-start gap-2">
           <div className="flex-1">
-            <h4 className="font-semibold text-foreground">{currentGiveaway.title}</h4>
+            <h4 className="font-medium text-sm text-foreground">{currentGiveaway.title}</h4>
             {currentGiveaway.description && (
-              <p className="text-sm text-muted-foreground mt-1">{currentGiveaway.description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{currentGiveaway.description}</p>
             )}
           </div>
           {currentGiveaway.type === "auto" && (
-            <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30">
+            <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30 text-[10px] px-1.5 py-0">
               AUTO
             </Badge>
           )}
         </div>
 
         {/* Prize Items */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {currentGiveaway.prize_items.map((item: any, idx: number) => (
             <div
               key={idx}
-              className="relative rounded-lg border border-border/50 overflow-hidden bg-card/50 backdrop-blur-sm"
+              className="relative rounded border border-border/50 overflow-hidden bg-card/50 backdrop-blur-sm"
             >
               {item.image_url && (
-                <img src={item.image_url} alt={item.name} className="w-full h-20 object-cover" />
+                <img src={item.image_url} alt={item.name} className="w-full h-14 object-cover" />
               )}
-              <div className="p-2 space-y-1">
-                <p className="text-xs font-semibold truncate">{item.name}</p>
-                <Badge className={`${getRarityColor(item.rarity)} text-[10px] px-1 py-0`}>
+              <div className="p-1.5 space-y-0.5">
+                <p className="text-[10px] font-semibold truncate">{item.name}</p>
+                <Badge className={`${getRarityColor(item.rarity)} text-[8px] px-1 py-0`}>
                   {item.rarity}
                 </Badge>
-                <p className="text-xs text-primary font-bold">${item.value.toFixed(2)}</p>
+                <p className="text-[10px] text-primary font-bold">${item.value.toFixed(2)}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-3 text-xs">
           <div className="flex items-center gap-1">
-            <Users className="w-4 h-4 text-muted-foreground" />
+            <Users className="w-3 h-3 text-muted-foreground" />
             <span className="font-semibold">{currentGiveaway.entries}</span>
             <span className="text-muted-foreground">entries</span>
           </div>
           <div className="flex items-center gap-1">
-            <Clock className="w-4 h-4 text-muted-foreground" />
+            <Clock className="w-3 h-3 text-muted-foreground" />
             <span className="font-semibold text-primary">{timeLeft}</span>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             onClick={() => joinGiveaway(currentGiveaway.id)}
             disabled={currentGiveaway.userEntered}
-            className="flex-1"
+            className="flex-1 text-xs h-7"
             size="sm"
           >
             {currentGiveaway.userEntered ? "Entered ✓" : "Join Giveaway"}
@@ -256,16 +256,18 @@ export const GiveawayWidget = () => {
               <Button
                 variant="outline"
                 size="icon"
+                className="h-7 w-7"
                 onClick={() => setCurrentIndex((prev) => (prev === 0 ? giveaways.length - 1 : prev - 1))}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3 h-3" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
+                className="h-7 w-7"
                 onClick={() => setCurrentIndex((prev) => (prev === giveaways.length - 1 ? 0 : prev + 1))}
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3 h-3" />
               </Button>
             </>
           )}

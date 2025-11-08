@@ -49,14 +49,23 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
   };
 
   const fetchUserItems = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_items")
-      .select("*, items(*)")
-      .eq("user_id", userId)
-      .gt("quantity", 0);
+    try {
+      const { data, error } = await supabase
+        .from("user_items")
+        .select("*, items(*)")
+        .eq("user_id", userId)
+        .gt("quantity", 0);
 
-    if (data) {
-      setUserItems(data);
+      if (error) {
+        console.error("Error fetching user items:", error);
+        toast({ title: "Failed to load your items", variant: "destructive" });
+        return;
+      }
+
+      setUserItems(data || []);
+    } catch (error: any) {
+      console.error("Error fetching user items:", error);
+      toast({ title: "Failed to load your items", variant: "destructive" });
     }
   };
 
@@ -86,8 +95,13 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
   };
 
   const createGiveaway = async () => {
-    if (!user || selectedItems.length === 0) {
-      toast({ title: "Please select items", variant: "destructive" });
+    if (!user) {
+      toast({ title: "Please login to create giveaways", variant: "destructive" });
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      toast({ title: "Please select at least one item", variant: "destructive" });
       return;
     }
 
@@ -101,7 +115,7 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
     }));
 
     try {
-      const { error } = await supabase.functions.invoke("giveaway-create", {
+      const { data, error } = await supabase.functions.invoke("giveaway-create", {
         body: {
           items: itemsData,
           title: title || "Item Giveaway",
@@ -110,7 +124,10 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Giveaway creation error:", error);
+        throw error;
+      }
 
       toast({ title: "Giveaway created! 🎉", description: "Users can now join" });
       setOpen(false);
@@ -118,9 +135,16 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
       setDescription("");
       setSelectedItems([]);
       setDurationMinutes(5);
-      fetchUserItems(user.id);
+      if (user?.id) {
+        fetchUserItems(user.id);
+      }
     } catch (error: any) {
-      toast({ title: error.message || "Failed to create giveaway", variant: "destructive" });
+      console.error("Error creating giveaway:", error);
+      toast({ 
+        title: error.message || "Failed to create giveaway", 
+        description: "Please try again or contact support",
+        variant: "destructive" 
+      });
     }
   };
 
