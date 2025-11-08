@@ -6,6 +6,36 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+async function rewardWinnerItems(supabase: any, winnerId: string, allItems: any[]) {
+  console.log(`Rewarding ${allItems.length} items to winner ${winnerId}`);
+  
+  for (const item of allItems) {
+    const { data: existing } = await supabase
+      .from("user_items")
+      .select("id, quantity")
+      .eq("user_id", winnerId)
+      .eq("item_id", item.item_id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from("user_items")
+        .update({ quantity: existing.quantity + 1 })
+        .eq("id", existing.id);
+    } else {
+      await supabase
+        .from("user_items")
+        .insert({
+          user_id: winnerId,
+          item_id: item.item_id,
+          quantity: 1,
+        });
+    }
+  }
+  
+  console.log("Winner items rewarded successfully");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -44,6 +74,19 @@ Deno.serve(async (req) => {
         .order("total_value", { ascending: false });
 
       const winner = participants?.[0];
+      
+      // Collect all items from all participants
+      const allItems: any[] = [];
+      for (const p of participants || []) {
+        if (Array.isArray(p.items_won)) {
+          allItems.push(...p.items_won);
+        }
+      }
+      
+      // Reward winner with all items
+      if (winner && allItems.length > 0) {
+        await rewardWinnerItems(supabase, winner.user_id, allItems);
+      }
 
       await supabase
         .from("case_battles")
@@ -54,13 +97,14 @@ Deno.serve(async (req) => {
         })
         .eq("id", battleId);
 
-      console.log("Winner:", winner?.user_id);
+      console.log("Winner:", winner?.user_id, "Items awarded:", allItems.length);
 
       return new Response(
         JSON.stringify({
           success: true,
           completed: true,
           winner_id: winner?.user_id,
+          items_awarded: allItems.length,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

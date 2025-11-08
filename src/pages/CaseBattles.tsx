@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
 import { CaseOpeningAnimation } from "@/components/CaseOpeningAnimation";
+import { CasePreviewDialog } from "@/components/CasePreviewDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Swords, Users, Trophy, Play, Eye } from "lucide-react";
+import { Swords, Users, Trophy, Play, Eye, Info } from "lucide-react";
 
 interface Item {
   id: string;
@@ -72,6 +73,7 @@ export default function CaseBattles() {
   const [currentRoundResults, setCurrentRoundResults] = useState<any[]>([]);
   const [showingAnimations, setShowingAnimations] = useState(false);
   const [animationsCompleted, setAnimationsCompleted] = useState(0);
+  const [previewCrate, setPreviewCrate] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     checkUser();
@@ -753,22 +755,41 @@ export default function CaseBattles() {
               <label className="text-sm font-medium mb-2 block">
                 Select Cases ({selectedCases.length} selected) - Each case contains 8 random items
               </label>
-              <div className="grid grid-cols-4 gap-4 max-h-96 overflow-y-auto p-4 border rounded-lg">
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-4 border rounded-lg">
                 {crates.map((crate) => (
                   <Card
                     key={crate.id}
-                    className={`p-4 cursor-pointer transition-all ${
+                    className={`p-3 cursor-pointer transition-all relative group ${
                       selectedCases.includes(crate.id)
-                        ? "border-primary bg-primary/10"
+                        ? "border-primary bg-primary/10 shadow-glow"
                         : "hover:border-primary/50"
                     }`}
-                    onClick={() => toggleCaseSelection(crate.id)}
                   >
-                    <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center mb-2">
-                      <span className="text-4xl">📦</span>
+                    <div onClick={() => toggleCaseSelection(crate.id)}>
+                      <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center mb-2 overflow-hidden border border-border">
+                        {crate.image_url ? (
+                          <img 
+                            src={crate.image_url} 
+                            alt={crate.name}
+                            className="w-full h-full object-contain group-hover:scale-110 transition-transform"
+                          />
+                        ) : (
+                          <span className="text-4xl">📦</span>
+                        )}
+                      </div>
+                      <p className="text-xs font-medium text-center truncate">{crate.name}</p>
                     </div>
-                    <p className="text-xs font-medium text-center truncate">{crate.name}</p>
-                    <p className="text-xs text-muted-foreground text-center">Lvl {crate.level_required}+</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 hover:bg-background"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewCrate({ id: crate.id, name: crate.name });
+                      }}
+                    >
+                      <Info className="h-3 w-3" />
+                    </Button>
                   </Card>
                 ))}
               </div>
@@ -922,6 +943,14 @@ export default function CaseBattles() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Case Preview Dialog */}
+      <CasePreviewDialog
+        open={!!previewCrate}
+        onOpenChange={(open) => !open && setPreviewCrate(null)}
+        crateId={previewCrate?.id || null}
+        crateName={previewCrate?.name || ""}
+      />
     </div>
   );
 }
