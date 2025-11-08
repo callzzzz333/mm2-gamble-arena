@@ -18,7 +18,10 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
       throw new Error("Unauthorized");
@@ -31,7 +34,7 @@ serve(async (req) => {
     }
 
     // Calculate total value
-    const totalValue = items.reduce((sum: number, item: any) => sum + (item.value * item.quantity), 0);
+    const totalValue = items.reduce((sum: number, item: any) => sum + item.value * item.quantity, 0);
 
     // Deduct items from user's inventory
     for (const item of items) {
@@ -59,17 +62,13 @@ serve(async (req) => {
 
       // Delete if quantity is 0
       if (userItem.quantity - item.quantity === 0) {
-        await supabase
-          .from("user_items")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("item_id", item.item_id);
+        await supabase.from("user_items").delete().eq("user_id", user.id).eq("item_id", item.item_id);
       }
     }
 
     // Create giveaway
     const endsAt = new Date(Date.now() + (durationMinutes || 5) * 60 * 1000);
-    
+
     const { data: giveaway, error: giveawayError } = await supabase
       .from("giveaways")
       .insert({
@@ -103,29 +102,30 @@ serve(async (req) => {
         const creatorName = profile?.roblox_username || profile?.username || "Unknown";
 
         // Build items description
-        const itemsList = items.slice(0, 10).map((item: any) => 
-          `• **${item.name}** (x${item.quantity}) - ${item.rarity} - $${item.value}`
-        ).join("\n");
+        const itemsList = items
+          .slice(0, 10)
+          .map((item: any) => `• **${item.name}** (x${item.quantity}) - ${item.rarity} - $${item.value}`)
+          .join("\n");
 
         const moreItems = items.length > 10 ? `\n*... and ${items.length - 10} more items*` : "";
 
         const embed = {
-          title: "🎁 New Giveaway",
+          title: "New Giveaway",
           description: `**${creatorName}** is giving away **${items.length}** item(s)\n\n**Prize Items:**\n${itemsList}${moreItems}`,
-          color: 0xFFD700, // Gold color
+          color: 0xffd700, // Gold color
           fields: [
             {
-              name: "💰 Total Value",
+              name: "Total Value",
               value: `$${totalValue.toFixed(2)}`,
               inline: true,
             },
             {
-              name: "⏰ Ends",
+              name: "Ends in",
               value: `<t:${timestamp}:R>`,
               inline: true,
             },
             {
-              name: "👥 Entries",
+              name: "Entries",
               value: "**0** players",
               inline: true,
             },
@@ -134,7 +134,7 @@ serve(async (req) => {
             url: items[0]?.image_url || "",
           },
           footer: {
-            text: "🔴 LIVE • Join now on MM2PVP",
+            text: "🔴 LIVE • Join now on https://rbxroyale.win/",
           },
           timestamp: new Date().toISOString(),
         };
@@ -147,14 +147,11 @@ serve(async (req) => {
 
         if (webhookResponse.ok) {
           console.log("Discord webhook sent successfully");
-          
+
           // Store the Discord message ID for future updates
           const webhookData = await webhookResponse.json();
           if (webhookData && webhookData.id) {
-            await supabase
-              .from("giveaways")
-              .update({ discord_message_id: webhookData.id })
-              .eq("id", giveaway.id);
+            await supabase.from("giveaways").update({ discord_message_id: webhookData.id }).eq("id", giveaway.id);
             console.log("Stored Discord message ID:", webhookData.id);
           }
         } else {
