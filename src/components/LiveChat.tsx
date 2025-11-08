@@ -272,35 +272,37 @@ export const LiveChat = () => {
         <div className="space-y-4">
           {/* Chat Messages */}
           {messages.map((msg) => (
-            <div key={msg.id} className="group hover:bg-muted/30 p-3 rounded-lg transition-colors">
-              <div className="flex items-start gap-2">
-                <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarImage src={msg.profiles?.avatar_url || undefined} />
-                  <AvatarFallback className="text-xs bg-primary/20 text-primary font-bold">
-                    {(msg.profiles?.roblox_username || msg.username || 'U')[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-sm font-semibold text-primary">
-                      {msg.profiles?.roblox_username || msg.username}
-                    </span>
-                    {msg.profiles?.level && (
-                      <div className={`flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r ${getLevelBgColor(msg.profiles.level)} rounded-full border`}>
-                        <Star className={`w-2.5 h-2.5 ${getLevelColor(msg.profiles.level)} ${getLevelFillColor(msg.profiles.level)}`} />
-                        <span className={`text-[10px] font-bold ${getLevelColor(msg.profiles.level)}`}>{msg.profiles.level}</span>
-                      </div>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(msg.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+            <div key={msg.id} className="mb-3">
+              <div className="bg-secondary/30 border border-border rounded-lg p-3 hover:bg-secondary/50 transition-colors">
+                <div className="flex items-start gap-3">
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    <AvatarImage src={msg.profiles?.avatar_url || undefined} />
+                    <AvatarFallback className="text-xs bg-primary/20 text-primary font-bold">
+                      {(msg.profiles?.roblox_username || msg.username || 'U')[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                      <span className="text-sm font-semibold text-primary">
+                        {msg.profiles?.roblox_username || msg.username}
+                      </span>
+                      {msg.profiles?.level && (
+                        <div className={`flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r ${getLevelBgColor(msg.profiles.level)} rounded-full border`}>
+                          <Star className={`w-2.5 h-2.5 ${getLevelColor(msg.profiles.level)} ${getLevelFillColor(msg.profiles.level)}`} />
+                          <span className={`text-[10px] font-bold ${getLevelColor(msg.profiles.level)}`}>{msg.profiles.level}</span>
+                        </div>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground/90 break-words leading-relaxed">
+                      {msg.message}
+                    </p>
                   </div>
-                  <p className="text-sm text-foreground/90 break-words leading-relaxed">
-                    {msg.message}
-                  </p>
                 </div>
               </div>
             </div>

@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trophy, TrendingUp, Star } from "lucide-react";
+import { Trophy, TrendingUp, Star, Crown, Medal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getLevelColor, getLevelBgColor, getLevelFillColor } from "@/lib/levelUtils";
 
@@ -75,77 +75,88 @@ const Leaderboard = () => {
           {/* Header */}
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-3">
-              <Trophy className="w-10 h-10 text-primary" />
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <Trophy className="w-12 h-12 text-primary" />
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient">
                 Leaderboard
               </h1>
             </div>
-            <p className="text-muted-foreground">Top players by total wagered</p>
+            <p className="text-muted-foreground text-lg">Compete for the top spot • Earn rewards</p>
           </div>
 
-          {/* Leaderboard */}
-          <Card className="p-6 border-primary/20">
-            <div className="space-y-3">
+          {/* Leaderboard Card */}
+          <Card className="border-2 border-primary/20 shadow-2xl">
+            <CardHeader className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 border-b border-primary/20">
+              <CardTitle className="flex items-center gap-3 text-2xl">
+                <Crown className="w-6 h-6 text-primary" />
+                Top 100 Players
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
               {loading ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  Loading leaderboard...
+                <div className="text-center py-16 text-muted-foreground">
+                  <div className="animate-pulse">Loading leaderboard...</div>
                 </div>
               ) : topWagered.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  No data yet
+                <div className="text-center py-16 text-muted-foreground">
+                  <Trophy className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                  <p className="text-lg">No players yet</p>
+                  <p className="text-sm mt-2">Be the first to join!</p>
                 </div>
               ) : (
-                topWagered.map((profile, index) => (
-                  <div
-                    key={profile.id}
-                    className="flex items-center gap-4 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors border border-border/50"
-                  >
-                    {/* Position */}
-                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-background border border-border">
-                      {index < 3 ? (
-                        <Trophy className={`w-6 h-6 ${getMedalColor(index + 1)}`} />
-                      ) : (
-                        <span className="font-bold text-muted-foreground">#{index + 1}</span>
-                      )}
-                    </div>
+                <div className="divide-y divide-border">
+                  {topWagered.map((profile, index) => (
+                    <div
+                      key={profile.id}
+                      className={`flex items-center gap-5 p-5 hover:bg-secondary/50 transition-all ${
+                        index === 0 ? 'bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-transparent' :
+                        index === 1 ? 'bg-gradient-to-r from-slate-400/10 via-slate-400/5 to-transparent' :
+                        index === 2 ? 'bg-gradient-to-r from-orange-700/10 via-orange-700/5 to-transparent' : ''
+                      }`}
+                    >
+                      {/* Position with Medal */}
+                      <div className="flex items-center gap-3 min-w-[5rem]">
+                        {index === 0 && <Crown className="w-8 h-8 text-yellow-500 animate-pulse" />}
+                        {index === 1 && <Trophy className="w-7 h-7 text-slate-400" />}
+                        {index === 2 && <Medal className="w-7 h-7 text-orange-700" />}
+                        <span className={`text-3xl font-bold ${getMedalColor(index + 1)}`}>
+                          #{index + 1}
+                        </span>
+                      </div>
 
-                    {/* Avatar */}
-                    <Avatar className="w-12 h-12 ring-2 ring-primary/30">
-                      <AvatarImage src={profile.avatar_url || undefined} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-primary font-bold">
-                        {(profile.roblox_username || profile.username)[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                      {/* Avatar */}
+                      <Avatar className="w-16 h-16 ring-2 ring-primary/30 shadow-lg">
+                        <AvatarImage src={profile.avatar_url || undefined} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary/30 to-accent/20 text-primary text-xl font-bold">
+                          {(profile.roblox_username || profile.username)[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
 
-                    {/* Name & Level */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold truncate">
+                      {/* Name & Level */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-xl mb-2 truncate">
                           {profile.roblox_username || profile.username}
-                        </p>
-                        <div className={`flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r ${getLevelBgColor(profile.level)} rounded-full border`}>
-                          <Star className={`w-3 h-3 ${getLevelColor(profile.level)} ${getLevelFillColor(profile.level)}`} />
-                          <span className={`text-xs font-bold ${getLevelColor(profile.level)}`}>Lv {profile.level}</span>
+                        </h3>
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r ${getLevelBgColor(profile.level)} rounded-full border shadow-sm`}>
+                          <Star className={`w-4 h-4 ${getLevelColor(profile.level)} ${getLevelFillColor(profile.level)}`} />
+                          <span className={`text-sm font-bold ${getLevelColor(profile.level)}`}>Level {profile.level}</span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Stats */}
-                    <div className="flex items-center gap-6 text-right">
-                      <div>
-                        <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+                      {/* Stats */}
+                      <div className="text-right">
+                        <div className="flex items-center justify-end gap-1 text-muted-foreground text-xs uppercase tracking-wider mb-1">
                           <TrendingUp className="w-3 h-3" />
                           <span>Total Wagered</span>
                         </div>
-                        <p className="font-bold text-lg text-primary">
-                          ${profile.total_wagered?.toFixed(0) || "0"}
+                        <p className="font-bold text-2xl text-primary">
+                          ${profile.total_wagered?.toFixed(2) || "0.00"}
                         </p>
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
-            </div>
+            </CardContent>
           </Card>
         </div>
       </main>

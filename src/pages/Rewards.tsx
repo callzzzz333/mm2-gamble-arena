@@ -174,8 +174,11 @@ const Rewards = () => {
     setIsSpinning(true);
     
     try {
-      // Fetch crate items
-      const { data: crateItems } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch crate items with proper typing
+      const { data: crateItems, error: fetchError } = await supabase
         .from("crate_items")
         .select(`
           item_id,
@@ -190,7 +193,7 @@ const Rewards = () => {
         `)
         .eq("crate_id", crateId);
 
-      if (!crateItems || crateItems.length === 0) {
+      if (fetchError || !crateItems || crateItems.length === 0) {
         toast.error("This crate is empty!");
         setOpeningCrate(null);
         setIsSpinning(false);
@@ -200,7 +203,7 @@ const Rewards = () => {
       // Determine random item based on drop chances
       const random = Math.random() * 100;
       let cumulative = 0;
-      let selectedItem = crateItems[0].items;
+      let selectedItem = (crateItems[0] as any).items;
 
       for (const ci of crateItems as CrateItem[]) {
         cumulative += Number(ci.drop_chance);
@@ -210,25 +213,22 @@ const Rewards = () => {
         }
       }
 
-      // Create spinning items array (duplicate items for smooth loop)
+      // Create spinning items array with the won item at the end
       const allItems = (crateItems as CrateItem[]).map(ci => ci.items);
-      const spinArray = [...allItems, ...allItems, ...allItems, selectedItem];
+      const spinArray = [...allItems, ...allItems, ...allItems, ...allItems, selectedItem];
       setSpinItems(spinArray);
 
       // Animate the spin
       setTimeout(() => {
         if (spinnerRef.current) {
           const itemWidth = 120; // width + gap
-          const finalPosition = -(spinArray.length - 1) * itemWidth + 240; // Center the won item
+          const finalPosition = -(spinArray.length - 1) * itemWidth + 240;
           spinnerRef.current.style.transform = `translateX(${finalPosition}px)`;
         }
-      }, 100);
+      }, 50);
 
       // Wait for animation to complete
       await new Promise(resolve => setTimeout(resolve, 4000));
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
       // Update claimed reward with received item
       const { error: updateError } = await supabase
@@ -241,6 +241,7 @@ const Rewards = () => {
         .eq("id", claimedRewardId);
 
       if (updateError) {
+        console.error("Update error:", updateError);
         toast.error("Failed to open crate");
         setOpeningCrate(null);
         setIsSpinning(false);
@@ -253,7 +254,7 @@ const Rewards = () => {
         .select("*")
         .eq("user_id", user.id)
         .eq("item_id", selectedItem.id)
-        .single();
+        .maybeSingle();
 
       if (existingItem) {
         await supabase
@@ -273,10 +274,10 @@ const Rewards = () => {
       setWonItem(selectedItem);
       setIsSpinning(false);
       setShowWinDialog(true);
-      fetchData();
+      await fetchData();
     } catch (error) {
       console.error("Error opening crate:", error);
-      toast.error("An error occurred");
+      toast.error("An error occurred while opening the crate");
       setIsSpinning(false);
     } finally {
       setOpeningCrate(null);
