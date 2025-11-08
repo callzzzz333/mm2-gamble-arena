@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import confetti from "canvas-confetti";
+import { ParticleEffect } from "./ParticleEffect";
 
 interface Item {
   id: string;
@@ -28,6 +30,9 @@ export const CaseOpeningAnimation = ({
 }: CaseOpeningAnimationProps) => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [displayItems, setDisplayItems] = useState<Item[]>([]);
+  const [showParticles, setShowParticles] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hasTriggeredConfetti = useRef(false);
 
   useEffect(() => {
     // Create a long array of random items with the won item at a specific position
@@ -61,6 +66,171 @@ export const CaseOpeningAnimation = ({
       setTimeout(onComplete, 1000);
     }, duration);
   }, [items, wonItem, onComplete, position]);
+
+  // Trigger confetti and particles when animation completes for rare items
+  useEffect(() => {
+    if (!isSpinning && displayItems.length > 0 && !hasTriggeredConfetti.current) {
+      const rarity = wonItem.rarity.toLowerCase();
+      
+      if (rarity === "chroma" || rarity === "godly" || rarity === "ancient") {
+        hasTriggeredConfetti.current = true;
+        setShowParticles(true);
+        triggerRarityEffects(rarity);
+        
+        // Stop particles after animation
+        setTimeout(() => setShowParticles(false), 3000);
+      }
+    }
+  }, [isSpinning, wonItem, displayItems]);
+
+  const triggerRarityEffects = (rarity: string) => {
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (rect.left + rect.width / 2) / window.innerWidth;
+    const y = (rect.top + rect.height / 2) / window.innerHeight;
+
+    if (rarity === "chroma") {
+      // Epic rainbow confetti for Chroma
+      const duration = 3000;
+      const animationEnd = Date.now() + duration;
+      const colors = ["#a855f7", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444"];
+
+      const chromaConfetti = () => {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) return;
+
+        confetti({
+          particleCount: 3,
+          angle: 60,
+          spread: 55,
+          origin: { x, y },
+          colors: colors,
+          startVelocity: 60,
+          gravity: 1.2,
+          scalar: 1.2,
+        });
+
+        confetti({
+          particleCount: 3,
+          angle: 120,
+          spread: 55,
+          origin: { x, y },
+          colors: colors,
+          startVelocity: 60,
+          gravity: 1.2,
+          scalar: 1.2,
+        });
+
+        requestAnimationFrame(chromaConfetti);
+      };
+
+      chromaConfetti();
+
+      // Add fireworks effect
+      setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          spread: 160,
+          origin: { x, y },
+          colors: colors,
+          startVelocity: 45,
+          gravity: 0.8,
+          ticks: 300,
+        });
+      }, 200);
+    } else if (rarity === "godly") {
+      // Fiery explosion for Godly
+      const duration = 2500;
+      const animationEnd = Date.now() + duration;
+      const colors = ["#ef4444", "#f97316", "#fbbf24", "#ff0000"];
+
+      const godlyConfetti = () => {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) return;
+
+        confetti({
+          particleCount: 2,
+          angle: 90,
+          spread: 360,
+          origin: { x, y },
+          colors: colors,
+          startVelocity: 40,
+          gravity: 1,
+          scalar: 1.5,
+          shapes: ["circle"],
+        });
+
+        requestAnimationFrame(godlyConfetti);
+      };
+
+      godlyConfetti();
+
+      // Explosion burst
+      confetti({
+        particleCount: 80,
+        spread: 360,
+        origin: { x, y },
+        colors: colors,
+        startVelocity: 50,
+        gravity: 1.2,
+        ticks: 250,
+      });
+    } else if (rarity === "ancient") {
+      // Golden sparkles for Ancient
+      const duration = 2000;
+      const animationEnd = Date.now() + duration;
+      const colors = ["#eab308", "#fbbf24", "#fde047", "#facc15"];
+
+      const ancientConfetti = () => {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) return;
+
+        confetti({
+          particleCount: 2,
+          angle: 60,
+          spread: 45,
+          origin: { x, y: y - 0.1 },
+          colors: colors,
+          startVelocity: 35,
+          gravity: 0.8,
+          scalar: 0.8,
+          shapes: ["star"],
+        });
+
+        confetti({
+          particleCount: 2,
+          angle: 120,
+          spread: 45,
+          origin: { x, y: y - 0.1 },
+          colors: colors,
+          startVelocity: 35,
+          gravity: 0.8,
+          scalar: 0.8,
+          shapes: ["star"],
+        });
+
+        requestAnimationFrame(ancientConfetti);
+      };
+
+      ancientConfetti();
+
+      // Star burst
+      confetti({
+        particleCount: 60,
+        spread: 100,
+        origin: { x, y },
+        colors: colors,
+        startVelocity: 40,
+        gravity: 0.9,
+        shapes: ["star"],
+        ticks: 200,
+      });
+    }
+  };
 
   const getRarityColor = (rarity: string) => {
     switch (rarity.toLowerCase()) {
@@ -101,7 +271,15 @@ export const CaseOpeningAnimation = ({
   };
 
   return (
-    <div className="relative w-full overflow-hidden bg-gradient-to-b from-background to-secondary/20 rounded-lg p-6">
+    <div 
+      ref={containerRef}
+      className="relative w-full overflow-hidden bg-gradient-to-b from-background to-secondary/20 rounded-lg p-6"
+    >
+      <ParticleEffect 
+        rarity={wonItem.rarity} 
+        active={showParticles} 
+      />
+      
       <div className="text-center mb-4">
         <h3 className="text-lg font-bold text-primary">{playerName}</h3>
       </div>
@@ -162,15 +340,32 @@ export const CaseOpeningAnimation = ({
       {/* Result display */}
       {!isSpinning && (
         <div className="mt-6 animate-fade-in text-center">
-          <div className="inline-block">
+          <div className="inline-block relative">
             <Badge
               className={cn(
-                "text-lg px-4 py-2 bg-gradient-to-r",
-                getRarityColor(wonItem.rarity)
+                "text-lg px-4 py-2 bg-gradient-to-r animate-pulse",
+                getRarityColor(wonItem.rarity),
+                (wonItem.rarity.toLowerCase() === "chroma" || 
+                 wonItem.rarity.toLowerCase() === "godly") && 
+                "shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-bounce"
               )}
             >
               Won: {wonItem.name} - ${wonItem.value.toFixed(2)}
             </Badge>
+            {(wonItem.rarity.toLowerCase() === "chroma" || 
+              wonItem.rarity.toLowerCase() === "godly" || 
+              wonItem.rarity.toLowerCase() === "ancient") && (
+              <div className="absolute inset-0 animate-ping">
+                <Badge
+                  className={cn(
+                    "text-lg px-4 py-2 bg-gradient-to-r opacity-75",
+                    getRarityColor(wonItem.rarity)
+                  )}
+                >
+                  Won: {wonItem.name} - ${wonItem.value.toFixed(2)}
+                </Badge>
+              </div>
+            )}
           </div>
         </div>
       )}
