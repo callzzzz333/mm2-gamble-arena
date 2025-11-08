@@ -101,28 +101,28 @@ serve(async (req) => {
 
         // Build items description
         const itemsList = items.slice(0, 10).map((item: any) => 
-          `• **${item.name}** (x${item.quantity}) - ${item.rarity} - 🪙${item.value}`
+          `• **${item.name}** (x${item.quantity}) - ${item.rarity} - $${item.value}`
         ).join("\n");
 
         const moreItems = items.length > 10 ? `\n*... and ${items.length - 10} more items*` : "";
 
         const embed = {
-          title: "🎉 New Giveaway Created!",
-          description: `**${creatorName}** is giving away **${items.length}** item(s)!\n\n**Prize Items:**\n${itemsList}${moreItems}`,
-          color: 0x3b82f6, // Blue color
+          title: "New Giveaway Created",
+          description: `**${creatorName}** is giving away **${items.length}** item(s)\n\n**Prize Items:**\n${itemsList}${moreItems}`,
+          color: 0x000000, // Black color
           fields: [
             {
-              name: "💎 Total Value",
-              value: `🪙${totalValue.toFixed(2)}`,
+              name: "Total Value",
+              value: `$${totalValue.toFixed(2)}`,
               inline: true,
             },
             {
-              name: "⏰ Ends",
+              name: "Ends",
               value: `<t:${timestamp}:R>`,
               inline: true,
             },
             {
-              name: "👥 Entries",
+              name: "Entries",
               value: "0",
               inline: true,
             },
@@ -131,7 +131,7 @@ serve(async (req) => {
             url: items[0]?.image_url || "",
           },
           footer: {
-            text: "Join the giveaway now on MM2PVP!",
+            text: "Join the giveaway now on MM2PVP",
           },
           timestamp: new Date().toISOString(),
         };
