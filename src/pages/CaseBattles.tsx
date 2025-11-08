@@ -81,8 +81,22 @@ export default function CaseBattles() {
           schema: "public",
           table: "case_battles",
         },
-        () => {
-          fetchBattles();
+        (payload) => {
+          console.log("Battle updated:", payload);
+          const updatedBattle = payload.new as any;
+          
+          // If viewing this battle and status changed, fetch latest data
+          if (viewingBattle && updatedBattle.id === viewingBattle.id) {
+            console.log("Viewing battle updated, refreshing...");
+            fetchBattles();
+            
+            // If battle just became active, fetch the first round results
+            if (updatedBattle.status === "active" && updatedBattle.current_round === 1) {
+              setTimeout(() => fetchRoundResults(updatedBattle.id, 1), 500);
+            }
+          } else {
+            fetchBattles();
+          }
         }
       )
       .on(
@@ -92,19 +106,29 @@ export default function CaseBattles() {
           schema: "public",
           table: "case_battle_participants",
         },
-        () => {
+        (payload) => {
+          console.log("Participant updated:", payload);
           fetchBattles();
         }
       )
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "case_battle_rounds",
         },
-        () => {
-          fetchBattles();
+        (payload) => {
+          console.log("New round created:", payload);
+          const newRound = payload.new as any;
+          
+          // If viewing this battle, show animations for the new round
+          if (viewingBattle && newRound.battle_id === viewingBattle.id) {
+            console.log("New round for viewing battle, showing animations");
+            setCurrentRoundResults(newRound.results);
+            setShowingAnimations(true);
+            setAnimationsCompleted(0);
+          }
         }
       )
       .subscribe();
@@ -112,7 +136,26 @@ export default function CaseBattles() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [viewingBattle]);
+
+  const fetchRoundResults = async (battleId: string, roundNumber: number) => {
+    const { data, error } = await supabase
+      .from("case_battle_rounds")
+      .select("*")
+      .eq("battle_id", battleId)
+      .eq("round_number", roundNumber)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error("Error fetching round results:", error);
+      return;
+    }
+
+    const results = Array.isArray(data.results) ? data.results : [];
+    setCurrentRoundResults(results);
+    setShowingAnimations(true);
+    setAnimationsCompleted(0);
+  };
 
   const checkUser = async () => {
     const {
@@ -126,56 +169,66 @@ export default function CaseBattles() {
   };
 
   const fetchBattles = async () => {
-    const { data, error } = await supabase
-      .from("case_battles")
-      .select("*")
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("case_battles")
+        .select("*")
+        .in("status", ["waiting", "active"])
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching battles:", error);
-      return;
-    }
+      if (error) {
+        console.error("Error fetching battles:", error);
+        return;
+      }
 
-    setBattles(data || []);
+      setBattles(data || []);
 
-    // Fetch participants for each battle
-    for (const battle of data || []) {
-      fetchParticipants(battle.id);
+      // Fetch participants for each battle
+      const participantPromises = (data || []).map((battle) => fetchParticipants(battle.id));
+      await Promise.all(participantPromises);
+      
+      console.log("Fetched", data?.length || 0, "battles");
+    } catch (error) {
+      console.error("Exception fetching battles:", error);
     }
   };
 
   const fetchParticipants = async (battleId: string) => {
-    const { data, error } = await supabase
-      .from("case_battle_participants")
-      .select("*")
-      .eq("battle_id", battleId)
-      .order("position", { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from("case_battle_participants")
+        .select("*")
+        .eq("battle_id", battleId)
+        .order("position", { ascending: true });
 
-    if (error) {
-      console.error("Error fetching participants:", error);
-      return;
+      if (error) {
+        console.error("Error fetching participants:", error);
+        return;
+      }
+
+      // Fetch profiles for each participant
+      const participantsWithProfiles = await Promise.all(
+        (data || []).map(async (participant) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username, avatar_url")
+            .eq("id", participant.user_id)
+            .maybeSingle();
+
+          return {
+            ...participant,
+            profiles: profile || { username: "Unknown", avatar_url: null },
+          };
+        })
+      );
+
+      setParticipants((prev) => ({
+        ...prev,
+        [battleId]: participantsWithProfiles,
+      }));
+    } catch (error) {
+      console.error("Exception fetching participants:", error);
     }
-
-    // Fetch profiles for each participant
-    const participantsWithProfiles = await Promise.all(
-      (data || []).map(async (participant) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username, avatar_url")
-          .eq("id", participant.user_id)
-          .single();
-
-        return {
-          ...participant,
-          profiles: profile,
-        };
-      })
-    );
-
-    setParticipants((prev) => ({
-      ...prev,
-      [battleId]: participantsWithProfiles,
-    }));
   };
 
   const fetchItems = async () => {
@@ -193,7 +246,11 @@ export default function CaseBattles() {
   };
 
   const handleCreateBattle = async () => {
-    if (!user) return;
+    if (!user) {
+      toast.error("Please login first");
+      return;
+    }
+    
     if (selectedCases.length === 0) {
       toast.error("Please select at least one case");
       return;
@@ -203,7 +260,9 @@ export default function CaseBattles() {
 
     try {
       const maxPlayers = selectedMode === "1v1" ? 2 : selectedMode === "1v1v1" ? 3 : 4;
-      const totalValue = selectedCases.length * selectedRounds * 10; // Placeholder calculation
+      const totalValue = selectedCases.length * selectedRounds * 10;
+
+      console.log("Creating battle:", { maxPlayers, rounds: selectedRounds, cases: selectedCases.length });
 
       const { data: battle, error: battleError } = await supabase
         .from("case_battles")
@@ -214,11 +273,17 @@ export default function CaseBattles() {
           max_players: maxPlayers,
           rounds: selectedRounds,
           cases: selectedCases,
+          status: "waiting",
         })
         .select()
         .single();
 
-      if (battleError) throw battleError;
+      if (battleError) {
+        console.error("Battle creation error:", battleError);
+        throw battleError;
+      }
+
+      console.log("Battle created:", battle.id);
 
       // Add creator as first participant
       const { error: participantError } = await supabase
@@ -229,15 +294,22 @@ export default function CaseBattles() {
           position: 1,
         });
 
-      if (participantError) throw participantError;
+      if (participantError) {
+        console.error("Participant error:", participantError);
+        throw participantError;
+      }
 
       toast.success("Battle created successfully!");
       setShowCreateDialog(false);
       setSelectedCases([]);
-      fetchBattles();
+      setSelectedMode("1v1");
+      setSelectedRounds(1);
+      
+      // Refresh battles list
+      await fetchBattles();
     } catch (error: any) {
       console.error("Error creating battle:", error);
-      toast.error("Failed to create battle");
+      toast.error(error.message || "Failed to create battle");
     } finally {
       setLoading(false);
     }
@@ -254,6 +326,7 @@ export default function CaseBattles() {
 
       if (nextPosition > battle.max_players) {
         toast.error("Battle is full");
+        setLoading(false);
         return;
       }
 
@@ -265,24 +338,42 @@ export default function CaseBattles() {
           position: nextPosition,
         });
 
-      if (error) throw error;
-
-      // If battle is now full, start it
-      if (nextPosition === battle.max_players) {
-        await supabase
-          .from("case_battles")
-          .update({ status: "active", started_at: new Date().toISOString() })
-          .eq("id", battleId);
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("You are already in this battle");
+        } else {
+          throw error;
+        }
+        setLoading(false);
+        return;
       }
 
       toast.success("Joined battle!");
+      
+      // Auto-start when full
+      if (nextPosition === battle.max_players) {
+        console.log("Battle full, auto-starting...");
+        setTimeout(async () => {
+          try {
+            const { data, error: startError } = await supabase.functions.invoke(
+              "case-battle-start",
+              { body: { battleId } }
+            );
+
+            if (startError) {
+              console.error("Error auto-starting:", startError);
+              toast.error("Failed to start battle");
+            } else {
+              console.log("Battle started:", data);
+            }
+          } catch (err) {
+            console.error("Exception auto-starting:", err);
+          }
+        }, 1000);
+      }
     } catch (error: any) {
       console.error("Error joining battle:", error);
-      if (error.code === "23505") {
-        toast.error("You are already in this battle");
-      } else {
-        toast.error("Failed to join battle");
-      }
+      toast.error("Failed to join battle");
     } finally {
       setLoading(false);
     }
@@ -312,26 +403,39 @@ export default function CaseBattles() {
   };
 
   const handleStartBattle = async (battleId: string) => {
+    if (!user) return;
+    
     setLoading(true);
     try {
+      console.log("Starting battle:", battleId);
+      
       const { data, error } = await supabase.functions.invoke("case-battle-start", {
         body: { battleId },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
 
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to start battle");
+      }
+
+      console.log("Battle started successfully:", data);
       toast.success("Battle started!");
-      setCurrentRoundResults(data.results);
       
+      // Open battle viewer
       const battle = battles.find((b) => b.id === battleId);
       if (battle) {
         setViewingBattle(battle);
+        setCurrentRoundResults(data.results);
         setShowingAnimations(true);
         setAnimationsCompleted(0);
       }
     } catch (error: any) {
       console.error("Error starting battle:", error);
-      toast.error("Failed to start battle");
+      toast.error(error.message || "Failed to start battle");
     } finally {
       setLoading(false);
     }
@@ -342,25 +446,38 @@ export default function CaseBattles() {
 
     setLoading(true);
     try {
+      console.log("Processing next round for:", viewingBattle.id);
+      
       const { data, error } = await supabase.functions.invoke("case-battle-next-round", {
         body: { battleId: viewingBattle.id },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to process round");
+      }
+
+      console.log("Round processed:", data);
 
       if (data.completed) {
         toast.success("Battle completed!");
-        setViewingBattle(null);
-        fetchBattles();
+        setTimeout(() => {
+          setViewingBattle(null);
+          fetchBattles();
+        }, 2000);
       } else {
-        toast.success(`Round ${data.round} started!`);
+        toast.success(`Round ${data.round} complete!`);
         setCurrentRoundResults(data.results);
         setShowingAnimations(true);
         setAnimationsCompleted(0);
       }
     } catch (error: any) {
       console.error("Error processing round:", error);
-      toast.error("Failed to process round");
+      toast.error(error.message || "Failed to process round");
     } finally {
       setLoading(false);
     }
@@ -371,17 +488,38 @@ export default function CaseBattles() {
   };
 
   useEffect(() => {
-    if (viewingBattle && animationsCompleted === viewingBattle.max_players) {
+    if (viewingBattle && animationsCompleted === viewingBattle.max_players && showingAnimations) {
+      console.log("All animations completed");
       setShowingAnimations(false);
-      fetchBattles();
       
-      // Auto-progress if not final round
-      const battle = battles.find((b) => b.id === viewingBattle.id);
-      if (battle && battle.current_round < battle.rounds) {
-        setTimeout(() => handleNextRound(), 2000);
-      }
+      // Refresh battle data
+      setTimeout(async () => {
+        await fetchBattles();
+        
+        // Get the latest battle state
+        const { data: latestBattle } = await supabase
+          .from("case_battles")
+          .select("*")
+          .eq("id", viewingBattle.id)
+          .maybeSingle();
+        
+        if (latestBattle) {
+          setViewingBattle(latestBattle as Battle);
+          
+          // Auto-progress if not final round and status is still active
+          if (latestBattle.status === "active" && latestBattle.current_round < latestBattle.rounds) {
+            console.log(`Auto-progressing to round ${latestBattle.current_round + 1}`);
+            setTimeout(() => {
+              handleNextRound();
+            }, 2000);
+          } else if (latestBattle.status === "completed") {
+            console.log("Battle completed");
+            toast.success("Battle finished!");
+          }
+        }
+      }, 500);
     }
-  }, [animationsCompleted, viewingBattle]);
+  }, [animationsCompleted, viewingBattle, showingAnimations]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
@@ -497,14 +635,30 @@ export default function CaseBattles() {
                               Start Battle
                             </Button>
                           )}
-                          {battle.status === "active" && (
+                          {(battle.status === "active" || battle.status === "completed") && (
                             <Button 
                               variant="secondary" 
                               className="gap-2"
-                              onClick={() => setViewingBattle(battle)}
+                              onClick={async () => {
+                                setViewingBattle(battle);
+                                
+                                // Fetch latest round results if active
+                                if (battle.status === "active") {
+                                  const { data: latestRound } = await supabase
+                                    .from("case_battle_rounds")
+                                    .select("*")
+                                    .eq("battle_id", battle.id)
+                                    .eq("round_number", battle.current_round)
+                                    .maybeSingle();
+                                  
+                                  if (latestRound && Array.isArray(latestRound.results)) {
+                                    setCurrentRoundResults(latestRound.results);
+                                  }
+                                }
+                              }}
                             >
                               <Eye className="w-4 h-4" />
-                              Watch
+                              {battle.status === "active" ? "Watch" : "View"}
                             </Button>
                           )}
                           {battle.status === "completed" && (
@@ -514,7 +668,7 @@ export default function CaseBattles() {
                               onClick={() => navigate(`/battle-results/${battle.id}`)}
                             >
                               <Trophy className="w-4 h-4" />
-                              View Results
+                              Results
                             </Button>
                           )}
                         </div>
@@ -626,13 +780,17 @@ export default function CaseBattles() {
                 const participantResults = currentRoundResults.filter(
                   (r) => r.user_id === participant.user_id
                 );
-                const wonItem = participantResults[0];
+                
+                if (participantResults.length === 0) {
+                  console.warn("No results for participant:", participant.user_id);
+                  return null;
+                }
 
-                if (!wonItem) return null;
+                const wonItem = participantResults[0];
 
                 return (
                   <CaseOpeningAnimation
-                    key={participant.id}
+                    key={`${participant.id}-${viewingBattle.current_round}`}
                     items={items}
                     wonItem={wonItem}
                     onComplete={handleAnimationComplete}
