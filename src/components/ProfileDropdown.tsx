@@ -11,7 +11,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { User, LogOut, TrendingUp, Wallet, DollarSign } from "lucide-react";
+import { User, LogOut, TrendingUp, Wallet, DollarSign, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Profile {
@@ -23,6 +23,7 @@ interface Profile {
   total_wagered: number;
   total_deposited: number;
   total_profits: number;
+  level: number;
 }
 
 export const ProfileDropdown = () => {
@@ -113,7 +114,13 @@ export const ProfileDropdown = () => {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="font-bold text-lg">{profile.roblox_username || profile.username}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-lg">{profile.roblox_username || profile.username}</p>
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-full border border-yellow-500/30">
+                    <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                    <span className="text-xs font-bold text-yellow-500">Lv {profile.level}</span>
+                  </div>
+                </div>
                 {profile.roblox_username && (
                   <p className="text-xs text-muted-foreground">Roblox Verified</p>
                 )}
@@ -131,30 +138,38 @@ export const ProfileDropdown = () => {
               Statistics
             </DropdownMenuLabel>
             
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
+            <div className="grid grid-cols-4 gap-2">
+              <div className="text-center p-2 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                </div>
+                <p className="text-xs text-muted-foreground">Level</p>
+                <p className="font-bold text-sm text-yellow-500">{profile.level}</p>
+              </div>
+              
+              <div className="text-center p-2 bg-muted/30 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <TrendingUp className="w-3 h-3 text-blue-500" />
                 </div>
                 <p className="text-xs text-muted-foreground">Wagered</p>
-                <p className="font-bold text-sm">${profile.total_wagered?.toFixed(2) || "0.00"}</p>
+                <p className="font-bold text-sm">${profile.total_wagered?.toFixed(0) || "0"}</p>
               </div>
               
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
+              <div className="text-center p-2 bg-muted/30 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <DollarSign className="w-3 h-3 text-green-500" />
                 </div>
                 <p className="text-xs text-muted-foreground">Deposited</p>
-                <p className="font-bold text-sm">${profile.total_deposited?.toFixed(2) || "0.00"}</p>
+                <p className="font-bold text-sm">${profile.total_deposited?.toFixed(0) || "0"}</p>
               </div>
               
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
+              <div className="text-center p-2 bg-muted/30 rounded-lg">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <TrendingUp className="w-3 h-3 text-primary" />
                 </div>
                 <p className="text-xs text-muted-foreground">Profit</p>
                 <p className={`font-bold text-sm ${(profile.total_profits || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  ${profile.total_profits?.toFixed(2) || "0.00"}
+                  ${profile.total_profits?.toFixed(0) || "0"}
                 </p>
               </div>
             </div>

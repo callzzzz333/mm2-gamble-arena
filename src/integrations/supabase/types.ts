@@ -380,6 +380,7 @@ export type Database = {
           balance: number
           created_at: string | null
           id: string
+          level: number
           roblox_id: number | null
           roblox_username: string | null
           total_deposited: number | null
@@ -394,6 +395,7 @@ export type Database = {
           balance?: number
           created_at?: string | null
           id: string
+          level?: number
           roblox_id?: number | null
           roblox_username?: string | null
           total_deposited?: number | null
@@ -408,6 +410,7 @@ export type Database = {
           balance?: number
           created_at?: string | null
           id?: string
+          level?: number
           roblox_id?: number | null
           roblox_username?: string | null
           total_deposited?: number | null
@@ -613,6 +616,7 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_level: { Args: { wagered: number }; Returns: number }
       generate_verification_code: { Args: never; Returns: string }
       has_role: {
         Args: {
