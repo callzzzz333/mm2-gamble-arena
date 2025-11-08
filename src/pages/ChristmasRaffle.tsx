@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Gift, Snowflake, Trophy, Ticket, Check, Clock } from "lucide-react";
+import { Gift, Snowflake, Trophy, Ticket, Check, Clock, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -310,56 +310,79 @@ const ChristmasRaffle = () => {
 
         <main className="pt-16 px-12 py-8">
           <div className="max-w-6xl mx-auto space-y-8">
-            {/* Header */}
-            <div className="relative flex items-center gap-3 overflow-hidden rounded-xl p-6 bg-gradient-to-r from-blue-500/10 via-white/5 to-blue-500/10 border border-blue-500/20">
-              <Snowflake className="w-12 h-12 text-blue-300 absolute top-2 left-4 animate-spin" style={{ animationDuration: "10s" }} />
-              <Snowflake className="w-8 h-8 text-blue-200 absolute top-8 right-12 animate-spin" style={{ animationDuration: "15s" }} />
-              <Snowflake className="w-6 h-6 text-blue-400 absolute bottom-4 right-24 animate-spin" style={{ animationDuration: "12s" }} />
+            {/* Enhanced Header with Christmas Effects */}
+            <div className="relative flex items-center gap-3 overflow-hidden rounded-xl p-8 bg-gradient-to-r from-blue-500/20 via-white/10 to-blue-500/20 border-2 border-blue-500/30">
+              {/* Animated background shimmer */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
               
-              <div className="relative z-10 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-white/20 flex items-center justify-center shadow-glow">
-                <Ticket className="w-7 h-7 text-white" />
+              {/* Floating snowflakes */}
+              <Snowflake className="w-12 h-12 text-blue-300 absolute top-2 left-4 animate-float opacity-80" />
+              <Snowflake className="w-8 h-8 text-blue-200 absolute top-8 right-12 animate-float opacity-70" style={{ animationDelay: "1s" }} />
+              <Snowflake className="w-6 h-6 text-blue-400 absolute bottom-4 right-24 animate-float opacity-80" style={{ animationDelay: "2s" }} />
+              <Snowflake className="w-10 h-10 text-white/40 absolute top-4 right-32 animate-float" style={{ animationDelay: "1.5s" }} />
+              <Sparkles className="w-5 h-5 text-yellow-300 absolute top-6 left-24 animate-pulse" />
+              <Sparkles className="w-4 h-4 text-yellow-200 absolute bottom-6 left-32 animate-pulse" style={{ animationDelay: "0.5s" }} />
+              
+              {/* Glowing orbs */}
+              <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/30 rounded-full blur-3xl animate-pulse" />
+              <div className="absolute bottom-0 right-0 w-40 h-40 bg-white/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+              
+              <div className="relative z-10 w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 via-blue-400 to-white/30 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)]">
+                <Ticket className="w-8 h-8 text-white drop-shadow-lg" />
               </div>
               <div className="relative z-10 flex-1">
-                <h1 className="text-3xl font-bold flex items-center gap-2">
-                  <Gift className="w-8 h-8 text-blue-400" />
-                  Christmas Raffle
-                  <Ticket className="w-8 h-8 text-yellow-400" />
+                <h1 className="text-4xl font-bold flex items-center gap-3 mb-2">
+                  <Gift className="w-10 h-10 text-blue-400 drop-shadow-glow" />
+                  <span className="bg-gradient-to-r from-blue-300 via-white to-blue-300 bg-clip-text text-transparent">
+                    Christmas Raffle 2025
+                  </span>
+                  <Sparkles className="w-8 h-8 text-yellow-300 animate-pulse" />
                 </h1>
-                <p className="text-muted-foreground">Exchange items for tickets - $5 = 1 ticket</p>
+                <p className="text-muted-foreground text-lg">Exchange items for tickets - $5 = 1 ticket</p>
               </div>
               {raffleData && (
                 <div className="relative z-10 text-right">
-                  <div className="flex items-center gap-2 text-blue-400 mb-1">
-                    <Clock className="w-5 h-5" />
-                    <span className="text-sm font-medium">Draw In:</span>
+                  <div className="flex items-center gap-2 text-blue-400 mb-2">
+                    <Clock className="w-6 h-6" />
+                    <span className="text-sm font-bold uppercase tracking-wider">Draw In:</span>
                   </div>
-                  <div className="text-2xl font-bold">{timeLeft}</div>
+                  <div className="text-3xl font-bold bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
+                    {timeLeft}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Prize Pool */}
+            {/* Enhanced Prize Pool */}
             {raffleData && (
-              <Card className="p-6 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Trophy className="w-6 h-6 text-yellow-400" />
-                    Grand Prize Pool
-                  </h2>
-                  {raffleData.status === 'completed' && raffleData.winner_id && (
-                    <Badge className="bg-green-500 flex items-center gap-1">
-                      <Trophy className="w-4 h-4" />
-                      Winner Drawn
-                    </Badge>
-                  )}
-                </div>
-                <div className="text-center py-4">
-                  <p className="text-4xl font-bold text-yellow-400 mb-2">
-                    ${raffleData.total_prize_value.toFixed(2)}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {Array.isArray(raffleData.prize_items) ? raffleData.prize_items.length : 0} items in the prize pool
-                  </p>
+              <Card className="p-8 bg-gradient-to-br from-yellow-500/20 via-orange-500/10 to-yellow-500/20 border-2 border-yellow-500/40 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-300/20 to-transparent animate-shimmer" />
+                <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold flex items-center gap-3">
+                      <Trophy className="w-8 h-8 text-yellow-400 drop-shadow-glow" />
+                      <span className="bg-gradient-to-r from-yellow-300 via-orange-300 to-yellow-300 bg-clip-text text-transparent">
+                        Grand Prize Pool
+                      </span>
+                    </h2>
+                    {raffleData.status === 'completed' && raffleData.winner_id && (
+                      <Badge className="bg-green-500 flex items-center gap-2 px-4 py-2 text-sm">
+                        <Trophy className="w-5 h-5" />
+                        Winner Drawn
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-center py-6">
+                    <p className="text-5xl font-bold bg-gradient-to-r from-yellow-300 via-yellow-100 to-yellow-300 bg-clip-text text-transparent mb-3 drop-shadow-lg">
+                      ${raffleData.total_prize_value.toFixed(2)}
+                    </p>
+                    <p className="text-muted-foreground text-lg">
+                      {Array.isArray(raffleData.prize_items) ? raffleData.prize_items.length : 0} items in the prize pool
+                    </p>
+                  </div>
                 </div>
               </Card>
             )}
