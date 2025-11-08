@@ -123,16 +123,25 @@ const Coinflip = () => {
             activeIntervals.set(updatedGame.id, countdownInterval);
           }
 
-          // When game is completed, show result
+          // When game is completed, show result after countdown + flip
           if (updatedGame.status === "completed" && updatedGame.result) {
-            console.log("Game completed, showing result:", updatedGame.result);
+            console.log("Game completed, will reveal after animations:", updatedGame.result);
+
+            // Capture remaining countdown at this exact moment
+            const remaining = (flipAnimation && flipAnimation.gameId === updatedGame.id)
+              ? Math.max(0, flipAnimation.countdown)
+              : 0;
+            const showDelay = remaining * 1000 + 3000; // wait remaining countdown + 3s flip
+            const clearDelay = showDelay + 3000;       // keep result visible +3s
+
+            // Store result immediately so we know what to reveal later
             setFlipAnimation((prev) => {
               if (!prev || prev.gameId !== updatedGame.id) return prev;
               return { ...prev, result: updatedGame.result as "heads" | "tails" };
             });
 
-            // Wait for flip animation to complete (3 seconds), then show result
-            setTimeout(() => {
+            // Reveal result after the full sequence
+            window.setTimeout(() => {
               setFlipAnimation((prev) => {
                 if (!prev || prev.gameId !== updatedGame.id) return prev;
                 return { ...prev, isFlipping: false, showResult: true };
@@ -147,13 +156,13 @@ const Coinflip = () => {
               }
 
               fetchRecentFlips();
-            }, 3000);
+            }, showDelay);
 
-            // Clear animation after showing result for 3 more seconds
-            setTimeout(() => {
+            // Clear animation state after showing the result for a bit
+            window.setTimeout(() => {
               setFlipAnimation((prev) => (prev?.gameId === updatedGame.id ? null : prev));
               setGameToJoinRef((prev) => (prev?.id === updatedGame.id ? null : prev));
-            }, 6000);
+            }, clearDelay);
           }
 
           fetchGames();
@@ -188,9 +197,7 @@ const Coinflip = () => {
             activeIntervals.delete(deletedGame.id);
           }
 
-          // Clean up state if this was the active game
-          setFlipAnimation((prev) => (prev?.gameId === deletedGame.id ? null : prev));
-          setGameToJoinRef((prev) => (prev?.id === deletedGame.id ? null : prev));
+          // Preserve animation state on delete; timers will clear it
 
           fetchGames();
         },
@@ -451,6 +458,9 @@ const Coinflip = () => {
     return colors[rarity] || "bg-gray-500/20 text-gray-500";
   };
 
+  // Keep animating game visible even if it leaves 'waiting'
+  const displayedGames = gameToJoinRef && !games.some(g => g.id === gameToJoinRef.id) ? [gameToJoinRef, ...games] : games;
+
   return (
     <div className="min-h-screen w-full flex">
       <Sidebar />
@@ -581,13 +591,13 @@ const Coinflip = () => {
             {/* Active Games */}
             <div>
               <h2 className="text-xl font-bold mb-4">Active Games</h2>
-              {games.length === 0 ? (
+              {displayedGames.length === 0 ? (
                 <Card className="p-8 text-center">
                   <p className="text-muted-foreground">No active games. Create one to get started!</p>
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {games.map((game) => {
+                  {displayedGames.map((game) => {
                     const betAmount = parseFloat(game.bet_amount);
                     const minBet = betAmount * 0.9;
                     const maxBet = betAmount * 1.1;
