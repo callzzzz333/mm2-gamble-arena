@@ -30,6 +30,21 @@ serve(async (req) => {
       throw new Error("Giveaway ID is required");
     }
 
+    // Check if user already entered (prevents duplicates)
+    const { data: existingEntry } = await supabase
+      .from("giveaway_entries")
+      .select("*")
+      .eq("giveaway_id", giveawayId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingEntry) {
+      console.log(`User ${user.id} already entered giveaway ${giveawayId}`);
+      return new Response(JSON.stringify({ success: true, alreadyEntered: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Check if giveaway exists and is active
     const { data: giveaway, error: giveawayError } = await supabase
       .from("giveaways")
@@ -47,18 +62,6 @@ serve(async (req) => {
 
     if (new Date(giveaway.ends_at) < new Date()) {
       throw new Error("Giveaway has ended");
-    }
-
-    // Check if user already entered
-    const { data: existingEntry } = await supabase
-      .from("giveaway_entries")
-      .select("*")
-      .eq("giveaway_id", giveawayId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (existingEntry) {
-      throw new Error("You have already entered this giveaway");
     }
 
     // Create entry

@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useButtonAction } from "@/hooks/useButtonAction";
 import { ChevronLeft, ChevronRight, Gift, Users, Clock } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -41,7 +41,10 @@ export const GiveawayWidget = () => {
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [winnerAnimation, setWinnerAnimation] = useState<WinnerAnimation | null>(null);
   const [spinningAvatar, setSpinningAvatar] = useState<any>(null);
-  const { toast } = useToast();
+  const { execute: joinGiveaway, isLoading: isJoining } = useButtonAction({
+    successMessage: "Successfully joined giveaway!",
+    onSuccess: () => fetchGiveaways(),
+  });
 
   useEffect(() => {
     checkUser();
@@ -221,24 +224,18 @@ export const GiveawayWidget = () => {
     setGiveaways(giveawaysWithEntries);
   };
 
-  const joinGiveaway = async (giveawayId: string) => {
+  const handleJoinGiveaway = async (giveawayId: string) => {
     if (!user) {
-      toast({ title: "Please login to join giveaways", variant: "destructive" });
-      return;
+      throw new Error("Please login to join giveaways");
     }
 
-    try {
+    await joinGiveaway(async () => {
       const { error } = await supabase.functions.invoke("giveaway-join", {
         body: { giveawayId },
       });
 
       if (error) throw error;
-
-      toast({ title: "Successfully joined giveaway! 🎉" });
-      fetchGiveaways();
-    } catch (error: any) {
-      toast({ title: error.message || "Failed to join giveaway", variant: "destructive" });
-    }
+    });
   };
 
   const getRarityColor = (rarity: string) => {
@@ -393,12 +390,12 @@ export const GiveawayWidget = () => {
           </Button>
 
           <Button
-            onClick={() => joinGiveaway(currentGiveaway.id)}
-            disabled={currentGiveaway.userEntered}
+            onClick={() => handleJoinGiveaway(currentGiveaway.id)}
+            disabled={currentGiveaway.userEntered || isJoining}
             className="flex-1 text-xs h-7 font-semibold shadow-sm hover:shadow-md transition-all"
             size="sm"
           >
-            {currentGiveaway.userEntered ? "✓ Entered" : "Join Giveaway"}
+            {isJoining ? "Joining..." : currentGiveaway.userEntered ? "✓ Entered" : "Join Giveaway"}
           </Button>
 
           <Button

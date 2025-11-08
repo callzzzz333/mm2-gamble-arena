@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useButtonAction } from "@/hooks/useButtonAction";
 import { Gift, Plus, Minus } from "lucide-react";
 
 interface Item {
@@ -30,7 +30,17 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
   const [userItems, setUserItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [user, setUser] = useState<any>(null);
-  const { toast } = useToast();
+  const { execute: createGiveaway, isLoading: isCreating } = useButtonAction({
+    successMessage: "Giveaway created!",
+    onSuccess: () => {
+      setOpen(false);
+      setSelectedItems([]);
+      setDurationMinutes(5);
+      if (user?.id) {
+        fetchUserItems(user.id);
+      }
+    },
+  });
 
   useEffect(() => {
     checkUser();
@@ -54,16 +64,10 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
         .eq("user_id", userId)
         .gt("quantity", 0);
 
-      if (error) {
-        console.error("Error fetching user items:", error);
-        toast({ title: "Failed to load your items", variant: "destructive" });
-        return;
-      }
-
+      if (error) throw error;
       setUserItems(data || []);
     } catch (error: any) {
       console.error("Error fetching user items:", error);
-      toast({ title: "Failed to load your items", variant: "destructive" });
     }
   };
 
@@ -92,15 +96,13 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
     }
   };
 
-  const createGiveaway = async () => {
+  const handleCreateGiveaway = async () => {
     if (!user) {
-      toast({ title: "Please login to create giveaways", variant: "destructive" });
-      return;
+      throw new Error("Please login to create giveaways");
     }
 
     if (selectedItems.length === 0) {
-      toast({ title: "Please select at least one item", variant: "destructive" });
-      return;
+      throw new Error("Please select at least one item");
     }
 
     const itemsData = selectedItems.map((si) => ({
@@ -112,8 +114,8 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
       rarity: si.item.rarity,
     }));
 
-    try {
-      const { data, error } = await supabase.functions.invoke("giveaway-create", {
+    await createGiveaway(async () => {
+      const { error } = await supabase.functions.invoke("giveaway-create", {
         body: {
           items: itemsData,
           title: "Item Giveaway",
@@ -122,26 +124,8 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
         },
       });
 
-      if (error) {
-        console.error("Giveaway creation error:", error);
-        throw error;
-      }
-
-      toast({ title: "Giveaway created! 🎉", description: "Users can now join" });
-      setOpen(false);
-      setSelectedItems([]);
-      setDurationMinutes(5);
-      if (user?.id) {
-        fetchUserItems(user.id);
-      }
-    } catch (error: any) {
-      console.error("Error creating giveaway:", error);
-      toast({ 
-        title: error.message || "Failed to create giveaway", 
-        description: "Please try again or contact support",
-        variant: "destructive" 
-      });
-    }
+      if (error) throw error;
+    });
   };
 
   const getRarityColor = (rarity: string) => {
@@ -235,8 +219,8 @@ export const CreateGiveawayDialog = ({ trigger }: CreateGiveawayDialogProps) => 
             </div>
           </div>
 
-          <Button onClick={createGiveaway} className="w-full" disabled={selectedItems.length === 0}>
-            Create Giveaway
+          <Button onClick={handleCreateGiveaway} className="w-full" disabled={selectedItems.length === 0 || isCreating}>
+            {isCreating ? "Creating..." : "Create Giveaway"}
           </Button>
         </div>
       </DialogContent>
