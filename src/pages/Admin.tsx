@@ -23,6 +23,9 @@ const Admin = () => {
   const [selectedUser, setSelectedUser] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -31,6 +34,7 @@ const Admin = () => {
     fetchDeposits();
     fetchUsers();
     fetchWithdrawals();
+    fetchItems();
   }, []);
 
   const checkAdminStatus = async () => {
@@ -263,6 +267,69 @@ const Admin = () => {
       setItemRarity("");
       setItemValue("");
       setItemImageUrl("");
+    }
+  };
+
+  const fetchItems = async () => {
+    const { data } = await supabase
+      .from("items")
+      .select("*")
+      .order("value", { ascending: false });
+
+    if (data) {
+      setItems(data);
+    }
+  };
+
+  const handleUpdateItemValue = async (itemId: string, newValue: string) => {
+    const value = parseFloat(newValue);
+    if (isNaN(value) || value < 0) {
+      toast({ title: "Invalid value", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("items")
+      .update({ value })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update item value",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Item value updated",
+      });
+      setEditingItem(null);
+      setEditValue("");
+      fetchItems();
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+
+    const { error } = await supabase
+      .from("items")
+      .delete()
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete item",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Item deleted",
+      });
+      fetchItems();
     }
   };
 
@@ -517,7 +584,7 @@ const Admin = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="items">
+            <TabsContent value="items" className="space-y-6">
               <Card className="p-6 bg-card border-border">
                 <h2 className="text-xl font-bold mb-4">Create New Item</h2>
                 <form onSubmit={handleCreateItem} className="space-y-4">
@@ -567,6 +634,75 @@ const Admin = () => {
                     Create Item
                   </Button>
                 </form>
+              </Card>
+
+              <Card className="p-6 bg-card border-border">
+                <h2 className="text-xl font-bold mb-4">All Items ({items.length})</h2>
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4 p-4 bg-background rounded border border-border">
+                      {item.image_url && (
+                        <img src={item.image_url} alt={item.name} className="w-16 h-16 object-cover rounded" />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-semibold">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">{item.rarity}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {editingItem === item.id ? (
+                          <>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              className="w-24"
+                              autoFocus
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateItemValue(item.id, editValue)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingItem(null);
+                                setEditValue("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-bold text-lg w-24 text-right">${item.value.toFixed(2)}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingItem(item.id);
+                                setEditValue(item.value.toString());
+                              }}
+                            >
+                              Edit Value
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteItem(item.id)}
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </Card>
             </TabsContent>
 
