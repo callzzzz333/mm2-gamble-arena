@@ -11,20 +11,35 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
+    
+    if (!authHeader) {
+      throw new Error('No authorization header provided');
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     );
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Unauthorized');
+    
+    if (authError) {
+      console.error('Auth error:', authError);
+      throw new Error(`Authentication failed: ${authError.message}`);
     }
+    
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    console.log('Authenticated user:', user.id);
 
     const { items } = await req.json();
 
