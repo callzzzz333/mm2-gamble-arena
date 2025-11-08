@@ -132,27 +132,27 @@ export const Sidebar = () => {
         <Button 
           variant="ghost" 
           className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all relative border border-red-500/30 overflow-hidden group",
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all relative border border-blue-500/30 overflow-hidden group",
             isActive("/christmas-raffle") 
-              ? "bg-gradient-to-r from-red-500/20 via-green-500/20 to-red-500/20 text-foreground shadow-[0_0_20px_rgba(239,68,68,0.5)]" 
-              : "hover:bg-gradient-to-r hover:from-red-500/10 hover:via-green-500/10 hover:to-red-500/10 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+              ? "bg-gradient-to-r from-blue-500/20 via-white/10 to-blue-500/20 text-foreground shadow-[0_0_20px_rgba(59,130,246,0.5)]" 
+              : "hover:bg-gradient-to-r hover:from-blue-500/10 hover:via-white/5 hover:to-blue-500/10 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]"
           )}
           onClick={() => navigate("/christmas-raffle")}
         >
           {/* Animated snowflakes background */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-2 left-2 text-blue-300/40 animate-[float_3s_ease-in-out_infinite]">❄️</div>
-            <div className="absolute top-1/2 right-4 text-blue-200/40 animate-[float_4s_ease-in-out_infinite]" style={{ animationDelay: "1s" }}>❄️</div>
-            <div className="absolute -bottom-1 left-1/3 text-blue-400/40 animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: "2s" }}>❄️</div>
+            <div className="absolute -top-2 left-2 text-blue-300/60 animate-[float_3s_ease-in-out_infinite]">❄️</div>
+            <div className="absolute top-1/2 right-4 text-white/60 animate-[float_4s_ease-in-out_infinite]" style={{ animationDelay: "1s" }}>❄️</div>
+            <div className="absolute -bottom-1 left-1/3 text-blue-400/60 animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: "2s" }}>❄️</div>
           </div>
           
           <div className="relative flex items-center gap-3 flex-1">
-            <Gift className="w-5 h-5 text-red-500 group-hover:animate-bounce" />
-            <span className="font-medium flex-1 text-left bg-gradient-to-r from-red-500 via-green-500 to-red-500 bg-clip-text text-transparent animate-pulse">
-              🎄 Christmas Raffle
+            <Gift className="w-5 h-5 text-blue-500 group-hover:animate-bounce" />
+            <span className="font-medium flex-1 text-left bg-gradient-to-r from-blue-400 via-white to-blue-400 bg-clip-text text-transparent animate-pulse">
+              🎟️ Christmas Raffle
             </span>
-            <span className="px-1.5 py-0.5 bg-gradient-to-r from-red-500 to-green-500 text-white text-[10px] font-bold rounded uppercase animate-pulse">
-              🎅 Live
+            <span className="px-1.5 py-0.5 bg-gradient-to-r from-blue-500 to-white text-primary-foreground text-[10px] font-bold rounded uppercase animate-pulse">
+              🎫 Live
             </span>
           </div>
         </Button>

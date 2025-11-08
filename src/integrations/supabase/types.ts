@@ -174,6 +174,33 @@ export type Database = {
           },
         ]
       }
+      christmas_raffle_tickets: {
+        Row: {
+          created_at: string
+          id: string
+          items_exchanged: Json
+          total_tickets: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items_exchanged?: Json
+          total_tickets?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items_exchanged?: Json
+          total_tickets?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       coinflip_games: {
         Row: {
           bet_amount: number
