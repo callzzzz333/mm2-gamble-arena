@@ -146,6 +146,15 @@ serve(async (req) => {
           console.error("Discord webhook failed:", await webhookResponse.text());
         } else {
           console.log("Discord webhook sent successfully");
+          
+          // Store the Discord message ID for future updates
+          const webhookData = await webhookResponse.json();
+          if (webhookData.id) {
+            await supabase
+              .from("giveaways")
+              .update({ discord_message_id: webhookData.id })
+              .eq("id", giveaway.id);
+          }
         }
       }
     } catch (webhookError) {

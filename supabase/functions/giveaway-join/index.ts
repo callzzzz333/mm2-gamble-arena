@@ -71,6 +71,90 @@ serve(async (req) => {
 
     if (entryError) throw entryError;
 
+    // Update Discord webhook with new entry count
+    try {
+      const webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
+      
+      if (webhookUrl && giveaway.discord_message_id) {
+        // Get updated entry count
+        const { count: newEntryCount } = await supabase
+          .from("giveaway_entries")
+          .select("*", { count: "exact", head: true })
+          .eq("giveaway_id", giveawayId);
+
+        // Get creator profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("roblox_username, username")
+          .eq("id", giveaway.creator_id)
+          .single();
+
+        const creatorName = profile?.roblox_username || profile?.username || "Unknown";
+        const items = giveaway.prize_items || [];
+        const endsAt = new Date(giveaway.ends_at);
+        const timestamp = Math.floor(endsAt.getTime() / 1000);
+
+        // Build items description
+        const itemsList = items.slice(0, 10).map((item: any) => 
+          `• **${item.name}** (x${item.quantity}) - ${item.rarity} - $${item.value}`
+        ).join("\n");
+
+        const moreItems = items.length > 10 ? `\n*... and ${items.length - 10} more items*` : "";
+
+        const embed = {
+          title: "New Giveaway Created",
+          description: `**${creatorName}** is giving away **${items.length}** item(s)\n\n**Prize Items:**\n${itemsList}${moreItems}`,
+          color: 0x000000,
+          fields: [
+            {
+              name: "Total Value",
+              value: `$${giveaway.total_value}`,
+              inline: true,
+            },
+            {
+              name: "Ends",
+              value: `<t:${timestamp}:R>`,
+              inline: true,
+            },
+            {
+              name: "Entries",
+              value: `${newEntryCount || 0}`,
+              inline: true,
+            },
+          ],
+          thumbnail: {
+            url: items[0]?.image_url || "",
+          },
+          footer: {
+            text: "Join the giveaway now on MM2PVP",
+          },
+          timestamp: new Date().toISOString(),
+        };
+
+        // Extract webhook ID and token from URL
+        const webhookParts = webhookUrl.split("/");
+        const webhookId = webhookParts[webhookParts.length - 2];
+        const webhookToken = webhookParts[webhookParts.length - 1];
+
+        const updateUrl = `https://discord.com/api/webhooks/${webhookId}/${webhookToken}/messages/${giveaway.discord_message_id}`;
+        
+        const updateResponse = await fetch(updateUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] }),
+        });
+
+        if (!updateResponse.ok) {
+          console.error("Discord webhook update failed:", await updateResponse.text());
+        } else {
+          console.log("Discord webhook updated successfully");
+        }
+      }
+    } catch (webhookError) {
+      console.error("Error updating Discord webhook:", webhookError);
+      // Don't fail the entry if webhook update fails
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

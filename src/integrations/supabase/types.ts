@@ -225,6 +225,7 @@ export type Database = {
           created_at: string | null
           creator_id: string
           description: string | null
+          discord_message_id: string | null
           ended_at: string | null
           ends_at: string | null
           id: string
@@ -240,6 +241,7 @@ export type Database = {
           created_at?: string | null
           creator_id: string
           description?: string | null
+          discord_message_id?: string | null
           ended_at?: string | null
           ends_at?: string | null
           id?: string
@@ -255,6 +257,7 @@ export type Database = {
           created_at?: string | null
           creator_id?: string
           description?: string | null
+          discord_message_id?: string | null
           ended_at?: string | null
           ends_at?: string | null
           id?: string
