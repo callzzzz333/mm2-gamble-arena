@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { ParticleEffect } from "./ParticleEffect";
+import { soundManager } from "@/lib/soundManager";
 
 interface Item {
   id: string;
@@ -33,6 +34,8 @@ export const CaseOpeningAnimation = ({
   const [showParticles, setShowParticles] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasTriggeredConfetti = useRef(false);
+  const spinSoundRef = useRef<HTMLAudioElement | undefined>();
+  const tickIntervalRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     // Create a long array of random items with the won item at a specific position
@@ -57,14 +60,46 @@ export const CaseOpeningAnimation = ({
     // Start spinning after a brief delay
     setTimeout(() => {
       setIsSpinning(true);
+      
+      // Play spinning sound (loop)
+      spinSoundRef.current = soundManager.play('spin', { loop: true, volume: 0.4 });
+      
+      // Play tick sounds as items pass by
+      tickIntervalRef.current = setInterval(() => {
+        soundManager.play('tick', { volume: 0.2 });
+      }, 150);
     }, 100);
 
     // Stop spinning and show result
     const duration = 4000 + (position * 500); // Stagger animations by position
     setTimeout(() => {
       setIsSpinning(false);
+      
+      // Stop spinning sounds
+      if (spinSoundRef.current) {
+        soundManager.stop(spinSoundRef.current);
+      }
+      if (tickIntervalRef.current) {
+        clearInterval(tickIntervalRef.current);
+      }
+      
+      // Play reveal sound
+      setTimeout(() => {
+        soundManager.play('reveal', { volume: 0.5 });
+      }, 200);
+      
       setTimeout(onComplete, 1000);
     }, duration);
+
+    return () => {
+      // Cleanup
+      if (spinSoundRef.current) {
+        soundManager.stop(spinSoundRef.current);
+      }
+      if (tickIntervalRef.current) {
+        clearInterval(tickIntervalRef.current);
+      }
+    };
   }, [items, wonItem, onComplete, position]);
 
   // Trigger confetti and particles when animation completes for rare items
@@ -77,8 +112,18 @@ export const CaseOpeningAnimation = ({
         setShowParticles(true);
         triggerRarityEffects(rarity);
         
+        // Play rarity-specific sound effects
+        setTimeout(() => {
+          soundManager.playRaritySound(rarity);
+        }, 300);
+        
         // Stop particles after animation
         setTimeout(() => setShowParticles(false), 3000);
+      } else {
+        // Play standard reveal sound for common items
+        setTimeout(() => {
+          soundManager.playRaritySound(rarity);
+        }, 300);
       }
     }
   }, [isSpinning, wonItem, displayItems]);

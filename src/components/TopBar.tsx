@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
+import { SoundToggle } from "@/components/SoundToggle";
 import { supabase } from "@/integrations/supabase/client";
 
 export const TopBar = () => {
@@ -80,6 +81,7 @@ export const TopBar = () => {
         <div className="flex items-center gap-3">
           {user ? (
             <>
+              <SoundToggle />
               <Button 
                 variant="ghost" 
                 size="icon" 
