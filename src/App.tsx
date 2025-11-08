@@ -19,6 +19,7 @@ import TeamShowdown from "./pages/TeamShowdown";
 import ItemDuel from "./pages/ItemDuel";
 import Leaderboard from "./pages/Leaderboard";
 import Rewards from "./pages/Rewards";
+import CaseBattles from "./pages/CaseBattles";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/item-duel" element={<ItemDuel />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/rewards" element={<Rewards />} />
+          <Route path="/case-battles" element={<CaseBattles />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -14,6 +14,127 @@ export type Database = {
   }
   public: {
     Tables: {
+      case_battle_participants: {
+        Row: {
+          battle_id: string
+          id: string
+          items_won: Json
+          joined_at: string
+          position: number
+          total_value: number
+          user_id: string
+        }
+        Insert: {
+          battle_id: string
+          id?: string
+          items_won?: Json
+          joined_at?: string
+          position: number
+          total_value?: number
+          user_id: string
+        }
+        Update: {
+          battle_id?: string
+          id?: string
+          items_won?: Json
+          joined_at?: string
+          position?: number
+          total_value?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_battle_participants_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "case_battles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_battle_rounds: {
+        Row: {
+          battle_id: string
+          case_index: number
+          created_at: string
+          id: string
+          results: Json
+          round_number: number
+        }
+        Insert: {
+          battle_id: string
+          case_index: number
+          created_at?: string
+          id?: string
+          results?: Json
+          round_number: number
+        }
+        Update: {
+          battle_id?: string
+          case_index?: number
+          created_at?: string
+          id?: string
+          results?: Json
+          round_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_battle_rounds_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "case_battles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_battles: {
+        Row: {
+          cases: Json
+          completed_at: string | null
+          created_at: string
+          creator_id: string
+          current_round: number
+          id: string
+          max_players: number
+          mode: string
+          rounds: number
+          started_at: string | null
+          status: string
+          total_value: number
+          winner_id: string | null
+        }
+        Insert: {
+          cases?: Json
+          completed_at?: string | null
+          created_at?: string
+          creator_id: string
+          current_round?: number
+          id?: string
+          max_players?: number
+          mode?: string
+          rounds?: number
+          started_at?: string | null
+          status?: string
+          total_value?: number
+          winner_id?: string | null
+        }
+        Update: {
+          cases?: Json
+          completed_at?: string | null
+          created_at?: string
+          creator_id?: string
+          current_round?: number
+          id?: string
+          max_players?: number
+          mode?: string
+          rounds?: number
+          started_at?: string | null
+          status?: string
+          total_value?: number
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string | null
