@@ -48,6 +48,7 @@ interface FlipAnimation {
   isFlipping: boolean;
   countdown: number;
   result: "heads" | "tails" | null;
+  showResult: boolean;
 }
 
 const Coinflip = () => {
@@ -95,9 +96,10 @@ const Coinflip = () => {
               isFlipping: false,
               countdown: 5,
               result: null,
+              showResult: false,
             });
 
-            // Start countdown
+            // Start countdown with smooth progress
             let countdown = 5;
             const countdownInterval = window.setInterval(() => {
               countdown--;
@@ -126,23 +128,32 @@ const Coinflip = () => {
             console.log("Game completed, showing result:", updatedGame.result);
             setFlipAnimation((prev) => {
               if (!prev || prev.gameId !== updatedGame.id) return prev;
-              return { ...prev, isFlipping: false, result: updatedGame.result as "heads" | "tails" };
+              return { ...prev, result: updatedGame.result as "heads" | "tails" };
             });
 
-            if (user && (updatedGame.creator_id === user.id || updatedGame.joiner_id === user.id)) {
-              toast({
-                title: updatedGame.winner_id === user.id ? "You won! 🎉" : "You lost 😢",
-                description: `Result: ${updatedGame.result.toUpperCase()}. Items have been paid out.`,
-                duration: 5000,
+            // Wait for flip animation to complete (3 seconds), then show result
+            setTimeout(() => {
+              setFlipAnimation((prev) => {
+                if (!prev || prev.gameId !== updatedGame.id) return prev;
+                return { ...prev, isFlipping: false, showResult: true };
               });
-            }
 
-            fetchRecentFlips();
+              if (user && (updatedGame.creator_id === user.id || updatedGame.joiner_id === user.id)) {
+                toast({
+                  title: updatedGame.winner_id === user.id ? "You won! 🎉" : "You lost 😢",
+                  description: `Result: ${updatedGame.result.toUpperCase()}. Items have been paid out.`,
+                  duration: 5000,
+                });
+              }
 
+              fetchRecentFlips();
+            }, 3000);
+
+            // Clear animation after showing result for 3 more seconds
             setTimeout(() => {
               setFlipAnimation((prev) => (prev?.gameId === updatedGame.id ? null : prev));
               setGameToJoinRef((prev) => (prev?.id === updatedGame.id ? null : prev));
-            }, 3000);
+            }, 6000);
           }
 
           fetchGames();
@@ -582,7 +593,7 @@ const Coinflip = () => {
                     const maxBet = betAmount * 1.1;
                     const isAnimating = flipAnimation?.gameId === game.id;
                     const progress =
-                      isAnimating && flipAnimation.countdown > 0 ? ((5 - flipAnimation.countdown) / 5) * 100 : 0;
+                      isAnimating && flipAnimation.countdown > 0 ? ((5 - flipAnimation.countdown) / 5) * 100 : 100;
 
                     return (
                       <Card
@@ -596,30 +607,32 @@ const Coinflip = () => {
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             {/* Coin Image with Animation */}
                             <div className="relative w-12 h-12 flex-shrink-0">
-                              {/* Circular Progress Ring */}
+                              {/* Circular Progress Ring - Always show during countdown */}
                               {isAnimating && flipAnimation.countdown > 0 && (
-                                <svg className="absolute inset-0 w-full h-full -rotate-90">
+                                <svg className="absolute inset-0 w-full h-full -rotate-90 z-10">
                                   <circle
                                     cx="24"
                                     cy="24"
-                                    r="22"
+                                    r="20"
                                     fill="none"
                                     stroke="currentColor"
-                                    strokeWidth="2"
-                                    className="text-muted"
-                                    opacity="0.2"
+                                    strokeWidth="3"
+                                    className="text-muted/30"
                                   />
                                   <circle
                                     cx="24"
                                     cy="24"
-                                    r="22"
+                                    r="20"
                                     fill="none"
                                     stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeDasharray={`${2 * Math.PI * 22}`}
-                                    strokeDashoffset={`${2 * Math.PI * 22 * (1 - progress / 100)}`}
-                                    className="text-primary transition-all duration-1000 ease-linear"
+                                    strokeWidth="3"
+                                    strokeDasharray={`${2 * Math.PI * 20}`}
+                                    strokeDashoffset={`${2 * Math.PI * 20 * (1 - progress / 100)}`}
+                                    className="text-primary"
                                     strokeLinecap="round"
+                                    style={{
+                                      transition: `stroke-dashoffset ${flipAnimation.countdown > 0 ? '1s' : '0s'} linear`
+                                    }}
                                   />
                                 </svg>
                               )}
@@ -627,43 +640,37 @@ const Coinflip = () => {
                               <div className="relative w-full h-full rounded-full overflow-hidden bg-transparent">
                                 <img
                                   src={
-                                    isAnimating && flipAnimation.isFlipping
-                                      ? coinHeads
-                                      : isAnimating && flipAnimation.result
-                                        ? flipAnimation.result === "heads"
-                                          ? coinHeads
-                                          : coinTails
-                                        : game.creator_side === "heads"
-                                          ? coinHeads
-                                          : coinTails
+                                    isAnimating && flipAnimation.showResult && flipAnimation.result
+                                      ? flipAnimation.result === "heads"
+                                        ? coinHeads
+                                        : coinTails
+                                      : game.creator_side === "heads"
+                                        ? coinHeads
+                                        : coinTails
                                   }
                                   alt={game.creator_side}
-                                  className={`w-full h-full object-contain ${
-                                    isAnimating && flipAnimation.isFlipping ? "animate-[spin_5.0s_linear_infinite]" : ""
+                                  className={`w-full h-full object-contain transition-transform ${
+                                    isAnimating && flipAnimation.isFlipping && !flipAnimation.showResult
+                                      ? "animate-[spin_3s_ease-in-out]"
+                                      : ""
                                   }`}
                                 />
-                                <div
-                                  className={`absolute inset-0 flex items-center justify-center ${
-                                    isAnimating && flipAnimation.isFlipping ? "animate-[spin_5.3s_linear_infinite]" : ""
-                                  }`}
-                                >
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                   <span className="text-2xl font-black text-white drop-shadow-[0_0_6px_rgba(0,0,0,1)]">
-                                    {isAnimating && flipAnimation.isFlipping
-                                      ? "H"
-                                      : isAnimating && flipAnimation.result
-                                        ? flipAnimation.result === "heads"
-                                          ? "H"
-                                          : "T"
-                                        : game.creator_side === "heads"
-                                          ? "H"
-                                          : "T"}
+                                    {isAnimating && flipAnimation.showResult && flipAnimation.result
+                                      ? flipAnimation.result === "heads"
+                                        ? "H"
+                                        : "T"
+                                      : game.creator_side === "heads"
+                                        ? "H"
+                                        : "T"}
                                   </span>
                                 </div>
 
                                 {/* Countdown Overlay */}
                                 {isAnimating && flipAnimation.countdown > 0 && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
-                                    <span className="text-2xl font-bold text-white drop-shadow-lg">
+                                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-full z-20">
+                                    <span className="text-2xl font-bold text-primary drop-shadow-lg animate-pulse">
                                       {flipAnimation.countdown}
                                     </span>
                                   </div>
