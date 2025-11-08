@@ -116,29 +116,46 @@ serve(async (req) => {
 
       // Award items to winner
       if (giveaway.prize_items && Array.isArray(giveaway.prize_items)) {
+        console.log(`Awarding ${giveaway.prize_items.length} items to winner ${winnerId}`);
+        
         for (const item of giveaway.prize_items) {
+          console.log(`Awarding item: ${item.name} (x${item.quantity}) to user ${winnerId}`);
+          
           // Check if winner already has this item
           const { data: existingItem } = await supabase
             .from("user_items")
             .select("*")
             .eq("user_id", winnerId)
             .eq("item_id", item.item_id)
-            .single();
+            .maybeSingle();
 
           if (existingItem) {
-            await supabase
+            const { error: updateError } = await supabase
               .from("user_items")
               .update({ quantity: existingItem.quantity + item.quantity })
               .eq("user_id", winnerId)
               .eq("item_id", item.item_id);
+            
+            if (updateError) {
+              console.error(`Error updating item for winner:`, updateError);
+            } else {
+              console.log(`Updated ${item.name} quantity to ${existingItem.quantity + item.quantity}`);
+            }
           } else {
-            await supabase.from("user_items").insert({
+            const { error: insertError } = await supabase.from("user_items").insert({
               user_id: winnerId,
               item_id: item.item_id,
               quantity: item.quantity,
             });
+            
+            if (insertError) {
+              console.error(`Error inserting item for winner:`, insertError);
+            } else {
+              console.log(`Inserted new ${item.name} (x${item.quantity})`);
+            }
           }
         }
+        console.log(`All items awarded to winner ${winnerId}`);
       }
 
       // Get winner profile for chat announcement

@@ -30,6 +30,30 @@ serve(async (req) => {
       throw new Error("Giveaway ID is required");
     }
 
+    // Get giveaway first to check creator
+    const { data: giveaway, error: giveawayError } = await supabase
+      .from("giveaways")
+      .select("*")
+      .eq("id", giveawayId)
+      .single();
+
+    if (giveawayError || !giveaway) {
+      throw new Error("Giveaway not found");
+    }
+
+    // Prevent creator from joining their own giveaway
+    if (giveaway.creator_id === user.id) {
+      throw new Error("You cannot join your own giveaway");
+    }
+
+    if (giveaway.status !== "active") {
+      throw new Error("Giveaway is not active");
+    }
+
+    if (new Date(giveaway.ends_at) < new Date()) {
+      throw new Error("Giveaway has ended");
+    }
+
     // Check if user already entered (prevents duplicates)
     const { data: existingEntry } = await supabase
       .from("giveaway_entries")
@@ -43,25 +67,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, alreadyEntered: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    // Check if giveaway exists and is active
-    const { data: giveaway, error: giveawayError } = await supabase
-      .from("giveaways")
-      .select("*")
-      .eq("id", giveawayId)
-      .single();
-
-    if (giveawayError || !giveaway) {
-      throw new Error("Giveaway not found");
-    }
-
-    if (giveaway.status !== "active") {
-      throw new Error("Giveaway is not active");
-    }
-
-    if (new Date(giveaway.ends_at) < new Date()) {
-      throw new Error("Giveaway has ended");
     }
 
     // Create entry

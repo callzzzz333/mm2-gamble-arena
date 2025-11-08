@@ -142,19 +142,20 @@ serve(async (req) => {
           body: JSON.stringify({ embeds: [embed] }),
         });
 
-        if (!webhookResponse.ok) {
-          console.error("Discord webhook failed:", await webhookResponse.text());
-        } else {
+        if (webhookResponse.ok) {
           console.log("Discord webhook sent successfully");
           
           // Store the Discord message ID for future updates
           const webhookData = await webhookResponse.json();
-          if (webhookData.id) {
+          if (webhookData && webhookData.id) {
             await supabase
               .from("giveaways")
               .update({ discord_message_id: webhookData.id })
               .eq("id", giveaway.id);
+            console.log("Stored Discord message ID:", webhookData.id);
           }
+        } else {
+          console.error("Discord webhook failed:", await webhookResponse.text());
         }
       }
     } catch (webhookError) {

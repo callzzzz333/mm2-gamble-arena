@@ -179,9 +179,12 @@ export const GiveawayWidget = () => {
       return;
     }
 
-    // Filter out giveaways with empty prize_items
+    // Filter out giveaways with empty prize_items AND giveaways created by current user
     const validGiveaways = giveawaysData.filter(
-      (g) => g.prize_items && Array.isArray(g.prize_items) && g.prize_items.length > 0
+      (g) => g.prize_items && 
+             Array.isArray(g.prize_items) && 
+             g.prize_items.length > 0 &&
+             g.creator_id !== user?.id // Exclude user's own giveaways
     );
 
     // Fetch creator profiles
