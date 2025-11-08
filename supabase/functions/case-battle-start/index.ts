@@ -47,21 +47,24 @@ Deno.serve(async (req) => {
     const { data: items } = await supabase.from("items").select("*");
     if (!items || items.length === 0) throw new Error("No items");
 
-    const cases = Array.isArray(battle.cases) ? battle.cases : [];
+    const caseIds = Array.isArray(battle.cases) ? battle.cases : [];
     const roundResults = [];
 
-    // Process first round
+    // Process first round - open all cases for each player
     for (const participant of participants) {
-      for (let i = 0; i < cases.length; i++) {
-        const item = getWeightedRandomItem(items);
-        roundResults.push({
-          user_id: participant.user_id,
-          item_id: item.id,
-          value: item.value,
-          name: item.name,
-          rarity: item.rarity,
-          image_url: item.image_url,
-        });
+      for (let caseIndex = 0; caseIndex < caseIds.length; caseIndex++) {
+        // Each case contains 8 random items
+        for (let itemIndex = 0; itemIndex < 8; itemIndex++) {
+          const item = getWeightedRandomItem(items);
+          roundResults.push({
+            user_id: participant.user_id,
+            item_id: item.id,
+            value: item.value,
+            name: item.name,
+            rarity: item.rarity,
+            image_url: item.image_url,
+          });
+        }
       }
     }
 

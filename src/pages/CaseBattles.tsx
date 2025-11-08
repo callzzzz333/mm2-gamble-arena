@@ -22,6 +22,14 @@ interface Item {
   image_url: string | null;
 }
 
+interface Crate {
+  id: string;
+  name: string;
+  description: string | null;
+  level_required: number;
+  image_url: string | null;
+}
+
 interface Battle {
   id: string;
   creator_id: string;
@@ -54,7 +62,7 @@ export default function CaseBattles() {
   const [user, setUser] = useState<any>(null);
   const [battles, setBattles] = useState<Battle[]>([]);
   const [participants, setParticipants] = useState<Record<string, Participant[]>>({});
-  const [items, setItems] = useState<Item[]>([]);
+  const [crates, setCrates] = useState<Crate[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedMode, setSelectedMode] = useState("1v1");
   const [selectedRounds, setSelectedRounds] = useState(1);
@@ -68,7 +76,7 @@ export default function CaseBattles() {
   useEffect(() => {
     checkUser();
     fetchBattles();
-    fetchItems();
+    fetchCrates();
   }, []);
 
   useEffect(() => {
@@ -137,6 +145,19 @@ export default function CaseBattles() {
       supabase.removeChannel(channel);
     };
   }, [viewingBattle]);
+
+  // Auto-close battle viewer when battle completes
+  useEffect(() => {
+    if (viewingBattle && viewingBattle.status === "completed" && !showingAnimations) {
+      const timer = setTimeout(() => {
+        console.log("Battle completed, auto-closing viewer");
+        setViewingBattle(null);
+        fetchBattles();
+      }, 3000); // Give users 3s to see the completion message
+      
+      return () => clearTimeout(timer);
+    }
+  }, [viewingBattle, showingAnimations]);
 
   const fetchRoundResults = async (battleId: string, roundNumber: number) => {
     const { data, error } = await supabase
@@ -231,18 +252,18 @@ export default function CaseBattles() {
     }
   };
 
-  const fetchItems = async () => {
+  const fetchCrates = async () => {
     const { data, error } = await supabase
-      .from("items")
+      .from("crates")
       .select("*")
-      .order("value", { ascending: false });
+      .order("level_required", { ascending: true });
 
     if (error) {
-      console.error("Error fetching items:", error);
+      console.error("Error fetching crates:", error);
       return;
     }
 
-    setItems(data || []);
+    setCrates(data || []);
   };
 
   const handleCreateBattle = async () => {
@@ -260,9 +281,9 @@ export default function CaseBattles() {
 
     try {
       const maxPlayers = selectedMode === "1v1" ? 2 : selectedMode === "1v1v1" ? 3 : 4;
-      const totalValue = selectedCases.length * selectedRounds * 10;
+      const totalValue = selectedCases.length * selectedRounds * 50; // Estimated value per case
 
-      console.log("Creating battle:", { maxPlayers, rounds: selectedRounds, cases: selectedCases.length });
+      console.log("Creating battle:", { maxPlayers, rounds: selectedRounds, cases: selectedCases });
 
       const { data: battle, error: battleError } = await supabase
         .from("case_battles")
@@ -396,9 +417,9 @@ export default function CaseBattles() {
     }
   };
 
-  const toggleCaseSelection = (itemId: string) => {
+  const toggleCaseSelection = (crateId: string) => {
     setSelectedCases((prev) =>
-      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+      prev.includes(crateId) ? prev.filter((id) => id !== crateId) : [...prev, crateId]
     );
   };
 
@@ -483,12 +504,24 @@ export default function CaseBattles() {
     }
   };
 
-  const handleAnimationComplete = () => {
-    setAnimationsCompleted((prev) => prev + 1);
-  };
+  useEffect(() => {
+    if (viewingBattle && showingAnimations && currentRoundResults.length > 0) {
+      // Auto-complete animations after showing all items
+      const totalParticipants = participants[viewingBattle.id]?.length || 0;
+      const itemsPerParticipant = currentRoundResults.filter(r => r.user_id === participants[viewingBattle.id]?.[0]?.user_id).length;
+      const animationDelay = itemsPerParticipant * 100 + 2000; // 100ms per item + 2s buffer
+      
+      const timer = setTimeout(() => {
+        console.log("Auto-completing animations after display");
+        setAnimationsCompleted(totalParticipants);
+      }, animationDelay);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [viewingBattle, showingAnimations, currentRoundResults, participants]);
 
   useEffect(() => {
-    if (viewingBattle && animationsCompleted === viewingBattle.max_players && showingAnimations) {
+    if (viewingBattle && animationsCompleted > 0 && animationsCompleted === (participants[viewingBattle.id]?.length || 0) && showingAnimations) {
       console.log("All animations completed");
       setShowingAnimations(false);
       
@@ -503,23 +536,18 @@ export default function CaseBattles() {
           .eq("id", viewingBattle.id)
           .maybeSingle();
         
-        if (latestBattle) {
-          setViewingBattle(latestBattle as Battle);
-          
-          // Auto-progress if not final round and status is still active
-          if (latestBattle.status === "active" && latestBattle.current_round < latestBattle.rounds) {
-            console.log(`Auto-progressing to round ${latestBattle.current_round + 1}`);
-            setTimeout(() => {
-              handleNextRound();
-            }, 2000);
-          } else if (latestBattle.status === "completed") {
-            console.log("Battle completed");
-            toast.success("Battle finished!");
-          }
+        if (!latestBattle) return;
+        
+        setViewingBattle(latestBattle);
+        
+        // If there are more rounds and battle is still active, don't auto-trigger next round
+        // Let the user click the button instead
+        if (latestBattle.status === "completed") {
+          console.log("Battle is now completed");
         }
       }, 500);
     }
-  }, [animationsCompleted, viewingBattle, showingAnimations]);
+  }, [animationsCompleted, viewingBattle, showingAnimations, participants]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
@@ -723,26 +751,24 @@ export default function CaseBattles() {
 
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Select Cases ({selectedCases.length} selected)
+                Select Cases ({selectedCases.length} selected) - Each case contains 8 random items
               </label>
               <div className="grid grid-cols-4 gap-4 max-h-96 overflow-y-auto p-4 border rounded-lg">
-                {items.slice(0, 20).map((item) => (
+                {crates.map((crate) => (
                   <Card
-                    key={item.id}
+                    key={crate.id}
                     className={`p-4 cursor-pointer transition-all ${
-                      selectedCases.includes(item.id)
+                      selectedCases.includes(crate.id)
                         ? "border-primary bg-primary/10"
                         : "hover:border-primary/50"
                     }`}
-                    onClick={() => toggleCaseSelection(item.id)}
+                    onClick={() => toggleCaseSelection(crate.id)}
                   >
-                    <img
-                      src={item.image_url || "/placeholder.svg"}
-                      alt={item.name}
-                      className="w-full aspect-square object-contain mb-2"
-                    />
-                    <p className="text-xs font-medium text-center truncate">{item.name}</p>
-                    <p className="text-xs text-primary text-center">${item.value.toFixed(2)}</p>
+                    <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center mb-2">
+                      <span className="text-4xl">📦</span>
+                    </div>
+                    <p className="text-xs font-medium text-center truncate">{crate.name}</p>
+                    <p className="text-xs text-muted-foreground text-center">Lvl {crate.level_required}+</p>
                   </Card>
                 ))}
               </div>
@@ -786,17 +812,37 @@ export default function CaseBattles() {
                   return null;
                 }
 
-                const wonItem = participantResults[0];
-
+                // Show all items won in this round for this participant
                 return (
-                  <CaseOpeningAnimation
-                    key={`${participant.id}-${viewingBattle.current_round}`}
-                    items={items}
-                    wonItem={wonItem}
-                    onComplete={handleAnimationComplete}
-                    playerName={participant.profiles?.username || "Unknown"}
-                    position={index}
-                  />
+                  <div key={`${participant.id}-${viewingBattle.current_round}`} className="space-y-2">
+                    <div className="flex items-center justify-between px-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={participant.profiles?.avatar_url || undefined} />
+                          <AvatarFallback>
+                            {participant.profiles?.username?.slice(0, 2).toUpperCase() || "??"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-semibold">{participant.profiles?.username}</span>
+                      </div>
+                      <span className="text-sm text-primary font-bold">
+                        ${participantResults.reduce((sum, r) => sum + r.value, 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-8 gap-2 p-4 bg-card/50 rounded-lg">
+                      {participantResults.map((result, idx) => (
+                        <Card key={idx} className="p-2 animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
+                          <img
+                            src={result.image_url || "/placeholder.svg"}
+                            alt={result.name}
+                            className="w-full aspect-square object-contain mb-1"
+                          />
+                          <p className="text-xs font-medium text-center truncate">{result.name}</p>
+                          <p className="text-xs text-primary text-center">${result.value.toFixed(2)}</p>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -833,7 +879,7 @@ export default function CaseBattles() {
                 ))}
               </div>
 
-              {viewingBattle.status === "active" && viewingBattle.current_round < viewingBattle.rounds && (
+              {viewingBattle.status === "active" && viewingBattle.current_round < viewingBattle.rounds && !loading && (
                 <Button 
                   className="w-full" 
                   size="lg" 
@@ -842,6 +888,12 @@ export default function CaseBattles() {
                 >
                   Next Round ({viewingBattle.current_round + 1}/{viewingBattle.rounds})
                 </Button>
+              )}
+              
+              {loading && (
+                <div className="text-center text-muted-foreground">
+                  Processing...
+                </div>
               )}
 
               {viewingBattle.status === "completed" && (
