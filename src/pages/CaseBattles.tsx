@@ -507,6 +507,16 @@ export default function CaseBattles() {
                               Watch
                             </Button>
                           )}
+                          {battle.status === "completed" && (
+                            <Button 
+                              variant="outline" 
+                              className="gap-2"
+                              onClick={() => navigate(`/battle-results/${battle.id}`)}
+                            >
+                              <Trophy className="w-4 h-4" />
+                              View Results
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </Card>
@@ -677,12 +687,25 @@ export default function CaseBattles() {
               )}
 
               {viewingBattle.status === "completed" && (
-                <div className="text-center p-6 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg">
-                  <Trophy className="w-16 h-16 mx-auto mb-4 text-primary" />
-                  <h3 className="text-2xl font-bold mb-2">Battle Complete!</h3>
-                  <p className="text-muted-foreground">
-                    Winner: {participants[viewingBattle.id]?.find(p => p.user_id === viewingBattle.winner_id)?.profiles?.username}
-                  </p>
+                <div className="space-y-4">
+                  <div className="text-center p-6 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg">
+                    <Trophy className="w-16 h-16 mx-auto mb-4 text-primary" />
+                    <h3 className="text-2xl font-bold mb-2">Battle Complete!</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Winner: {participants[viewingBattle.id]?.find(p => p.user_id === viewingBattle.winner_id)?.profiles?.username}
+                    </p>
+                  </div>
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={() => {
+                      setViewingBattle(null);
+                      navigate(`/battle-results/${viewingBattle.id}`);
+                    }}
+                  >
+                    <Trophy className="w-5 h-5 mr-2" />
+                    View Detailed Results
+                  </Button>
                 </div>
               )}
             </div>
