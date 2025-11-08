@@ -16,111 +16,164 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get all expired giveaways
-    const { data: expiredGiveaways, error: giveawaysError } = await supabase
+    // Find expired giveaways that haven't been completed
+    const { data: expiredGiveaways, error: fetchError } = await supabase
       .from("giveaways")
       .select("*")
       .eq("status", "active")
       .lt("ends_at", new Date().toISOString());
 
-    if (giveawaysError) throw giveawaysError;
+    if (fetchError) {
+      console.error("Error fetching expired giveaways:", fetchError);
+      throw fetchError;
+    }
 
-    const results = [];
+    if (!expiredGiveaways || expiredGiveaways.length === 0) {
+      console.log("No expired giveaways to process");
+      return new Response(JSON.stringify({ message: "No expired giveaways" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    for (const giveaway of expiredGiveaways || []) {
-      // Get all entries
+    console.log(`Processing ${expiredGiveaways.length} expired giveaways`);
+
+    for (const giveaway of expiredGiveaways) {
+      console.log(`Processing giveaway ${giveaway.id}`);
+
+      // Get all entries for this giveaway
       const { data: entries, error: entriesError } = await supabase
         .from("giveaway_entries")
         .select("user_id")
         .eq("giveaway_id", giveaway.id);
 
       if (entriesError) {
-        console.error("Error fetching entries:", entriesError);
+        console.error(`Error fetching entries for giveaway ${giveaway.id}:`, entriesError);
         continue;
       }
 
       if (!entries || entries.length === 0) {
-        // No entries, mark as completed without winner
+        console.log(`No entries for giveaway ${giveaway.id}, marking as completed without winner`);
+        
+        // Return items to creator if no one joined
+        if (giveaway.prize_items && Array.isArray(giveaway.prize_items)) {
+          for (const item of giveaway.prize_items) {
+            // Check if user already has this item
+            const { data: existingItem } = await supabase
+              .from("user_items")
+              .select("*")
+              .eq("user_id", giveaway.creator_id)
+              .eq("item_id", item.item_id)
+              .single();
+
+            if (existingItem) {
+              await supabase
+                .from("user_items")
+                .update({ quantity: existingItem.quantity + item.quantity })
+                .eq("user_id", giveaway.creator_id)
+                .eq("item_id", item.item_id);
+            } else {
+              await supabase
+                .from("user_items")
+                .insert({
+                  user_id: giveaway.creator_id,
+                  item_id: item.item_id,
+                  quantity: item.quantity,
+                });
+            }
+          }
+        }
+
         await supabase
           .from("giveaways")
-          .update({ status: "completed" })
+          .update({ status: "completed", ended_at: new Date().toISOString() })
           .eq("id", giveaway.id);
-        
-        results.push({ giveawayId: giveaway.id, winner: null, entries: 0 });
+
         continue;
       }
 
-      // Pick random winner
+      // Select random winner
       const randomIndex = Math.floor(Math.random() * entries.length);
       const winnerId = entries[randomIndex].user_id;
 
-      // Update giveaway with winner
-      await supabase
+      console.log(`Selected winner ${winnerId} for giveaway ${giveaway.id}`);
+
+      // Update giveaway status first to trigger UI animation
+      const { error: updateError } = await supabase
         .from("giveaways")
-        .update({ 
-          status: "completed",
-          winner_id: winnerId 
+        .update({
+          status: "drawing",
+          winner_id: winnerId,
         })
         .eq("id", giveaway.id);
 
-      // Give items to winner
-      const prizeItems = giveaway.prize_items as any[];
-      for (const item of prizeItems) {
-        const { data: existingItem } = await supabase
-          .from("user_items")
-          .select("*")
-          .eq("user_id", winnerId)
-          .eq("item_id", item.item_id)
-          .single();
+      if (updateError) {
+        console.error(`Error updating giveaway ${giveaway.id}:`, updateError);
+        continue;
+      }
 
-        if (existingItem) {
-          await supabase
+      // Wait 5 seconds for the spinning animation to complete
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
+      // Award items to winner
+      if (giveaway.prize_items && Array.isArray(giveaway.prize_items)) {
+        for (const item of giveaway.prize_items) {
+          // Check if winner already has this item
+          const { data: existingItem } = await supabase
             .from("user_items")
-            .update({ quantity: existingItem.quantity + item.quantity })
+            .select("*")
             .eq("user_id", winnerId)
-            .eq("item_id", item.item_id);
-        } else {
-          await supabase
-            .from("user_items")
-            .insert({
+            .eq("item_id", item.item_id)
+            .single();
+
+          if (existingItem) {
+            await supabase
+              .from("user_items")
+              .update({ quantity: existingItem.quantity + item.quantity })
+              .eq("user_id", winnerId)
+              .eq("item_id", item.item_id);
+          } else {
+            await supabase.from("user_items").insert({
               user_id: winnerId,
               item_id: item.item_id,
               quantity: item.quantity,
             });
+          }
         }
       }
 
-      // Get winner's username
+      // Get winner profile for chat announcement
       const { data: winnerProfile } = await supabase
         .from("profiles")
         .select("username, roblox_username")
         .eq("id", winnerId)
         .single();
 
-      const winnerName = winnerProfile?.roblox_username || winnerProfile?.username || "Unknown";
-
-      // Announce winner in chat
-      await supabase
-        .from("chat_messages")
-        .insert({
-          user_id: winnerId,
-          username: "🎁 GIVEAWAY",
-          message: `🎉 ${winnerName} won the ${giveaway.title}! (${entries.length} entries)`,
-        });
-
-      results.push({ 
-        giveawayId: giveaway.id, 
-        winnerId, 
-        entries: entries.length,
-        title: giveaway.title 
+      // Post winner announcement to chat
+      await supabase.from("chat_messages").insert({
+        user_id: winnerId,
+        username: winnerProfile?.roblox_username || winnerProfile?.username || "Unknown",
+        message: `🎉 Won the giveaway! Prizes: ${giveaway.prize_items.map((i: any) => i.name).join(", ")}`,
       });
+
+      // Mark as completed
+      await supabase
+        .from("giveaways")
+        .update({ status: "completed", ended_at: new Date().toISOString() })
+        .eq("id", giveaway.id);
+
+      console.log(`Giveaway ${giveaway.id} completed successfully`);
+
+      // Cleanup will happen on next cron run after status is 'completed'
     }
 
-    return new Response(JSON.stringify({ success: true, results }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ success: true, processed: expiredGiveaways.length }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   } catch (error: any) {
-    console.error("Error completing giveaways:", error);
+    console.error("Error in giveaway-complete:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

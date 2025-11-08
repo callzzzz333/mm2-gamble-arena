@@ -28,11 +28,19 @@ interface Giveaway {
   };
 }
 
+interface WinnerAnimation {
+  giveawayId: string;
+  isSpinning: boolean;
+  winnerId: string | null;
+}
+
 export const GiveawayWidget = () => {
   const [giveaways, setGiveaways] = useState<Giveaway[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState<string>("");
+  const [winnerAnimation, setWinnerAnimation] = useState<WinnerAnimation | null>(null);
+  const [spinningAvatar, setSpinningAvatar] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -48,7 +56,56 @@ export const GiveawayWidget = () => {
           schema: "public",
           table: "giveaways",
         },
-        () => {
+        (payload) => {
+          const updated = payload.new as any;
+          
+          // Start spinning animation when status changes to "drawing"
+          if (payload.eventType === "UPDATE" && updated.status === "drawing" && updated.winner_id) {
+            console.log("Starting winner animation for giveaway:", updated.id);
+            setWinnerAnimation({
+              giveawayId: updated.id,
+              isSpinning: true,
+              winnerId: updated.winner_id,
+            });
+
+            // Fetch all entry avatars for spinning effect
+            supabase
+              .from("giveaway_entries")
+              .select("user_id, profiles:user_id(avatar_url, username, roblox_username)")
+              .eq("giveaway_id", updated.id)
+              .then(({ data: entries }) => {
+                if (entries && entries.length > 0) {
+                  let spinIndex = 0;
+                  const spinInterval = setInterval(() => {
+                    setSpinningAvatar(entries[spinIndex % entries.length].profiles);
+                    spinIndex++;
+                  }, 100);
+
+                  // Stop spinning after 4 seconds and show winner
+                  setTimeout(() => {
+                    clearInterval(spinInterval);
+                    supabase
+                      .from("profiles")
+                      .select("avatar_url, username, roblox_username")
+                      .eq("id", updated.winner_id)
+                      .single()
+                      .then(({ data: winner }) => {
+                        setSpinningAvatar(winner);
+                        setWinnerAnimation((prev) =>
+                          prev?.giveawayId === updated.id ? { ...prev, isSpinning: false } : prev
+                        );
+                      });
+                  }, 4000);
+
+                  // Clear animation after winner reveal (6 seconds total)
+                  setTimeout(() => {
+                    setWinnerAnimation(null);
+                    setSpinningAvatar(null);
+                  }, 8000);
+                }
+              });
+          }
+
           fetchGiveaways();
         }
       )
@@ -199,6 +256,7 @@ export const GiveawayWidget = () => {
   if (giveaways.length === 0) return null;
 
   const currentGiveaway = giveaways[currentIndex];
+  const isDrawing = winnerAnimation?.giveawayId === currentGiveaway?.id;
 
   return (
     <Card className="p-3 bg-gradient-to-br from-accent/10 to-primary/10 border-primary/30 shadow-glow">
@@ -211,6 +269,40 @@ export const GiveawayWidget = () => {
           </Badge>
         )}
       </div>
+
+      {isDrawing && winnerAnimation?.isSpinning && (
+        <div className="mb-3 p-3 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg border border-primary/40 animate-pulse">
+          <div className="flex items-center gap-3">
+            <Avatar className="w-12 h-12 animate-spin">
+              <AvatarImage src={spinningAvatar?.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary/30 text-primary font-bold">
+                {(spinningAvatar?.username || spinningAvatar?.roblox_username || "?")[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-sm font-bold text-primary">Drawing Winner...</p>
+              <p className="text-xs text-muted-foreground">Good luck!</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDrawing && !winnerAnimation?.isSpinning && spinningAvatar && (
+        <div className="mb-3 p-3 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg border border-green-500/40 animate-scale-in">
+          <div className="flex items-center gap-3">
+            <Avatar className="w-12 h-12 ring-2 ring-green-500">
+              <AvatarImage src={spinningAvatar?.avatar_url || undefined} />
+              <AvatarFallback className="bg-green-500/30 text-green-500 font-bold">
+                {(spinningAvatar?.username || spinningAvatar?.roblox_username || "?")[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-sm font-bold text-green-500">🎉 Winner!</p>
+              <p className="text-xs text-foreground">{spinningAvatar?.roblox_username || spinningAvatar?.username}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <div className="flex items-center gap-3">
