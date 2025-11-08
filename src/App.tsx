@@ -19,6 +19,7 @@ import TeamShowdown from "./pages/TeamShowdown";
 import ItemDuel from "./pages/ItemDuel";
 import Leaderboard from "./pages/Leaderboard";
 import Rewards from "./pages/Rewards";
+import ChristmasRaffle from "./pages/ChristmasRaffle";
 import CaseBattles from "./pages/CaseBattles";
 import BattleResults from "./pages/BattleResults";
 import NotFound from "./pages/NotFound";
@@ -48,6 +49,7 @@ const App = () => (
           <Route path="/item-duel" element={<ItemDuel />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/rewards" element={<Rewards />} />
+          <Route path="/christmas-raffle" element={<ChristmasRaffle />} />
           <Route path="/case-battles" element={<CaseBattles />} />
           <Route path="/battle-results/:battleId" element={<BattleResults />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

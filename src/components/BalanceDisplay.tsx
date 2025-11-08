@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Wallet } from "lucide-react";
+import { LevelCrown } from "./LevelCrown";
 
 export const BalanceDisplay = () => {
   const [balance, setBalance] = useState(0);
   const [user, setUser] = useState<any>(null);
+  const [level, setLevel] = useState(1);
 
   useEffect(() => {
     fetchBalance();
@@ -18,12 +20,13 @@ export const BalanceDisplay = () => {
       setUser(user);
       const { data } = await supabase
         .from("profiles")
-        .select("balance")
+        .select("balance, level")
         .eq("id", user.id)
         .single();
       
       if (data) {
         setBalance(parseFloat(String(data.balance)) || 0);
+        setLevel(data.level || 1);
       }
     }
   };
@@ -42,6 +45,7 @@ export const BalanceDisplay = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (payload.new && user && payload.new.id === user.id) {
             setBalance(parseFloat(String(payload.new.balance)) || 0);
+            setLevel(payload.new.level || 1);
           }
         }
       )
@@ -54,6 +58,12 @@ export const BalanceDisplay = () => {
 
   return (
     <div className="flex items-center gap-2 bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg px-3 py-2 shadow-lg">
+      {/* Level Display */}
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-background/80 rounded-md border border-border/30">
+        <LevelCrown level={level} size="sm" showLevel={true} />
+      </div>
+      
+      {/* Balance Display */}
       <div className="flex items-center gap-2 px-3 py-1.5 bg-background/80 rounded-md border border-border/30">
         <Wallet className="w-4 h-4 text-primary" />
         <div className="flex items-baseline gap-1">
