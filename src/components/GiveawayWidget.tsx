@@ -97,14 +97,15 @@ export const GiveawayWidget = () => {
   };
 
   const fetchGiveaways = async () => {
-    const { data: giveawaysData, error: giveawaysError } = await supabase
+    const { data: giveawaysData, error: giveawawayError } = await supabase
       .from("giveaways")
       .select("*")
       .eq("status", "active")
+      .gt("ends_at", new Date().toISOString())
       .order("created_at", { ascending: false });
 
-    if (giveawaysError) {
-      console.error("Error fetching giveaways:", giveawaysError);
+    if (giveawawayError) {
+      console.error("Error fetching giveaways:", giveawawayError);
       return;
     }
 
@@ -113,9 +114,14 @@ export const GiveawayWidget = () => {
       return;
     }
 
+    // Filter out giveaways with empty prize_items
+    const validGiveaways = giveawaysData.filter(
+      (g) => g.prize_items && Array.isArray(g.prize_items) && g.prize_items.length > 0
+    );
+
     // Fetch entry counts and user entries
     const giveawaysWithEntries = await Promise.all(
-      giveawaysData.map(async (giveaway) => {
+      validGiveaways.map(async (giveaway) => {
         const { count } = await supabase
           .from("giveaway_entries")
           .select("*", { count: "exact", head: true })
