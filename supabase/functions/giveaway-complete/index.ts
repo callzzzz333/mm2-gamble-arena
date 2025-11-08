@@ -146,7 +146,7 @@ serve(async (req) => {
         .from("profiles")
         .select("username, roblox_username")
         .eq("id", winnerId)
-        .single();
+        .maybeSingle();
 
       // Post winner announcement to chat
       await supabase.from("chat_messages").insert({
@@ -154,6 +154,73 @@ serve(async (req) => {
         username: winnerProfile?.roblox_username || winnerProfile?.username || "Unknown",
         message: `🎉 Won the giveaway! Prizes: ${giveaway.prize_items.map((i: any) => i.name).join(", ")}`,
       });
+
+      // Update Discord webhook with winner
+      try {
+        const webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
+        
+        if (webhookUrl && giveaway.discord_message_id) {
+          const { data: creatorProfile } = await supabase
+            .from("profiles")
+            .select("roblox_username, username")
+            .eq("id", giveaway.creator_id)
+            .maybeSingle();
+
+          const creatorName = creatorProfile?.roblox_username || creatorProfile?.username || "Unknown";
+          const winnerName = winnerProfile?.roblox_username || winnerProfile?.username || "Unknown";
+          const items = giveaway.prize_items || [];
+
+          const itemsList = items.slice(0, 10).map((item: any) => 
+            `• **${item.name}** (x${item.quantity}) - ${item.rarity} - $${item.value}`
+          ).join("\n");
+
+          const moreItems = items.length > 10 ? `\n*... and ${items.length - 10} more items*` : "";
+
+          const embed = {
+            title: "🎉 Giveaway Completed",
+            description: `**${creatorName}**'s giveaway has ended!\n\n**Prize Items:**\n${itemsList}${moreItems}`,
+            color: 0x00ff00, // Green color
+            fields: [
+              {
+                name: "Winner",
+                value: `🏆 **${winnerName}**`,
+                inline: false,
+              },
+              {
+                name: "Total Value",
+                value: `$${giveaway.total_value}`,
+                inline: true,
+              },
+              {
+                name: "Total Entries",
+                value: `${entries.length}`,
+                inline: true,
+              },
+            ],
+            thumbnail: {
+              url: items[0]?.image_url || "",
+            },
+            footer: {
+              text: "Congratulations to the winner!",
+            },
+            timestamp: new Date().toISOString(),
+          };
+
+          const webhookParts = webhookUrl.split("/");
+          const webhookId = webhookParts[webhookParts.length - 2];
+          const webhookToken = webhookParts[webhookParts.length - 1];
+
+          const updateUrl = `https://discord.com/api/webhooks/${webhookId}/${webhookToken}/messages/${giveaway.discord_message_id}`;
+          
+          await fetch(updateUrl, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ embeds: [embed] }),
+          });
+        }
+      } catch (webhookError) {
+        console.error("Error updating Discord webhook with winner:", webhookError);
+      }
 
       // Mark as completed
       await supabase
@@ -163,7 +230,20 @@ serve(async (req) => {
 
       console.log(`Giveaway ${giveaway.id} completed successfully`);
 
-      // Cleanup will happen on next cron run after status is 'completed'
+      // Wait 2 seconds then delete all entries and the giveaway
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      await supabase
+        .from("giveaway_entries")
+        .delete()
+        .eq("giveaway_id", giveaway.id);
+      
+      await supabase
+        .from("giveaways")
+        .delete()
+        .eq("id", giveaway.id);
+
+      console.log(`Giveaway ${giveaway.id} deleted successfully`)
     }
 
     return new Response(

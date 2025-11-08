@@ -95,7 +95,7 @@ serve(async (req) => {
           .from("profiles")
           .select("roblox_username, username")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         const creatorName = profile?.roblox_username || profile?.username || "Unknown";
 

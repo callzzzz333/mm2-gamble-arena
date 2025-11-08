@@ -263,6 +263,9 @@ export const GiveawayWidget = () => {
           <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium">
             {currentIndex + 1}/{giveaways.length}
           </Badge>
+          <Badge className="text-[10px] h-4 px-1.5 font-bold bg-gradient-to-r from-primary to-accent">
+            ${currentGiveaway.total_value.toFixed(2)}
+          </Badge>
         </div>
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <Clock className="w-3 h-3" />

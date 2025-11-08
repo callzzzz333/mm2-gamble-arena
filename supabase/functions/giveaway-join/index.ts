@@ -90,7 +90,7 @@ serve(async (req) => {
           .from("profiles")
           .select("roblox_username, username")
           .eq("id", giveaway.creator_id)
-          .single();
+          .maybeSingle();
 
         const creatorName = profile?.roblox_username || profile?.username || "Unknown";
         const items = giveaway.prize_items || [];
