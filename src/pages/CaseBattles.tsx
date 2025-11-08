@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
+import { CaseOpeningAnimation } from "@/components/CaseOpeningAnimation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Swords, Users, Trophy, Play } from "lucide-react";
+import { Swords, Users, Trophy, Play, Eye } from "lucide-react";
 
 interface Item {
   id: string;
@@ -59,6 +60,10 @@ export default function CaseBattles() {
   const [selectedRounds, setSelectedRounds] = useState(1);
   const [selectedCases, setSelectedCases] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [viewingBattle, setViewingBattle] = useState<Battle | null>(null);
+  const [currentRoundResults, setCurrentRoundResults] = useState<any[]>([]);
+  const [showingAnimations, setShowingAnimations] = useState(false);
+  const [animationsCompleted, setAnimationsCompleted] = useState(0);
 
   useEffect(() => {
     checkUser();
@@ -86,6 +91,17 @@ export default function CaseBattles() {
           event: "*",
           schema: "public",
           table: "case_battle_participants",
+        },
+        () => {
+          fetchBattles();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "case_battle_rounds",
         },
         () => {
           fetchBattles();
@@ -295,6 +311,78 @@ export default function CaseBattles() {
     );
   };
 
+  const handleStartBattle = async (battleId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("case-battle-start", {
+        body: { battleId },
+      });
+
+      if (error) throw error;
+
+      toast.success("Battle started!");
+      setCurrentRoundResults(data.results);
+      
+      const battle = battles.find((b) => b.id === battleId);
+      if (battle) {
+        setViewingBattle(battle);
+        setShowingAnimations(true);
+        setAnimationsCompleted(0);
+      }
+    } catch (error: any) {
+      console.error("Error starting battle:", error);
+      toast.error("Failed to start battle");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNextRound = async () => {
+    if (!viewingBattle) return;
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("case-battle-next-round", {
+        body: { battleId: viewingBattle.id },
+      });
+
+      if (error) throw error;
+
+      if (data.completed) {
+        toast.success("Battle completed!");
+        setViewingBattle(null);
+        fetchBattles();
+      } else {
+        toast.success(`Round ${data.round} started!`);
+        setCurrentRoundResults(data.results);
+        setShowingAnimations(true);
+        setAnimationsCompleted(0);
+      }
+    } catch (error: any) {
+      console.error("Error processing round:", error);
+      toast.error("Failed to process round");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAnimationComplete = () => {
+    setAnimationsCompleted((prev) => prev + 1);
+  };
+
+  useEffect(() => {
+    if (viewingBattle && animationsCompleted === viewingBattle.max_players) {
+      setShowingAnimations(false);
+      fetchBattles();
+      
+      // Auto-progress if not final round
+      const battle = battles.find((b) => b.id === viewingBattle.id);
+      if (battle && battle.current_round < battle.rounds) {
+        setTimeout(() => handleNextRound(), 2000);
+      }
+    }
+  }, [animationsCompleted, viewingBattle]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
       <TopBar />
@@ -396,18 +484,30 @@ export default function CaseBattles() {
                             {Array.isArray(battle.cases) ? battle.cases.length : 0} selected
                           </span>
                         </div>
-                        {canJoin && (
-                          <Button onClick={() => handleJoinBattle(battle.id, battle)} disabled={loading} className="gap-2">
-                            <Play className="w-4 h-4" />
-                            Join Battle
-                          </Button>
-                        )}
-                        {battle.status === "active" && (
-                          <Button variant="secondary" className="gap-2">
-                            <Trophy className="w-4 h-4" />
-                            Watch
-                          </Button>
-                        )}
+                        <div className="flex gap-2">
+                          {canJoin && (
+                            <Button onClick={() => handleJoinBattle(battle.id, battle)} disabled={loading} className="gap-2">
+                              <Play className="w-4 h-4" />
+                              Join Battle
+                            </Button>
+                          )}
+                          {battle.status === "waiting" && battleParticipants.length === battle.max_players && isCreator && (
+                            <Button onClick={() => handleStartBattle(battle.id)} disabled={loading} className="gap-2">
+                              <Play className="w-4 h-4" />
+                              Start Battle
+                            </Button>
+                          )}
+                          {battle.status === "active" && (
+                            <Button 
+                              variant="secondary" 
+                              className="gap-2"
+                              onClick={() => setViewingBattle(battle)}
+                            >
+                              <Eye className="w-4 h-4" />
+                              Watch
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </Card>
                   );
@@ -493,6 +593,100 @@ export default function CaseBattles() {
               Create Battle
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Battle View Dialog */}
+      <Dialog open={!!viewingBattle} onOpenChange={() => setViewingBattle(null)}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Battle in Progress</span>
+              {viewingBattle && (
+                <Badge className="text-lg">
+                  Round {viewingBattle.current_round}/{viewingBattle.rounds}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewingBattle && showingAnimations && currentRoundResults.length > 0 && (
+            <div className="space-y-6">
+              {participants[viewingBattle.id]?.map((participant, index) => {
+                const participantResults = currentRoundResults.filter(
+                  (r) => r.user_id === participant.user_id
+                );
+                const wonItem = participantResults[0];
+
+                if (!wonItem) return null;
+
+                return (
+                  <CaseOpeningAnimation
+                    key={participant.id}
+                    items={items}
+                    wonItem={wonItem}
+                    onComplete={handleAnimationComplete}
+                    playerName={participant.profiles?.username || "Unknown"}
+                    position={index}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {viewingBattle && !showingAnimations && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-4">
+                {participants[viewingBattle.id]?.map((participant) => (
+                  <Card key={participant.id} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="w-12 h-12 border-2 border-primary">
+                          <AvatarImage src={participant.profiles?.avatar_url || undefined} />
+                          <AvatarFallback>
+                            {participant.profiles?.username?.slice(0, 2).toUpperCase() || "??"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold">{participant.profiles?.username}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Position {participant.position}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-primary">
+                          ${participant.total_value.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Total Value</div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {viewingBattle.status === "active" && viewingBattle.current_round < viewingBattle.rounds && (
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  onClick={handleNextRound}
+                  disabled={loading}
+                >
+                  Next Round ({viewingBattle.current_round + 1}/{viewingBattle.rounds})
+                </Button>
+              )}
+
+              {viewingBattle.status === "completed" && (
+                <div className="text-center p-6 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg">
+                  <Trophy className="w-16 h-16 mx-auto mb-4 text-primary" />
+                  <h3 className="text-2xl font-bold mb-2">Battle Complete!</h3>
+                  <p className="text-muted-foreground">
+                    Winner: {participants[viewingBattle.id]?.find(p => p.user_id === viewingBattle.winner_id)?.profiles?.username}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
