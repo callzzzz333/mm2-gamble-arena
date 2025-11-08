@@ -728,6 +728,10 @@ export type Database = {
     }
     Functions: {
       calculate_level: { Args: { wagered: number }; Returns: number }
+      can_claim_crate_daily: {
+        Args: { p_crate_id: string; p_user_id: string }
+        Returns: boolean
+      }
       generate_verification_code: { Args: never; Returns: string }
       has_role: {
         Args: {

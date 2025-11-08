@@ -43,8 +43,6 @@ export const Sidebar = () => {
   const gameMenuItems: GameMenuItem[] = [
     { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
     { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
-    { title: "Leaderboard", icon: Target, path: "/leaderboard" },
-    { title: "Rewards", icon: Gift, path: "/rewards", isNew: true },
   ];
 
   return (
@@ -111,6 +109,42 @@ export const Sidebar = () => {
             )}
           </Button>
         ))}
+
+        {/* Divider */}
+        <div className="py-4">
+          <div className="h-px bg-border" />
+        </div>
+
+        <Button 
+          variant="ghost" 
+          className={cn(
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
+            isActive("/leaderboard") 
+              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]" 
+              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]"
+          )}
+          onClick={() => navigate("/leaderboard")}
+        >
+          <Target className="w-5 h-5" />
+          <span className="font-medium">Leaderboard</span>
+        </Button>
+
+        <Button 
+          variant="ghost" 
+          className={cn(
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all relative border border-border",
+            isActive("/rewards") 
+              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]" 
+              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]"
+          )}
+          onClick={() => navigate("/rewards")}
+        >
+          <Gift className="w-5 h-5" />
+          <span className="font-medium flex-1 text-left">Daily Rewards</span>
+          <span className="px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded uppercase">
+            New
+          </span>
+        </Button>
 
         {/* Divider */}
         <div className="py-4">
