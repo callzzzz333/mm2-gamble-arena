@@ -6,6 +6,9 @@ import { Gift, Lock, Star, Sparkles, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { getLevelColor, getLevelBgColor } from "@/lib/levelUtils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sidebar } from "@/components/Sidebar";
+import { TopBar } from "@/components/TopBar";
+import { LiveChat } from "@/components/LiveChat";
 
 interface Crate {
   id: string;
@@ -318,100 +321,106 @@ const Rewards = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 flex items-center gap-2">
-            <Gift className="h-8 w-8" />
-            Level Rewards
-          </h1>
-          <p className="text-muted-foreground">
-            Claim special crates when you reach milestone levels. Current Level:{" "}
-            <span className={`font-bold ${getLevelColor(userLevel)}`}>{userLevel}</span>
-          </p>
-        </div>
+      <Sidebar />
+      <TopBar />
+      <LiveChat />
+      
+      <main className="ml-64 mr-96 pt-24 pb-8 px-12">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2 flex items-center gap-2">
+              <Gift className="h-8 w-8" />
+              Level Rewards
+            </h1>
+            <p className="text-muted-foreground">
+              Claim special crates when you reach milestone levels. Current Level:{" "}
+              <span className={`font-bold ${getLevelColor(userLevel)}`}>{userLevel}</span>
+            </p>
+          </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {crates.map((crate) => {
-            const recentClaim = claimedRewards.find((r) => r.crate_id === crate.id && !r.opened);
-            const lastOpened = claimedRewards.find((r) => r.crate_id === crate.id && r.opened);
-            const isUnlocked = userLevel >= crate.level_required;
-            const canClaim = canClaimCrate(crate.id);
-            const timeUntilClaim = getTimeUntilNextClaim(crate.id);
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {crates.map((crate) => {
+              const recentClaim = claimedRewards.find((r) => r.crate_id === crate.id && !r.opened);
+              const lastOpened = claimedRewards.find((r) => r.crate_id === crate.id && r.opened);
+              const isUnlocked = userLevel >= crate.level_required;
+              const canClaim = canClaimCrate(crate.id);
+              const timeUntilClaim = getTimeUntilNextClaim(crate.id);
 
-            return (
-              <Card
-                key={crate.id}
-                className={`relative overflow-hidden border-2 bg-gradient-to-br ${getCrateGradient(crate.level_required)} ${getCrateBorder(crate.level_required)}`}
-              >
-                {!isUnlocked && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center">
-                    <div className="text-center">
-                      <Lock className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm font-medium">Unlocks at Level {crate.level_required}</p>
+              return (
+                <Card
+                  key={crate.id}
+                  className={`relative overflow-hidden border-2 bg-gradient-to-br ${getCrateGradient(crate.level_required)} ${getCrateBorder(crate.level_required)}`}
+                >
+                  {!isUnlocked && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center">
+                      <div className="text-center">
+                        <Lock className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium">Unlocks at Level {crate.level_required}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className={getLevelColor(crate.level_required)} />
-                    {crate.name}
-                  </CardTitle>
-                  <CardDescription>{crate.description}</CardDescription>
-                </CardHeader>
-
-                <CardContent>
-                  <div className="mb-4 text-sm text-muted-foreground">
-                    <span className="font-semibold">Required:</span> Level {crate.level_required}
-                  </div>
-
-                  {recentClaim ? (
-                    <Button
-                      onClick={() => openCrate(crate.id, recentClaim.id)}
-                      disabled={openingCrate === crate.id}
-                      className="w-full"
-                    >
-                      {openingCrate === crate.id ? "Opening..." : "Open Crate"}
-                    </Button>
-                  ) : !canClaim ? (
-                    <div className="space-y-2">
-                      <Button disabled className="w-full">
-                        <Clock className="h-4 w-4 mr-2" />
-                        Claimed Today
-                      </Button>
-                      <p className="text-xs text-center text-muted-foreground">
-                        Next claim: {timeUntilClaim}
-                      </p>
-                      {lastOpened?.items && (
-                        <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded">
-                          <img
-                            src={lastOpened.items.image_url || "/placeholder.svg"}
-                            alt={lastOpened.items.name}
-                            className="h-8 w-8 object-contain"
-                          />
-                          <div className="flex-1">
-                            <p className="text-xs font-medium">Last win:</p>
-                            <p className="text-xs">{lastOpened.items.name}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => claimCrate(crate.id)}
-                      disabled={!isUnlocked}
-                      className="w-full"
-                    >
-                      <Gift className="h-4 w-4 mr-2" />
-                      Claim Daily Crate
-                    </Button>
                   )}
-                </CardContent>
-              </Card>
-            );
-          })}
+
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Star className={getLevelColor(crate.level_required)} />
+                      {crate.name}
+                    </CardTitle>
+                    <CardDescription>{crate.description}</CardDescription>
+                  </CardHeader>
+
+                  <CardContent>
+                    <div className="mb-4 text-sm text-muted-foreground">
+                      <span className="font-semibold">Required:</span> Level {crate.level_required}
+                    </div>
+
+                    {recentClaim ? (
+                      <Button
+                        onClick={() => openCrate(crate.id, recentClaim.id)}
+                        disabled={openingCrate === crate.id}
+                        className="w-full"
+                      >
+                        {openingCrate === crate.id ? "Opening..." : "Open Crate"}
+                      </Button>
+                    ) : !canClaim ? (
+                      <div className="space-y-2">
+                        <Button disabled className="w-full">
+                          <Clock className="h-4 w-4 mr-2" />
+                          Claimed Today
+                        </Button>
+                        <p className="text-xs text-center text-muted-foreground">
+                          Next claim: {timeUntilClaim}
+                        </p>
+                        {lastOpened?.items && (
+                          <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded">
+                            <img
+                              src={lastOpened.items.image_url || "/placeholder.svg"}
+                              alt={lastOpened.items.name}
+                              className="h-8 w-8 object-contain"
+                            />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium">Last win:</p>
+                              <p className="text-xs">{lastOpened.items.name}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => claimCrate(crate.id)}
+                        disabled={!isUnlocked}
+                        className="w-full"
+                      >
+                        <Gift className="h-4 w-4 mr-2" />
+                        Claim Daily Crate
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </main>
 
       {/* Spinning Animation Dialog */}
       <Dialog open={isSpinning} onOpenChange={() => {}}>

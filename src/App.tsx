@@ -45,6 +45,7 @@ const App = () => (
           <Route path="/team-showdown" element={<TeamShowdown />} />
           <Route path="/item-duel" element={<ItemDuel />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/rewards" element={<Rewards />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
