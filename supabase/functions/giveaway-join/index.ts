@@ -78,7 +78,7 @@ serve(async (req) => {
 
     if (entryError) throw entryError;
 
-    // Update Discord webhook with new entry count
+    // Update Discord webhook with new entry count in real-time
     try {
       const webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
       
@@ -109,23 +109,23 @@ serve(async (req) => {
         const moreItems = items.length > 10 ? `\n*... and ${items.length - 10} more items*` : "";
 
         const embed = {
-          title: "New Giveaway Created",
+          title: "🎁 Active Giveaway",
           description: `**${creatorName}** is giving away **${items.length}** item(s)\n\n**Prize Items:**\n${itemsList}${moreItems}`,
-          color: 0x000000,
+          color: 0xFFD700, // Gold color for active giveaway
           fields: [
             {
-              name: "Total Value",
-              value: `$${giveaway.total_value}`,
+              name: "💰 Total Value",
+              value: `$${giveaway.total_value.toFixed(2)}`,
               inline: true,
             },
             {
-              name: "Ends",
+              name: "⏰ Ends",
               value: `<t:${timestamp}:R>`,
               inline: true,
             },
             {
-              name: "Entries",
-              value: `${newEntryCount || 0}`,
+              name: "👥 Entries",
+              value: `**${newEntryCount || 0}** players`,
               inline: true,
             },
           ],
@@ -133,7 +133,7 @@ serve(async (req) => {
             url: items[0]?.image_url || "",
           },
           footer: {
-            text: "Join the giveaway now on MM2PVP",
+            text: "🔴 LIVE • Join now on MM2PVP",
           },
           timestamp: new Date().toISOString(),
         };
@@ -154,7 +154,7 @@ serve(async (req) => {
         if (!updateResponse.ok) {
           console.error("Discord webhook update failed:", await updateResponse.text());
         } else {
-          console.log("Discord webhook updated successfully");
+          console.log(`Discord webhook updated - Entries: ${newEntryCount}`);
         }
       }
     } catch (webhookError) {

@@ -110,23 +110,23 @@ serve(async (req) => {
         const moreItems = items.length > 10 ? `\n*... and ${items.length - 10} more items*` : "";
 
         const embed = {
-          title: "New Giveaway Created",
+          title: "🎁 New Giveaway",
           description: `**${creatorName}** is giving away **${items.length}** item(s)\n\n**Prize Items:**\n${itemsList}${moreItems}`,
-          color: 0x000000, // Black color
+          color: 0xFFD700, // Gold color
           fields: [
             {
-              name: "Total Value",
+              name: "💰 Total Value",
               value: `$${totalValue.toFixed(2)}`,
               inline: true,
             },
             {
-              name: "Ends",
+              name: "⏰ Ends",
               value: `<t:${timestamp}:R>`,
               inline: true,
             },
             {
-              name: "Entries",
-              value: "0",
+              name: "👥 Entries",
+              value: "**0** players",
               inline: true,
             },
           ],
@@ -134,7 +134,7 @@ serve(async (req) => {
             url: items[0]?.image_url || "",
           },
           footer: {
-            text: "Join the giveaway now on MM2PVP",
+            text: "🔴 LIVE • Join now on MM2PVP",
           },
           timestamp: new Date().toISOString(),
         };

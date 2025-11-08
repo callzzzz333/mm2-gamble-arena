@@ -54,7 +54,7 @@ export const GiveawayWidget = () => {
       } catch (err) {
         console.error("Error calling auto-complete:", err);
       }
-    }, 30000); // Every 30 seconds
+    }, 5000); // Every 5 seconds for real-time updates
 
     const giveawaysChannel = supabase
       .channel("giveaways-changes")
