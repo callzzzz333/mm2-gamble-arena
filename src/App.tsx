@@ -18,6 +18,7 @@ import DraftBattle from "./pages/DraftBattle";
 import TeamShowdown from "./pages/TeamShowdown";
 import ItemDuel from "./pages/ItemDuel";
 import Leaderboard from "./pages/Leaderboard";
+import Rewards from "./pages/Rewards";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

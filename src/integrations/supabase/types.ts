@@ -98,6 +98,72 @@ export type Database = {
         }
         Relationships: []
       }
+      crate_items: {
+        Row: {
+          crate_id: string
+          created_at: string | null
+          drop_chance: number
+          id: string
+          item_id: string
+        }
+        Insert: {
+          crate_id: string
+          created_at?: string | null
+          drop_chance?: number
+          id?: string
+          item_id: string
+        }
+        Update: {
+          crate_id?: string
+          created_at?: string | null
+          drop_chance?: number
+          id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crate_items_crate_id_fkey"
+            columns: ["crate_id"]
+            isOneToOne: false
+            referencedRelation: "crates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crate_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          level_required: number
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          level_required: number
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          level_required?: number
+          name?: string
+        }
+        Relationships: []
+      }
       crypto_deposits: {
         Row: {
           amount: number
@@ -454,6 +520,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_claimed_rewards: {
+        Row: {
+          claimed_at: string | null
+          crate_id: string
+          id: string
+          opened: boolean | null
+          opened_at: string | null
+          received_item_id: string | null
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          crate_id: string
+          id?: string
+          opened?: boolean | null
+          opened_at?: string | null
+          received_item_id?: string | null
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string | null
+          crate_id?: string
+          id?: string
+          opened?: boolean | null
+          opened_at?: string | null
+          received_item_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_claimed_rewards_crate_id_fkey"
+            columns: ["crate_id"]
+            isOneToOne: false
+            referencedRelation: "crates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_claimed_rewards_received_item_id_fkey"
+            columns: ["received_item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_items: {
         Row: {

@@ -44,6 +44,7 @@ export const Sidebar = () => {
     { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
     { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
     { title: "Leaderboard", icon: Target, path: "/leaderboard" },
+    { title: "Rewards", icon: Gift, path: "/rewards", isNew: true },
   ];
 
   return (
