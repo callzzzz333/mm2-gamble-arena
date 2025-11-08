@@ -86,7 +86,7 @@ const Coinflip = () => {
           const updatedGame = payload.new as CoinflipGame;
 
           // When a game gets a joiner, start animation for both users
-          if (updatedGame.joiner_id && updatedGame.status === "waiting" && !activeIntervals.has(updatedGame.id)) {
+          if (updatedGame.joiner_id && !activeIntervals.has(updatedGame.id)) {
             console.log("Game joined, starting animation for game:", updatedGame.id);
             
             // Fetch profile data for complete game object
@@ -110,7 +110,6 @@ const Coinflip = () => {
             // Start countdown with smooth progress
             let countdown = 5;
             const countdownInterval = window.setInterval(() => {
-              countdown--;
               setFlipAnimation((prev) => {
                 if (!prev || prev.gameId !== updatedGame.id) {
                   clearInterval(countdownInterval);
@@ -118,7 +117,10 @@ const Coinflip = () => {
                   return prev;
                 }
 
-                if (countdown === 0) {
+                countdown--;
+                console.log("Countdown:", countdown);
+
+                if (countdown <= 0) {
                   clearInterval(countdownInterval);
                   activeIntervals.delete(updatedGame.id);
                   return { ...prev, isFlipping: true, countdown: 0 };

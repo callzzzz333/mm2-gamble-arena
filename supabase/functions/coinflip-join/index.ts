@@ -120,8 +120,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Could not join game' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Wait 5 seconds for animation countdown
-    await new Promise(resolve => setTimeout(resolve, 5000))
+    // Wait 6 seconds for animation countdown (5s countdown + 1s buffer)
+    await new Promise(resolve => setTimeout(resolve, 6000))
 
     // Step 2: Update game to completed with result (triggers result display for both users)
     const { error: updateGameError } = await supabaseAdmin
