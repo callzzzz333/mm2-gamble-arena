@@ -43,6 +43,7 @@ export const Sidebar = () => {
   const gameMenuItems: GameMenuItem[] = [
     { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
     { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
+    { title: "Leaderboard", icon: Target, path: "/leaderboard" },
   ];
 
   return (

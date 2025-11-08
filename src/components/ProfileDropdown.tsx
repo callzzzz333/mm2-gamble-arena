@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { User, LogOut, TrendingUp, Wallet, DollarSign, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -85,6 +86,11 @@ export const ProfileDropdown = () => {
 
   if (!profile) return null;
 
+  // Calculate progress to next level
+  const wageredInCurrentLevel = (profile.total_wagered || 0) % 20;
+  const progressPercent = (wageredInCurrentLevel / 20) * 100;
+  const remainingToNextLevel = 20 - wageredInCurrentLevel;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="outline-none">
@@ -130,6 +136,17 @@ export const ProfileDropdown = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Level Progress Bar */}
+            {profile.level < 99 && (
+              <div className="mt-3 px-4 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Level Progress</span>
+                  <span className="text-yellow-500 font-semibold">${remainingToNextLevel.toFixed(2)} to Lv {profile.level + 1}</span>
+                </div>
+                <Progress value={progressPercent} className="h-2" />
+              </div>
+            )}
           </div>
 
           {/* Stats */}

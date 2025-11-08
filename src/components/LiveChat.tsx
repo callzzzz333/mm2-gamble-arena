@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Send, FileText, Gift, ChevronRight, ChevronLeft } from "lucide-react";
+import { Send, FileText, Gift, ChevronRight, ChevronLeft, Star } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,7 @@ interface Message {
   profiles?: {
     avatar_url: string | null;
     roblox_username: string | null;
+    level: number;
   };
 }
 
@@ -68,7 +69,7 @@ export const LiveChat = () => {
           // Fetch the profile data for the new message
           const { data: profile } = await supabase
             .from("profiles")
-            .select("avatar_url, roblox_username")
+            .select("avatar_url, roblox_username, level")
             .eq("id", (payload.new as any).user_id)
             .single();
           
@@ -96,7 +97,7 @@ export const LiveChat = () => {
       .from("chat_messages")
       .select(`
         *,
-        profiles!chat_messages_user_id_fkey(avatar_url, roblox_username)
+        profiles!chat_messages_user_id_fkey(avatar_url, roblox_username, level)
       `)
       .order("created_at", { ascending: true })
       .limit(100);
@@ -283,6 +284,12 @@ export const LiveChat = () => {
                     <span className="text-sm font-semibold text-primary">
                       {msg.profiles?.roblox_username || msg.username}
                     </span>
+                    {msg.profiles?.level && (
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-full border border-yellow-500/30">
+                        <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
+                        <span className="text-[10px] font-bold text-yellow-500">{msg.profiles.level}</span>
+                      </div>
+                    )}
                     <span className="text-xs text-muted-foreground">
                       {new Date(msg.created_at).toLocaleTimeString([], {
                         hour: "2-digit",
