@@ -228,7 +228,7 @@ export type Database = {
           ended_at: string | null
           ends_at: string | null
           id: string
-          item_id: string
+          item_id: string | null
           prize_items: Json | null
           status: string
           title: string | null
@@ -243,7 +243,7 @@ export type Database = {
           ended_at?: string | null
           ends_at?: string | null
           id?: string
-          item_id: string
+          item_id?: string | null
           prize_items?: Json | null
           status?: string
           title?: string | null
@@ -258,7 +258,7 @@ export type Database = {
           ended_at?: string | null
           ends_at?: string | null
           id?: string
-          item_id?: string
+          item_id?: string | null
           prize_items?: Json | null
           status?: string
           title?: string | null
