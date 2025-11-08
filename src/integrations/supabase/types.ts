@@ -174,6 +174,45 @@ export type Database = {
           },
         ]
       }
+      christmas_raffle: {
+        Row: {
+          created_at: string
+          drawn_at: string | null
+          end_date: string
+          id: string
+          prize_items: Json
+          status: string
+          total_prize_value: number
+          updated_at: string
+          winner_id: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          drawn_at?: string | null
+          end_date: string
+          id?: string
+          prize_items?: Json
+          status?: string
+          total_prize_value?: number
+          updated_at?: string
+          winner_id?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string
+          drawn_at?: string | null
+          end_date?: string
+          id?: string
+          prize_items?: Json
+          status?: string
+          total_prize_value?: number
+          updated_at?: string
+          winner_id?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       christmas_raffle_tickets: {
         Row: {
           created_at: string

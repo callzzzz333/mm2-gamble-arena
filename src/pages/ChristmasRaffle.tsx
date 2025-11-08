@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Gift, Snowflake, Trophy, Ticket, Check } from "lucide-react";
+import { Gift, Snowflake, Trophy, Ticket, Check, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,12 +34,24 @@ interface LeaderboardEntry {
   };
 }
 
+interface RaffleData {
+  id: string;
+  year: number;
+  end_date: string;
+  status: string;
+  winner_id: string | null;
+  total_prize_value: number;
+  prize_items: any;
+}
+
 const ChristmasRaffle = () => {
   const [inventory, setInventory] = useState<UserItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<Map<string, number>>(new Map());
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isExchanging, setIsExchanging] = useState(false);
   const [userTickets, setUserTickets] = useState(0);
+  const [raffleData, setRaffleData] = useState<RaffleData | null>(null);
+  const [timeLeft, setTimeLeft] = useState<string>("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -49,6 +61,7 @@ const ChristmasRaffle = () => {
       fetchUserTickets();
     }
     fetchLeaderboard();
+    fetchRaffleData();
 
     const ticketsChannel = supabase
       .channel("raffle-tickets-changes")
@@ -66,10 +79,51 @@ const ChristmasRaffle = () => {
       )
       .subscribe();
 
+    const raffleChannel = supabase
+      .channel("raffle-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "christmas_raffle",
+        },
+        () => {
+          fetchRaffleData();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(ticketsChannel);
+      supabase.removeChannel(raffleChannel);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!raffleData) return;
+    
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const endTime = new Date(raffleData.end_date).getTime();
+      const distance = endTime - now;
+
+      if (distance < 0) {
+        setTimeLeft("🎁 Drawing Winner...");
+        clearInterval(timer);
+        return;
+      }
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      setTimeLeft(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [raffleData]);
 
   const fetchInventory = async () => {
     if (!user) return;
@@ -132,6 +186,21 @@ const ChristmasRaffle = () => {
       setUserTickets(data?.total_tickets || 0);
     } catch (error) {
       console.error("Error fetching user tickets:", error);
+    }
+  };
+
+  const fetchRaffleData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("christmas_raffle")
+        .select("*")
+        .eq("year", 2024)
+        .single();
+
+      if (error) throw error;
+      setRaffleData(data);
+    } catch (error) {
+      console.error("Error fetching raffle data:", error);
     }
   };
 
@@ -236,13 +305,45 @@ const ChristmasRaffle = () => {
               <div className="relative z-10 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-white/20 flex items-center justify-center shadow-glow">
                 <Ticket className="w-7 h-7 text-white" />
               </div>
-              <div className="relative z-10">
+              <div className="relative z-10 flex-1">
                 <h1 className="text-3xl font-bold flex items-center gap-2">
                   🎄 Christmas Raffle 🎟️
                 </h1>
                 <p className="text-muted-foreground">Exchange items for tickets • $5 = 1 ticket</p>
               </div>
+              {raffleData && (
+                <div className="relative z-10 text-right">
+                  <div className="flex items-center gap-2 text-blue-400 mb-1">
+                    <Clock className="w-5 h-5" />
+                    <span className="text-sm font-medium">Draw In:</span>
+                  </div>
+                  <div className="text-2xl font-bold">{timeLeft}</div>
+                </div>
+              )}
             </div>
+
+            {/* Prize Pool */}
+            {raffleData && (
+              <Card className="p-6 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <Gift className="w-6 h-6 text-yellow-400" />
+                    Grand Prize Pool
+                  </h2>
+                  {raffleData.status === 'completed' && raffleData.winner_id && (
+                    <Badge className="bg-green-500">Winner Drawn!</Badge>
+                  )}
+                </div>
+                <div className="text-center py-4">
+                  <p className="text-4xl font-bold text-yellow-400 mb-2">
+                    ${raffleData.total_prize_value.toFixed(2)}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {Array.isArray(raffleData.prize_items) ? raffleData.prize_items.length : 0} items in the prize pool
+                  </p>
+                </div>
+              </Card>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left: Inventory & Exchange */}

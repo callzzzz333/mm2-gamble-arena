@@ -132,6 +132,25 @@ Deno.serve(async (req) => {
         });
     }
 
+    // Update the raffle prize pool
+    const { data: raffle } = await supabase
+      .from('christmas_raffle')
+      .select('*')
+      .eq('year', 2024)
+      .single();
+
+    if (raffle) {
+      const updatedPrizeItems = [...raffle.prize_items, ...itemsToExchange];
+      await supabase
+        .from('christmas_raffle')
+        .update({
+          total_prize_value: raffle.total_prize_value + totalValue,
+          prize_items: updatedPrizeItems,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', raffle.id);
+    }
+
     console.log('Exchange successful:', ticketsEarned, 'tickets for', totalValue, 'value');
 
     return new Response(
