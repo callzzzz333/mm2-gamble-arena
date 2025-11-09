@@ -377,9 +377,19 @@ const Rewards = () => {
                       <Button
                         onClick={() => openCrate(crate.id, recentClaim.id)}
                         disabled={openingCrate === crate.id}
-                        className="w-full"
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                       >
-                        {openingCrate === crate.id ? "Opening..." : "Open Crate"}
+                        {openingCrate === crate.id ? (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                            Opening...
+                          </>
+                        ) : (
+                          <>
+                            <Gift className="h-4 w-4 mr-2" />
+                            Open Crate
+                          </>
+                        )}
                       </Button>
                     ) : !canClaim ? (
                       <div className="space-y-2">
@@ -405,14 +415,22 @@ const Rewards = () => {
                         )}
                       </div>
                     ) : (
-                      <Button
-                        onClick={() => claimCrate(crate.id)}
-                        disabled={!isUnlocked}
-                        className="w-full"
-                      >
-                        <Gift className="h-4 w-4 mr-2" />
-                        Claim Daily Crate
-                      </Button>
+                      <div className="space-y-2">
+                        <Button
+                          onClick={() => claimCrate(crate.id)}
+                          disabled={!isUnlocked}
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                        >
+                          <Gift className="h-4 w-4 mr-2" />
+                          Claim Daily Crate
+                        </Button>
+                        {!isUnlocked && (
+                          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                            <Lock className="h-3 w-3" />
+                            <span>Requires Level {crate.level_required}</span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
