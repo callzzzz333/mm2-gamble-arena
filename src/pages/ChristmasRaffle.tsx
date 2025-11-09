@@ -377,11 +377,32 @@ const ChristmasRaffle = () => {
                   </div>
                   <div className="text-center py-6">
                     <p className="text-5xl font-bold bg-gradient-to-r from-yellow-300 via-yellow-100 to-yellow-300 bg-clip-text text-transparent mb-3 drop-shadow-lg">
-                      ${raffleData.total_prize_value.toFixed(2)}
+                      $500.00
                     </p>
-                    <p className="text-muted-foreground text-lg">
-                      {Array.isArray(raffleData.prize_items) ? raffleData.prize_items.length : 0} items in the prize pool
+                    <p className="text-muted-foreground text-lg mb-4">
+                      2 Winners • $250 Each
                     </p>
+                    
+                    {/* Top Items Grid */}
+                    {Array.isArray(raffleData.prize_items) && raffleData.prize_items.length > 0 && (
+                      <div className="mt-6">
+                        <p className="text-sm text-muted-foreground mb-3">Featured Prize Items</p>
+                        <div className="grid grid-cols-4 gap-3">
+                          {raffleData.prize_items
+                            .sort((a: any, b: any) => Number(b.value) - Number(a.value))
+                            .slice(0, 8)
+                            .map((item: any, idx: number) => (
+                              <div key={idx} className="bg-card/50 backdrop-blur-sm border border-border rounded-lg p-2 hover:scale-105 transition-transform">
+                                {item.image_url && (
+                                  <img src={item.image_url} alt={item.name} className="w-full aspect-square object-cover rounded mb-1" />
+                                )}
+                                <p className="text-xs font-medium truncate">{item.name}</p>
+                                <p className="text-xs text-primary font-bold">${Number(item.value).toFixed(2)}</p>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </Card>

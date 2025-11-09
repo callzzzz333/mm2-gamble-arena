@@ -18,24 +18,17 @@ Deno.serve(async (req) => {
       throw new Error('No authorization header provided');
     }
 
-    // Create client with service role to perform operations
+    // Extract JWT token from Authorization header
+    const jwt = authHeader.replace('Bearer ', '');
+
+    // Create admin client with service role to perform operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Verify user with anon key client
-    const supabaseUser = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
-
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    // Verify user with JWT token directly
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(jwt);
     
     if (authError) {
       console.error('Auth error:', authError);
