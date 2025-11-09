@@ -185,6 +185,7 @@ export type Database = {
           total_prize_value: number
           updated_at: string
           winner_id: string | null
+          winners: Json | null
           year: number
         }
         Insert: {
@@ -197,6 +198,7 @@ export type Database = {
           total_prize_value?: number
           updated_at?: string
           winner_id?: string | null
+          winners?: Json | null
           year: number
         }
         Update: {
@@ -209,6 +211,7 @@ export type Database = {
           total_prize_value?: number
           updated_at?: string
           winner_id?: string | null
+          winners?: Json | null
           year?: number
         }
         Relationships: []
