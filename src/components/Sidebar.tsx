@@ -8,7 +8,6 @@ import {
   Dices,
   Zap,
   Gift,
-  Swords,
   Star,
   CircleDot,
   Percent,
@@ -17,6 +16,8 @@ import {
   Target,
   Users,
   Ticket,
+  TrendingUp,
+  Spade,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,8 @@ export const Sidebar = () => {
   const gameMenuItems: GameMenuItem[] = [
     { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
     { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
-    { title: "Case Battles", icon: Swords, path: "/case-battles", isNew: true },
+    { title: "Upgrader", icon: TrendingUp, path: "/upgrader", isNew: true },
+    { title: "Blackjack Duel", icon: Spade, path: "/blackjack-duel", isNew: true },
   ];
 
   return (

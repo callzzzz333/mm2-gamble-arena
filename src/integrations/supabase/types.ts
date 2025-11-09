@@ -14,123 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
-      case_battle_participants: {
+      blackjack_players: {
         Row: {
-          battle_id: string
+          bet_amount: number
+          hand: Json
           id: string
-          items_won: Json
-          joined_at: string
-          position: number
-          total_value: number
+          joined_at: string | null
+          score: number
+          status: string
+          table_id: string
           user_id: string
+          won: boolean | null
         }
         Insert: {
-          battle_id: string
+          bet_amount: number
+          hand?: Json
           id?: string
-          items_won?: Json
-          joined_at?: string
-          position: number
-          total_value?: number
+          joined_at?: string | null
+          score?: number
+          status?: string
+          table_id: string
           user_id: string
+          won?: boolean | null
         }
         Update: {
-          battle_id?: string
+          bet_amount?: number
+          hand?: Json
           id?: string
-          items_won?: Json
-          joined_at?: string
-          position?: number
-          total_value?: number
+          joined_at?: string | null
+          score?: number
+          status?: string
+          table_id?: string
           user_id?: string
+          won?: boolean | null
         }
         Relationships: [
           {
-            foreignKeyName: "case_battle_participants_battle_id_fkey"
-            columns: ["battle_id"]
+            foreignKeyName: "blackjack_players_table_id_fkey"
+            columns: ["table_id"]
             isOneToOne: false
-            referencedRelation: "case_battles"
+            referencedRelation: "blackjack_tables"
             referencedColumns: ["id"]
           },
         ]
       }
-      case_battle_rounds: {
+      blackjack_tables: {
         Row: {
-          battle_id: string
-          case_index: number
-          created_at: string
-          id: string
-          results: Json
-          round_number: number
-        }
-        Insert: {
-          battle_id: string
-          case_index: number
-          created_at?: string
-          id?: string
-          results?: Json
-          round_number: number
-        }
-        Update: {
-          battle_id?: string
-          case_index?: number
-          created_at?: string
-          id?: string
-          results?: Json
-          round_number?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "case_battle_rounds_battle_id_fkey"
-            columns: ["battle_id"]
-            isOneToOne: false
-            referencedRelation: "case_battles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      case_battles: {
-        Row: {
-          cases: Json
+          bet_amount: number
           completed_at: string | null
-          created_at: string
-          creator_id: string
-          current_round: number
+          created_at: string | null
+          dealer_hand: Json | null
+          dealer_score: number | null
           id: string
           max_players: number
-          mode: string
-          rounds: number
           started_at: string | null
           status: string
-          total_value: number
           winner_id: string | null
         }
         Insert: {
-          cases?: Json
+          bet_amount: number
           completed_at?: string | null
-          created_at?: string
-          creator_id: string
-          current_round?: number
+          created_at?: string | null
+          dealer_hand?: Json | null
+          dealer_score?: number | null
           id?: string
           max_players?: number
-          mode?: string
-          rounds?: number
           started_at?: string | null
           status?: string
-          total_value?: number
           winner_id?: string | null
         }
         Update: {
-          cases?: Json
+          bet_amount?: number
           completed_at?: string | null
-          created_at?: string
-          creator_id?: string
-          current_round?: number
+          created_at?: string | null
+          dealer_hand?: Json | null
+          dealer_score?: number | null
           id?: string
           max_players?: number
-          mode?: string
-          rounds?: number
           started_at?: string | null
           status?: string
-          total_value?: number
           winner_id?: string | null
         }
         Relationships: []
@@ -710,6 +672,64 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      upgrader_games: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          input_item_id: string
+          success_chance: number
+          target_item_id: string
+          user_id: string
+          won: boolean | null
+          won_item_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          input_item_id: string
+          success_chance: number
+          target_item_id: string
+          user_id: string
+          won?: boolean | null
+          won_item_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          input_item_id?: string
+          success_chance?: number
+          target_item_id?: string
+          user_id?: string
+          won?: boolean | null
+          won_item_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upgrader_games_input_item_id_fkey"
+            columns: ["input_item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrader_games_target_item_id_fkey"
+            columns: ["target_item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrader_games_won_item_id_fkey"
+            columns: ["won_item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_claimed_rewards: {
         Row: {

@@ -3,7 +3,7 @@ import { TopBar } from "@/components/TopBar";
 import { GameModeCard } from "@/components/GameModeCard";
 import { LiveBets } from "@/components/LiveBets";
 import { LiveChat } from "@/components/LiveChat";
-import { Coins, Trophy } from "lucide-react";
+import { Coins, Trophy, TrendingUp, Spade } from "lucide-react";
 import discordBanner from "@/assets/discord-banner.png";
 import coinflipImg from "@/assets/coinflip.png";
 import jackpotImg from "@/assets/jackpot.png";
@@ -55,6 +55,22 @@ const Index = () => {
                 icon={Trophy}
                 isNew
                 route="/jackpot"
+                image={jackpotImg}
+              />
+              <GameModeCard
+                title="UPGRADER"
+                subtitle="RBXROYALE ORIGINALS"
+                icon={TrendingUp}
+                isNew
+                route="/upgrader"
+                image={coinflipImg}
+              />
+              <GameModeCard
+                title="BLACKJACK DUEL"
+                subtitle="RBXROYALE ORIGINALS"
+                icon={Spade}
+                isNew
+                route="/blackjack-duel"
                 image={jackpotImg}
               />
             </div>

@@ -461,14 +461,15 @@ const Rewards = () => {
                 {spinItems.map((item, index) => (
                   <div
                     key={index}
-                    className="flex-shrink-0 w-28 h-28 flex flex-col items-center justify-center bg-secondary/50 rounded-lg p-2 border-2 border-border"
+                    className="flex-shrink-0 w-28 h-32 flex flex-col items-center justify-center bg-secondary/50 rounded-lg p-2 border-2 border-border"
                   >
                     <img
                       src={item.image_url || "/placeholder.svg"}
                       alt={item.name}
-                      className="h-16 w-16 object-contain"
+                      className="h-14 w-14 object-contain"
                     />
                     <p className="text-xs mt-1 truncate w-full text-center">{item.name}</p>
+                    <p className="text-xs font-bold text-primary">${Number(item.value).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
