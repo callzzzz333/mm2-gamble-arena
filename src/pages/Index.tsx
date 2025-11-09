@@ -81,6 +81,14 @@ const Index = () => {
                 route="/crash"
                 image={coinflipImg}
               />
+              <GameModeCard
+                title="CASE BATTLES"
+                subtitle="RBXROYALE ORIGINALS"
+                icon={Trophy}
+                isNew
+                route="/case-battles"
+                image={jackpotImg}
+              />
             </div>
           </section>
 

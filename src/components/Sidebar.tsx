@@ -17,7 +17,7 @@ import {
   Users,
   Ticket,
   TrendingUp,
-  Spade,
+  Swords,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,7 @@ export const Sidebar = () => {
     { title: "Upgrader", icon: TrendingUp, path: "/upgrader", isNew: true },
     { title: "Roulette", icon: CircleDot, path: "/roulette", isNew: true },
     { title: "Crash", icon: Zap, path: "/crash", isNew: true },
+    { title: "Case Battles", icon: Swords, path: "/case-battles", isNew: true },
   ];
 
   return (

@@ -23,6 +23,7 @@ import ChristmasRaffle from "./pages/ChristmasRaffle";
 import Upgrader from "./pages/Upgrader";
 import Roulette from "./pages/Roulette";
 import Crash from "./pages/Crash";
+import CaseBattles from "./pages/CaseBattles";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
           <Route path="/upgrader" element={<Upgrader />} />
           <Route path="/roulette" element={<Roulette />} />
           <Route path="/crash" element={<Crash />} />
+          <Route path="/case-battles" element={<CaseBattles />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

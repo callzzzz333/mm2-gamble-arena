@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { OnlineCounter } from "@/components/OnlineCounter";
 import { GiveawayWidget } from "@/components/GiveawayWidget";
 import { CreateGiveawayDialog } from "@/components/CreateGiveawayDialog";
+import { UserProfileDialog } from "@/components/UserProfileDialog";
 import logo from "@/assets/logo.png";
 
 interface Message {
@@ -34,6 +35,8 @@ export const LiveChat = () => {
   const [profile, setProfile] = useState<any>(null);
   const [tosOpen, setTosOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(true);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -282,7 +285,13 @@ export const LiveChat = () => {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-                      <span className="text-sm font-semibold text-primary cursor-pointer hover:underline">
+                      <span 
+                        className="text-sm font-semibold text-primary cursor-pointer hover:underline"
+                        onClick={() => {
+                          setSelectedUserId(msg.user_id);
+                          setProfileDialogOpen(true);
+                        }}
+                      >
                         {msg.profiles?.roblox_username || msg.username}
                       </span>
                       {msg.profiles?.level && (
@@ -328,6 +337,12 @@ export const LiveChat = () => {
         </div>
       </form>
     </div>
+    
+    <UserProfileDialog 
+      open={profileDialogOpen}
+      onOpenChange={setProfileDialogOpen}
+      userId={selectedUserId}
+    />
     </>
   );
 };

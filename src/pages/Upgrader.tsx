@@ -19,13 +19,14 @@ interface Item {
 }
 
 export default function Upgrader() {
-  const [selectedItem, setSelectedItem] = useState<(Item & { quantity: number}) | null>(null);
+  const [selectedItem, setSelectedItem] = useState<(Item & { quantity: number }) | null>(null);
   const [targetItem, setTargetItem] = useState<Item | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState<"won" | "lost" | null>(null);
+  const [rotation, setRotation] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,18 +34,13 @@ export default function Upgrader() {
   }, []);
 
   const fetchItems = async () => {
-    const { data } = await supabase
-      .from("items")
-      .select("*")
-      .order("value", { ascending: true });
-    
+    const { data } = await supabase.from("items").select("*").order("value", { ascending: true });
     if (data) setItems(data);
   };
 
   const handleSelectItem = (item: Item & { quantity: number }) => {
     setSelectedItem(item);
     setInventoryOpen(false);
-
     const potentialTargets = items.filter((i) => Number(i.value) > Number(item.value));
     if (potentialTargets.length > 0) {
       setTargetItem(potentialTargets[0]);
@@ -64,13 +60,25 @@ export default function Upgrader() {
     setIsSpinning(true);
     setResult(null);
 
+    const chance = calculateSuccessChance();
+    const won = Math.random() * 100 < chance;
+
+    // Calculate landing rotation
+    const winAngle = 90;
+    const loseAngle = 270;
+    const targetAngle = won ? winAngle : loseAngle;
+    const spins = 5;
+    const finalRotation = 360 * spins + targetAngle;
+    setRotation(finalRotation);
+
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Check user has the item
       const { data: userItem } = await supabase
         .from("user_items")
         .select("*")
@@ -82,16 +90,8 @@ export default function Upgrader() {
         throw new Error("You don't have this item");
       }
 
-      const chance = calculateSuccessChance();
-      const won = Math.random() * 100 < chance;
-      setResult(won ? "won" : "lost");
-
-      // Remove input item
       if (userItem.quantity === 1) {
-        await supabase
-          .from("user_items")
-          .delete()
-          .eq("id", userItem.id);
+        await supabase.from("user_items").delete().eq("id", userItem.id);
       } else {
         await supabase
           .from("user_items")
@@ -99,7 +99,6 @@ export default function Upgrader() {
           .eq("id", userItem.id);
       }
 
-      // If won, add target item
       if (won) {
         const { data: existingTarget } = await supabase
           .from("user_items")
@@ -114,13 +113,11 @@ export default function Upgrader() {
             .update({ quantity: existingTarget.quantity + 1 })
             .eq("id", existingTarget.id);
         } else {
-          await supabase
-            .from("user_items")
-            .insert({
-              user_id: user.id,
-              item_id: targetItem.id,
-              quantity: 1,
-            });
+          await supabase.from("user_items").insert({
+            user_id: user.id,
+            item_id: targetItem.id,
+            quantity: 1,
+          });
         }
       }
 
@@ -142,6 +139,7 @@ export default function Upgrader() {
         description: won ? `Upgraded to ${targetItem.name}` : `Failed to upgrade to ${targetItem.name}`,
       });
 
+      setResult(won ? "won" : "lost");
       setTimeout(() => {
         toast({
           title: won ? "Upgrade Successful!" : "Upgrade Failed",
@@ -151,6 +149,8 @@ export default function Upgrader() {
         setSelectedItem(null);
         setTargetItem(null);
         setIsSpinning(false);
+        setRotation(0);
+        setResult(null);
       }, 1500);
     } catch (error: any) {
       toast({
@@ -158,162 +158,115 @@ export default function Upgrader() {
         description: error.message,
         variant: "destructive",
       });
+      setIsSpinning(false);
+      setRotation(0);
     } finally {
       setUpgrading(false);
-      setIsSpinning(false);
     }
   };
 
   const getRarityColor = (rarity: string) => {
     const colors: any = {
-      Godly: "bg-red-500/20 text-red-500 border-red-500/30",
-      Ancient: "bg-purple-500/20 text-purple-500 border-purple-500/30",
-      Legendary: "bg-orange-500/20 text-orange-500 border-orange-500/30",
-      Rare: "bg-blue-500/20 text-blue-500 border-blue-500/30",
-      Uncommon: "bg-green-500/20 text-green-500 border-green-500/30",
-      Common: "bg-gray-500/20 text-gray-500 border-gray-500/30",
+      Godly: "border-red-500 text-red-500",
+      Ancient: "border-purple-500 text-purple-500",
+      Legendary: "border-orange-500 text-orange-500",
+      Rare: "border-blue-500 text-blue-500",
+      Uncommon: "border-green-500 text-green-500",
+      Common: "border-border text-muted-foreground",
     };
-    return colors[rarity] || "bg-gray-500/20 text-gray-500 border-gray-500/30";
+    return colors[rarity] || "border-border text-muted-foreground";
   };
+
+  const successChance = calculateSuccessChance();
+  const failChance = 100 - successChance;
 
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="ml-64 mr-96">
         <TopBar />
-        <main className="p-8 pt-24">
-          <div className="max-w-6xl mx-auto space-y-8">
-            <div>
-              <h1 className="text-4xl font-bold mb-2 flex items-center gap-2">
-                <TrendingUp className="w-10 h-10" />
-                Item Upgrader
-              </h1>
-              <p className="text-muted-foreground">
-                Upgrade your items to higher value items. Higher value = lower success chance.
-              </p>
+        <main className="p-6 pt-20">
+          <div className="max-w-4xl mx-auto space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Item Upgrader</h1>
+                <p className="text-sm text-muted-foreground">Upgrade items to higher value</p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Input Item */}
-              <Card className="p-6 bg-gradient-to-br from-background to-primary/5">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  Input Item
-                </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card className="p-4 bg-card">
+                <h2 className="text-sm font-bold mb-3">Input Item</h2>
                 {selectedItem ? (
-                  <div className="space-y-4">
-                    <div className={`relative ${isSpinning ? 'animate-pulse' : ''}`}>
-                      {selectedItem.image_url && (
-                        <img
-                          src={selectedItem.image_url}
-                          alt={selectedItem.name}
-                          className="w-full h-48 object-contain rounded-lg bg-muted/50 p-4"
-                        />
-                      )}
-                    </div>
+                  <div className="space-y-2">
+                    {selectedItem.image_url && (
+                      <img
+                        src={selectedItem.image_url}
+                        alt={selectedItem.name}
+                        className="w-full h-24 object-contain rounded bg-secondary/30 p-2"
+                      />
+                    )}
                     <div>
-                      <p className="font-bold text-lg">{selectedItem.name}</p>
-                      <Badge className={getRarityColor(selectedItem.rarity)}>
-                        {selectedItem.rarity}
-                      </Badge>
-                      <p className="text-primary font-bold mt-2">
-                        ${Number(selectedItem.value).toFixed(2)}
-                      </p>
+                      <p className="font-semibold text-sm">{selectedItem.name}</p>
+                      <Badge className={`${getRarityColor(selectedItem.rarity)} text-xs`}>{selectedItem.rarity}</Badge>
+                      <p className="text-primary font-bold text-sm mt-1">${Number(selectedItem.value).toFixed(2)}</p>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => setInventoryOpen(true)}
-                      className="w-full border-primary/50 hover:bg-primary/10"
-                    >
-                      Change Item
+                    <Button onClick={() => setInventoryOpen(true)} variant="outline" size="sm" className="w-full">
+                      Change
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    onClick={() => setInventoryOpen(true)}
-                    className="w-full h-48 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700"
-                  >
+                  <Button onClick={() => setInventoryOpen(true)} className="w-full h-24">
                     Select Item
                   </Button>
                 )}
               </Card>
 
-              {/* Arrow */}
-              <div className="flex items-center justify-center">
-                <TrendingUp className={`w-12 h-12 text-primary ${isSpinning ? 'animate-pulse' : ''}`} />
-              </div>
-
-              {/* Target Item */}
-              <Card className="p-6 bg-gradient-to-br from-background to-purple-500/5">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                  Target Item
-                </h2>
+              <Card className="p-4 bg-card">
+                <h2 className="text-sm font-bold mb-3">Target Item</h2>
                 {targetItem ? (
-                  <div className="space-y-4">
-                    <div className={`relative ${isSpinning ? 'animate-bounce' : ''}`}>
-                      {targetItem.image_url && (
-                        <img
-                          src={targetItem.image_url}
-                          alt={targetItem.name}
-                          className="w-full h-48 object-contain rounded-lg bg-muted/50 p-4"
-                        />
-                      )}
-                    </div>
+                  <div className="space-y-2">
+                    {targetItem.image_url && (
+                      <img
+                        src={targetItem.image_url}
+                        alt={targetItem.name}
+                        className="w-full h-24 object-contain rounded bg-secondary/30 p-2"
+                      />
+                    )}
                     <div>
-                      <p className="font-bold text-lg">{targetItem.name}</p>
-                      <Badge className={getRarityColor(targetItem.rarity)}>
-                        {targetItem.rarity}
-                      </Badge>
-                      <p className="text-purple-500 font-bold mt-2">
-                        ${Number(targetItem.value).toFixed(2)}
-                      </p>
+                      <p className="font-semibold text-sm">{targetItem.name}</p>
+                      <Badge className={`${getRarityColor(targetItem.rarity)} text-xs`}>{targetItem.rarity}</Badge>
+                      <p className="text-accent font-bold text-sm mt-1">${Number(targetItem.value).toFixed(2)}</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="h-48 flex items-center justify-center text-muted-foreground">
-                    Select an input item first
-                  </div>
+                  <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">Select input first</div>
                 )}
               </Card>
             </div>
 
-            {/* All Available Items Grid */}
             {selectedItem && (
-              <Card className="p-6 bg-gradient-to-br from-background to-accent/5">
-                <h2 className="text-xl font-bold mb-4">Select Target Item</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2">
+              <Card className="p-4 bg-card">
+                <h2 className="text-sm font-bold mb-2">Select Target</h2>
+                <div className="grid grid-cols-6 gap-2 max-h-32 overflow-y-auto">
                   {items
-                    .filter(i => Number(i.value) > Number(selectedItem.value))
-                    .map(item => {
+                    .filter((i) => Number(i.value) > Number(selectedItem.value))
+                    .map((item) => {
                       const chance = Math.min(95, Math.max(5, (Number(selectedItem.value) / Number(item.value)) * 100));
                       return (
                         <button
                           key={item.id}
                           onClick={() => setTargetItem(item)}
-                          className={`p-3 rounded-lg border-2 transition-all hover:scale-105 ${
-                            targetItem?.id === item.id
-                              ? 'border-primary bg-primary/10 shadow-lg shadow-primary/50'
-                              : 'border-border hover:border-primary/50 bg-card'
+                          className={`p-1 rounded border transition-all hover:scale-105 ${
+                            targetItem?.id === item.id ? "border-primary bg-primary/10" : "border-border bg-card"
                           }`}
                         >
-                          {item.image_url && (
-                            <img
-                              src={item.image_url}
-                              alt={item.name}
-                              className="w-full h-20 object-contain mb-2"
-                            />
-                          )}
-                          <p className="text-xs font-semibold truncate">{item.name}</p>
-                          <Badge className={`${getRarityColor(item.rarity)} text-xs mt-1`}>
-                            {item.rarity}
-                          </Badge>
-                          <p className="text-primary font-bold text-sm mt-1">
-                            ${Number(item.value).toFixed(2)}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {chance.toFixed(1)}% chance
-                          </p>
+                          {item.image_url && <img src={item.image_url} alt={item.name} className="w-full h-10 object-contain" />}
+                          <p className="text-[10px] font-semibold truncate">{item.name}</p>
+                          <p className="text-[9px] text-muted-foreground">{chance.toFixed(0)}%</p>
                         </button>
                       );
                     })}
@@ -322,28 +275,57 @@ export default function Upgrader() {
             )}
 
             {selectedItem && targetItem && (
-              <Card className="p-6 bg-gradient-to-r from-primary/20 via-purple-500/20 to-pink-500/20 border-primary/50 shadow-xl">
-                <div className="text-center space-y-4">
-                  <div className={isSpinning ? 'animate-pulse' : ''}>
-                    <p className="text-sm text-muted-foreground mb-2">Success Chance</p>
-                    <p className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                      {calculateSuccessChance().toFixed(1)}%
-                    </p>
+              <Card className="p-4 bg-card border-primary/50">
+                <div className="space-y-3">
+                  {/* Upgrade Wheel */}
+                  <div className="relative h-40 flex items-center justify-center overflow-hidden rounded-lg bg-secondary/30">
+                    <div
+                      className="relative w-36 h-36 rounded-full transition-transform duration-[3000ms] ease-out"
+                      style={{
+                        transform: `rotate(${rotation}deg)`,
+                        background: `conic-gradient(from 0deg, hsl(var(--primary)) 0% ${successChance}%, hsl(var(--destructive)) ${successChance}% 100%)`,
+                      }}
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-full bg-background border-2 border-border flex items-center justify-center">
+                          {!isSpinning && !result && (
+                            <div className="text-center">
+                              <p className="text-xl font-bold text-primary">{successChance.toFixed(0)}%</p>
+                            </div>
+                          )}
+                          {isSpinning && !result && <Sparkles className="w-8 h-8 text-primary animate-pulse" />}
+                          {result && (
+                            <p className={`text-lg font-bold ${result === "won" ? "text-primary" : "text-destructive"}`}>
+                              {result === "won" ? "WIN" : "LOST"}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[12px] border-t-foreground"></div>
                   </div>
-                  <Button
-                    onClick={handleUpgrade}
-                    disabled={upgrading}
-                    size="lg"
-                    className="w-full max-w-md mx-auto bg-gradient-to-r from-primary via-purple-600 to-pink-600 hover:from-primary/90 hover:via-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all"
-                  >
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="p-2 bg-primary/20 rounded border border-primary/30">
+                      <p className="text-[10px] text-muted-foreground">Success</p>
+                      <p className="text-lg font-bold text-primary">{successChance.toFixed(1)}%</p>
+                    </div>
+                    <div className="p-2 bg-destructive/20 rounded border border-destructive/30">
+                      <p className="text-[10px] text-muted-foreground">Fail</p>
+                      <p className="text-lg font-bold text-destructive">{failChance.toFixed(1)}%</p>
+                    </div>
+                  </div>
+
+                  <Button onClick={handleUpgrade} disabled={upgrading} size="lg" className="w-full bg-primary hover:bg-primary/90">
                     {upgrading ? (
                       <span className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 animate-spin" />
+                        <Sparkles className="w-4 h-4 animate-spin" />
                         Upgrading...
                       </span>
                     ) : (
                       <>
-                        <Sparkles className="w-5 h-5 mr-2" />
+                        <Sparkles className="w-4 h-4 mr-2" />
                         Upgrade Item
                       </>
                     )}
@@ -355,7 +337,7 @@ export default function Upgrader() {
         </main>
       </div>
       <LiveChat />
-      
+
       <UserInventoryDialog
         open={inventoryOpen}
         onOpenChange={setInventoryOpen}

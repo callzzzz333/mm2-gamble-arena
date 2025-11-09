@@ -46,13 +46,19 @@ export const LiveBets = memo(() => {
       return;
     }
 
-    // Fetch blackjack games
-    const { data: blackjackTables } = await supabase
-      .from('blackjack_tables')
+    // Fetch roulette games
+    const { data: rouletteBets } = await supabase
+      .from('roulette_bets')
       .select('*')
-      .eq('status', 'in_progress')
       .order('created_at', { ascending: false })
-      .limit(5);
+      .limit(10);
+
+    // Fetch crash games  
+    const { data: crashBets } = await supabase
+      .from('crash_bets')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
 
     // Fetch upgrader games
     const { data: upgraderGames } = await supabase
@@ -95,29 +101,36 @@ export const LiveBets = memo(() => {
       }
     }
 
-    // Create synthetic transactions for blackjack and upgrader
+    // Create synthetic transactions for roulette, crash and upgrader
     const syntheticBets: any[] = [];
     
-    if (blackjackTables) {
-      for (const table of blackjackTables) {
-        const { data: players } = await supabase
-          .from('blackjack_players')
-          .select('user_id, bet_amount')
-          .eq('table_id', table.id);
-        
-        if (players && players.length > 0) {
-          const totalPot = players.reduce((sum, p) => sum + Number(p.bet_amount), 0);
-          syntheticBets.push({
-            id: `blackjack-${table.id}`,
-            user_id: players[0].user_id,
-            amount: totalPot,
-            type: 'bet',
-            game_type: 'blackjack',
-            description: `${players.length} players in progress`,
-            created_at: table.started_at || table.created_at,
-            game_id: table.id,
-          });
-        }
+    if (rouletteBets) {
+      for (const bet of rouletteBets) {
+        syntheticBets.push({
+          id: `roulette-${bet.id}`,
+          user_id: bet.user_id,
+          amount: Number(bet.bet_amount),
+          type: bet.won === null ? 'bet' : bet.won ? 'win' : 'loss',
+          game_type: 'roulette',
+          description: `Bet on ${bet.bet_color}`,
+          created_at: bet.created_at,
+          game_id: bet.game_id,
+        });
+      }
+    }
+
+    if (crashBets) {
+      for (const bet of crashBets) {
+        syntheticBets.push({
+          id: `crash-${bet.id}`,
+          user_id: bet.user_id,
+          amount: Number(bet.bet_amount),
+          type: bet.won === null ? 'bet' : bet.won ? 'win' : 'loss',
+          game_type: 'crash',
+          description: bet.cashed_out ? `Cashed out at ${bet.cashout_at}x` : 'Placed bet',
+          created_at: bet.created_at,
+          game_id: bet.game_id,
+        });
       }
     }
 
@@ -192,7 +205,8 @@ export const LiveBets = memo(() => {
     const colors: any = {
       'coinflip': 'bg-blue-500/20 text-blue-500',
       'jackpot': 'bg-purple-500/20 text-purple-500',
-      'blackjack': 'bg-green-500/20 text-green-500',
+      'roulette': 'bg-red-500/20 text-red-500',
+      'crash': 'bg-orange-500/20 text-orange-500',
       'upgrader': 'bg-pink-500/20 text-pink-500',
       'item_duel': 'bg-red-500/20 text-red-500',
       'russian_roulette': 'bg-orange-500/20 text-orange-500',
