@@ -312,20 +312,9 @@ const ChristmasRaffle = () => {
           <div className="max-w-6xl mx-auto space-y-8">
             {/* Enhanced Header with Christmas Effects */}
             <div className="relative flex items-center gap-3 overflow-hidden rounded-xl p-8 bg-gradient-to-r from-blue-500/20 via-white/10 to-blue-500/20 border-2 border-blue-500/30">
-              {/* Animated background shimmer */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-              
-              {/* Floating snowflakes */}
-              <Snowflake className="w-12 h-12 text-blue-300 absolute top-2 left-4 animate-float opacity-80" />
-              <Snowflake className="w-8 h-8 text-blue-200 absolute top-8 right-12 animate-float opacity-70" style={{ animationDelay: "1s" }} />
-              <Snowflake className="w-6 h-6 text-blue-400 absolute bottom-4 right-24 animate-float opacity-80" style={{ animationDelay: "2s" }} />
-              <Snowflake className="w-10 h-10 text-white/40 absolute top-4 right-32 animate-float" style={{ animationDelay: "1.5s" }} />
-              <Sparkles className="w-5 h-5 text-yellow-300 absolute top-6 left-24 animate-pulse" />
-              <Sparkles className="w-4 h-4 text-yellow-200 absolute bottom-6 left-32 animate-pulse" style={{ animationDelay: "0.5s" }} />
-              
               {/* Glowing orbs */}
-              <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/30 rounded-full blur-3xl animate-pulse" />
-              <div className="absolute bottom-0 right-0 w-40 h-40 bg-white/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+              <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/30 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 right-0 w-40 h-40 bg-white/20 rounded-full blur-3xl" />
               
               <div className="relative z-10 w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 via-blue-400 to-white/30 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)]">
                 <Ticket className="w-8 h-8 text-white drop-shadow-lg" />
@@ -336,7 +325,6 @@ const ChristmasRaffle = () => {
                   <span className="bg-gradient-to-r from-blue-300 via-white to-blue-300 bg-clip-text text-transparent">
                     Christmas Raffle 2025
                   </span>
-                  <Sparkles className="w-8 h-8 text-yellow-300 animate-pulse" />
                 </h1>
                 <p className="text-muted-foreground text-lg">Exchange items for tickets - $5 = 1 ticket</p>
               </div>
@@ -356,9 +344,8 @@ const ChristmasRaffle = () => {
             {/* Enhanced Prize Pool */}
             {raffleData && (
               <Card className="p-8 bg-gradient-to-br from-yellow-500/20 via-orange-500/10 to-yellow-500/20 border-2 border-yellow-500/40 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-300/20 to-transparent animate-shimmer" />
-                <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl animate-pulse" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+                <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl" />
                 
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-6">
@@ -567,6 +554,13 @@ const ChristmasRaffle = () => {
                               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 font-bold">
                                 {index + 1}
                               </div>
+                              {entry.profiles?.avatar_url && (
+                                <img 
+                                  src={entry.profiles.avatar_url} 
+                                  alt={entry.profiles.username || "User"} 
+                                  className="w-10 h-10 rounded-full border-2 border-border"
+                                />
+                              )}
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold truncate">
                                   {entry.profiles?.username || "Anonymous"}

@@ -16,9 +16,7 @@ import {
   Crown,
   Target,
   Users,
-  Snowflake,
   Ticket,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -50,25 +48,17 @@ export const Sidebar = () => {
 
   return (
     <div className="fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col py-6 z-50 overflow-y-auto scrollbar-hide">
-      {/* Logo with Christmas effects */}
+      {/* Logo */}
       <div
         className="px-6 mb-8 cursor-pointer flex items-center justify-center relative group"
         onClick={() => navigate("/")}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-white/5 to-blue-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="relative [perspective:600px]">
-          <img
-            src={logo}
-            alt="Royale Logo"
-            className="h-16 w-auto relative z-10 group-hover:scale-105 transition-transform"
-          />
-          <div className="absolute inset-0 pointer-events-none [transform-style:preserve-3d]">
-            <Snowflake className="absolute -top-2 -right-2 w-5 h-5 text-blue-400 animate-spin" style={{ animationDuration: "10s", transform: "translateZ(30px) rotateY(25deg)" }} />
-            <Snowflake className="absolute -bottom-3 left-4 w-6 h-6 text-white/60 animate-spin" style={{ animationDuration: "14s", transform: "translateZ(10px) rotateY(-30deg)" }} />
-            <Snowflake className="absolute top-1/2 -left-3 w-4 h-4 text-blue-300 animate-spin" style={{ animationDuration: "12s", transform: "translateZ(20px) rotateY(15deg)" }} />
-            <Sparkles className="absolute top-0 left-0 w-3 h-3 text-yellow-300/70" />
-          </div>
-        </div>
+        <img
+          src={logo}
+          alt="Royale Logo"
+          className="h-16 w-auto relative z-10 group-hover:scale-105 transition-transform"
+        />
       </div>
 
       {/* Navigation */}

@@ -169,6 +169,34 @@ export default function Withdraw() {
       rarity: si.item.rarity
     }));
 
+    // Deduct items from inventory
+    for (const si of selectedItems) {
+      const { data: currentItem } = await supabase
+        .from('user_items')
+        .select('quantity')
+        .eq('user_id', user.id)
+        .eq('item_id', si.item.id)
+        .single();
+
+      if (currentItem) {
+        const newQuantity = currentItem.quantity - si.quantity;
+        
+        if (newQuantity <= 0) {
+          await supabase
+            .from('user_items')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('item_id', si.item.id);
+        } else {
+          await supabase
+            .from('user_items')
+            .update({ quantity: newQuantity })
+            .eq('user_id', user.id)
+            .eq('item_id', si.item.id);
+        }
+      }
+    }
+
     // Create withdrawal request
     const { error } = await supabase.from("withdrawals").insert({
       user_id: user.id,
@@ -190,7 +218,7 @@ export default function Withdraw() {
     } else {
       toast({
         title: "Withdrawal requested",
-        description: "Your withdrawal request has been submitted",
+        description: "Items have been removed from your inventory",
       });
       setSelectedItems([]);
       setTraderUsername("");
