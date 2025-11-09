@@ -63,39 +63,56 @@ export type Database = {
           bet_amount: number
           completed_at: string | null
           created_at: string | null
+          current_player_id: string | null
           dealer_hand: Json | null
           dealer_score: number | null
           id: string
           max_players: number
           started_at: string | null
           status: string
+          turn_started_at: string | null
+          turn_timeout_seconds: number | null
           winner_id: string | null
         }
         Insert: {
           bet_amount: number
           completed_at?: string | null
           created_at?: string | null
+          current_player_id?: string | null
           dealer_hand?: Json | null
           dealer_score?: number | null
           id?: string
           max_players?: number
           started_at?: string | null
           status?: string
+          turn_started_at?: string | null
+          turn_timeout_seconds?: number | null
           winner_id?: string | null
         }
         Update: {
           bet_amount?: number
           completed_at?: string | null
           created_at?: string | null
+          current_player_id?: string | null
           dealer_hand?: Json | null
           dealer_score?: number | null
           id?: string
           max_players?: number
           started_at?: string | null
           status?: string
+          turn_started_at?: string | null
+          turn_timeout_seconds?: number | null
           winner_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "blackjack_tables_current_player_id_fkey"
+            columns: ["current_player_id"]
+            isOneToOne: false
+            referencedRelation: "blackjack_players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_messages: {
         Row: {

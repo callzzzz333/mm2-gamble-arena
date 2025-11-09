@@ -39,12 +39,28 @@ export const LiveBets = memo(() => {
       .in('type', ['bet', 'win', 'loss'])
       .not('game_type', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(20);
 
     if (txError) {
       console.error('Error fetching live bets:', txError);
       return;
     }
+
+    // Fetch blackjack games
+    const { data: blackjackTables } = await supabase
+      .from('blackjack_tables')
+      .select('*')
+      .eq('status', 'in_progress')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    // Fetch upgrader games
+    const { data: upgraderGames } = await supabase
+      .from('upgrader_games')
+      .select('*')
+      .not('won', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(5);
 
     // Fetch user profiles
     const userIds = Array.from(new Set((txs || []).map(t => t.user_id))).filter(Boolean);
@@ -79,7 +95,50 @@ export const LiveBets = memo(() => {
       }
     }
 
-    const merged = (txs || []).map((t: any) => {
+    // Create synthetic transactions for blackjack and upgrader
+    const syntheticBets: any[] = [];
+    
+    if (blackjackTables) {
+      for (const table of blackjackTables) {
+        const { data: players } = await supabase
+          .from('blackjack_players')
+          .select('user_id, bet_amount')
+          .eq('table_id', table.id);
+        
+        if (players && players.length > 0) {
+          const totalPot = players.reduce((sum, p) => sum + Number(p.bet_amount), 0);
+          syntheticBets.push({
+            id: `blackjack-${table.id}`,
+            user_id: players[0].user_id,
+            amount: totalPot,
+            type: 'bet',
+            game_type: 'blackjack',
+            description: `${players.length} players in progress`,
+            created_at: table.started_at || table.created_at,
+            game_id: table.id,
+          });
+        }
+      }
+    }
+
+    if (upgraderGames) {
+      for (const game of upgraderGames) {
+        syntheticBets.push({
+          id: `upgrader-${game.id}`,
+          user_id: game.user_id,
+          amount: 0,
+          type: game.won ? 'win' : 'loss',
+          game_type: 'upgrader',
+          description: game.won ? 'Successful upgrade' : 'Failed upgrade',
+          created_at: game.completed_at,
+          game_id: game.id,
+        });
+      }
+    }
+
+    const allBets = [...(txs || []), ...syntheticBets];
+
+    const merged = allBets.map((t: any) => {
       const game = gamesMap[t.game_id];
       let items = null;
       
@@ -99,8 +158,11 @@ export const LiveBets = memo(() => {
       };
     });
 
+    // Sort by created_at
+    merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
     console.log('Fetched live bets count:', merged.length);
-    setLiveBets(merged as any);
+    setLiveBets(merged.slice(0, 30) as any);
   }, []);
 
   useEffect(() => {
@@ -130,11 +192,13 @@ export const LiveBets = memo(() => {
     const colors: any = {
       'coinflip': 'bg-blue-500/20 text-blue-500',
       'jackpot': 'bg-purple-500/20 text-purple-500',
+      'blackjack': 'bg-green-500/20 text-green-500',
+      'upgrader': 'bg-pink-500/20 text-pink-500',
       'item_duel': 'bg-red-500/20 text-red-500',
       'russian_roulette': 'bg-orange-500/20 text-orange-500',
-      'king_of_hill': 'bg-green-500/20 text-green-500',
+      'king_of_hill': 'bg-emerald-500/20 text-emerald-500',
       'team_showdown': 'bg-yellow-500/20 text-yellow-500',
-      'draft_battle': 'bg-pink-500/20 text-pink-500',
+      'draft_battle': 'bg-cyan-500/20 text-cyan-500',
     };
     return colors[gameType] || 'bg-gray-500/20 text-gray-500';
   }, []);

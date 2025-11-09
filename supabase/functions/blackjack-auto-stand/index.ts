@@ -16,41 +16,42 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
+    const { playerId, tableId } = await req.json();
+
+    console.log('Auto-stand for player:', playerId, 'Table:', tableId);
+
+    // Check if player is still in playing state
+    const { data: player } = await supabase
+      .from('blackjack_players')
+      .select('*')
+      .eq('id', playerId)
+      .single();
+
+    if (!player || player.status !== 'playing') {
+      console.log('Player not in playing state, skipping auto-stand');
+      return new Response(
+        JSON.stringify({ success: false, reason: 'player_not_playing' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      throw new Error('Unauthorized');
-    }
-
-    const { tableId } = await req.json();
-
-    console.log('Blackjack stand - User:', user.id, 'Table:', tableId);
 
     // Update player status to standing
-    const { data: player, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('blackjack_players')
       .update({ status: 'standing' })
-      .eq('table_id', tableId)
-      .eq('user_id', user.id)
-      .select('*')
-      .single();
+      .eq('id', playerId);
 
     if (updateError) {
       throw updateError;
     }
 
-    // Get all players to check status and move to next
+    console.log('Auto-stand successful');
+
+    // Check if all players are done
     const { data: players } = await supabase
       .from('blackjack_players')
       .select('*')
-      .eq('table_id', tableId)
-      .order('joined_at', { ascending: true });
+      .eq('table_id', tableId);
 
     const allDone = players?.every((p: any) => p.status === 'bust' || p.status === 'standing');
 
@@ -65,27 +66,6 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({ tableId }),
       });
-    } else {
-      // Move to next player
-      if (players && players.length > 0) {
-        const currentIndex = players.findIndex((p: any) => p.id === player.id);
-        let nextIndex = (currentIndex + 1) % players.length;
-        
-        // Find next player who is still playing
-        while (players[nextIndex].status !== 'playing' && nextIndex !== currentIndex) {
-          nextIndex = (nextIndex + 1) % players.length;
-        }
-        
-        if (players[nextIndex].status === 'playing') {
-          await supabase
-            .from('blackjack_tables')
-            .update({
-              current_player_id: players[nextIndex].id,
-              turn_started_at: new Date().toISOString(),
-            })
-            .eq('id', tableId);
-        }
-      }
     }
 
     return new Response(
@@ -94,7 +74,7 @@ Deno.serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('Error in blackjack-stand:', error);
+    console.error('Error in blackjack-auto-stand:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }

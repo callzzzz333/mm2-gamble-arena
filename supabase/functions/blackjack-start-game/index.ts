@@ -120,6 +120,9 @@ Deno.serve(async (req) => {
     const dealerHand = [dealerCard1, dealerCard2];
     const dealerScore = calculateScore(dealerHand);
 
+    // Set first player as current player
+    const firstPlayer = players[0];
+
     // Update table to in_progress
     await supabase
       .from('blackjack_tables')
@@ -128,6 +131,8 @@ Deno.serve(async (req) => {
         started_at: new Date().toISOString(),
         dealer_hand: dealerHand,
         dealer_score: dealerScore,
+        current_player_id: firstPlayer.id,
+        turn_started_at: new Date().toISOString(),
       })
       .eq('id', tableId);
 

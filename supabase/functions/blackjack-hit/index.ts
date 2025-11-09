@@ -122,9 +122,9 @@ Deno.serve(async (req) => {
       throw updateError;
     }
 
-    // If bust, check if all players are done
+    // Move to next player or check if all done
     if (newStatus === 'bust') {
-      await checkAndCompleteTurn(supabase, tableId);
+      await moveToNextPlayerOrComplete(supabase, tableId, player.id);
     }
 
     return new Response(
@@ -146,8 +146,50 @@ Deno.serve(async (req) => {
   }
 });
 
+async function moveToNextPlayerOrComplete(supabase: any, tableId: string, currentPlayerId: string) {
+  // Get all players
+  const { data: players } = await supabase
+    .from('blackjack_players')
+    .select('*')
+    .eq('table_id', tableId)
+    .order('joined_at', { ascending: true });
+
+  const allDone = players?.every((p: any) => p.status === 'bust' || p.status === 'standing');
+
+  if (allDone) {
+    console.log('All players done, triggering dealer turn');
+    await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/blackjack-dealer-turn`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+      },
+      body: JSON.stringify({ tableId }),
+    });
+  } else {
+    // Move to next player
+    const currentIndex = players.findIndex((p: any) => p.id === currentPlayerId);
+    let nextIndex = (currentIndex + 1) % players.length;
+    
+    // Find next player who is still playing
+    while (players[nextIndex].status !== 'playing' && nextIndex !== currentIndex) {
+      nextIndex = (nextIndex + 1) % players.length;
+    }
+    
+    if (players[nextIndex].status === 'playing') {
+      await supabase
+        .from('blackjack_tables')
+        .update({
+          current_player_id: players[nextIndex].id,
+          turn_started_at: new Date().toISOString(),
+        })
+        .eq('id', tableId);
+    }
+  }
+}
+
 async function checkAndCompleteTurn(supabase: any, tableId: string) {
-  // Check if all players are done (bust or standing)
+  // Deprecated - use moveToNextPlayerOrComplete instead
   const { data: players } = await supabase
     .from('blackjack_players')
     .select('*')
@@ -157,7 +199,6 @@ async function checkAndCompleteTurn(supabase: any, tableId: string) {
 
   if (allDone) {
     console.log('All players done, triggering dealer turn');
-    // Trigger dealer turn
     await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/blackjack-dealer-turn`, {
       method: 'POST',
       headers: {

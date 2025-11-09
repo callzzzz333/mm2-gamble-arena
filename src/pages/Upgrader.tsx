@@ -137,6 +137,17 @@ export default function Upgrader() {
           completed_at: new Date().toISOString(),
         });
 
+      // Record transaction for live activity
+      await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          amount: won ? Number(targetItem.value) : -Number(selectedItem.value),
+          type: won ? 'win' : 'loss',
+          game_type: 'upgrader',
+          description: won ? `Upgraded to ${targetItem.name}` : `Failed to upgrade to ${targetItem.name}`,
+        });
+
       toast({
         title: won ? "Upgrade Successful!" : "Upgrade Failed",
         description: won 

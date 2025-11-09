@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { Spade, Users, Trophy, Plus } from "lucide-react";
+import { Timer, Spade, Users, Trophy, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -19,6 +19,9 @@ interface BlackjackTable {
   dealer_hand: any;
   dealer_score: number;
   created_at: string;
+  current_player_id?: string;
+  turn_started_at?: string;
+  turn_timeout_seconds?: number;
 }
 
 interface BlackjackPlayer {
@@ -41,6 +44,7 @@ export default function BlackjackDuel() {
   const [players, setPlayers] = useState<Record<string, BlackjackPlayer[]>>({});
   const [betAmount, setBetAmount] = useState("10");
   const [loading, setLoading] = useState(false);
+  const [turnTimeLeft, setTurnTimeLeft] = useState<Record<string, number>>({});
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -66,6 +70,52 @@ export default function BlackjackDuel() {
       supabase.removeChannel(playersChannel);
     };
   }, []);
+
+  // Timer countdown effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newTimeLeft: Record<string, number> = {};
+      
+      tables.forEach(table => {
+        if (table.status === 'in_progress' && table.turn_started_at) {
+          const turnStart = new Date(table.turn_started_at).getTime();
+          const now = Date.now();
+          const elapsed = Math.floor((now - turnStart) / 1000);
+          const timeLeft = Math.max(0, (table.turn_timeout_seconds || 30) - elapsed);
+          
+          newTimeLeft[table.id] = timeLeft;
+          
+          // Auto-stand when time runs out
+          if (timeLeft === 0 && table.current_player_id) {
+            const currentPlayer = players[table.id]?.find(p => p.id === table.current_player_id);
+            if (currentPlayer && currentPlayer.user_id === user?.id && currentPlayer.status === 'playing') {
+              handleAutoStand(table.current_player_id, table.id);
+            }
+          }
+        }
+      });
+      
+      setTurnTimeLeft(newTimeLeft);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [tables, players, user]);
+
+  const handleAutoStand = async (playerId: string, tableId: string) => {
+    try {
+      await supabase.functions.invoke('blackjack-auto-stand', {
+        body: { playerId, tableId }
+      });
+      
+      toast({ 
+        title: "Time's up!", 
+        description: "You automatically stood due to inactivity",
+        variant: "default"
+      });
+    } catch (error: any) {
+      console.error('Auto-stand error:', error);
+    }
+  };
 
   const fetchTables = async () => {
     const { data: tablesData } = await supabase
@@ -203,6 +253,18 @@ export default function BlackjackDuel() {
       
       if (data.status === 'bust') {
         toast({ title: "Bust!", description: "You went over 21", variant: "destructive" });
+      } else {
+        // Record transaction for bet activity
+        await supabase
+          .from('transactions')
+          .insert({
+            user_id: user!.id,
+            amount: 0,
+            type: 'bet',
+            game_type: 'blackjack',
+            game_id: tableId,
+            description: 'Hit',
+          });
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -221,6 +283,18 @@ export default function BlackjackDuel() {
       if (error) throw error;
       
       toast({ title: "Standing", description: "Waiting for other players..." });
+      
+      // Record transaction for activity
+      await supabase
+        .from('transactions')
+        .insert({
+          user_id: user!.id,
+          amount: 0,
+          type: 'bet',
+          game_type: 'blackjack',
+          game_id: tableId,
+          description: 'Stand',
+        });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -429,23 +503,41 @@ export default function BlackjackDuel() {
 
                                     {/* Hit/Stand Buttons */}
                                     {canPlay && (
-                                      <div className="flex gap-2 mt-2">
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handleHit(table.id)}
-                                          disabled={loading}
-                                          className="flex-1 bg-green-600 hover:bg-green-700"
-                                        >
-                                          Hit
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handleStand(table.id)}
-                                          disabled={loading}
-                                          className="flex-1 bg-red-600 hover:bg-red-700"
-                                        >
-                                          Stand
-                                        </Button>
+                                      <div className="space-y-2">
+                                        {/* Timer */}
+                                        {table.current_player_id === player.id && turnTimeLeft[table.id] !== undefined && (
+                                          <div className="flex items-center justify-center gap-2 text-xs">
+                                            <Timer className="w-3 h-3" />
+                                            <span className={`font-bold ${turnTimeLeft[table.id] <= 10 ? 'text-red-500 animate-pulse' : 'text-primary'}`}>
+                                              {turnTimeLeft[table.id]}s
+                                            </span>
+                                          </div>
+                                        )}
+                                        
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleHit(table.id)}
+                                            disabled={loading || table.current_player_id !== player.id}
+                                            className="flex-1 bg-green-600 hover:bg-green-700"
+                                          >
+                                            Hit
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleStand(table.id)}
+                                            disabled={loading || table.current_player_id !== player.id}
+                                            className="flex-1 bg-red-600 hover:bg-red-700"
+                                          >
+                                            Stand
+                                          </Button>
+                                        </div>
+                                        
+                                        {table.current_player_id !== player.id && (
+                                          <p className="text-xs text-muted-foreground text-center">
+                                            Waiting for your turn...
+                                          </p>
+                                        )}
                                       </div>
                                     )}
                                   </div>
