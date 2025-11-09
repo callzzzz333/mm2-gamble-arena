@@ -9,8 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, Clock, CheckCircle, XCircle, Send, Package, Minus } from "lucide-react";
+import { DollarSign, Clock, CheckCircle, XCircle, Send, Package, Minus, AlertTriangle } from "lucide-react";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Item {
   id: string;
@@ -41,6 +51,7 @@ export default function Withdraw() {
   const [privateServerLink, setPrivateServerLink] = useState("");
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -94,7 +105,7 @@ export default function Withdraw() {
     }
   };
 
-  const handleWithdraw = async (e: React.FormEvent) => {
+  const handleWithdrawSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (selectedItems.length === 0) {
@@ -126,6 +137,12 @@ export default function Withdraw() {
       return;
     }
 
+    // Show confirmation dialog
+    setConfirmDialogOpen(true);
+  };
+
+  const handleWithdraw = async () => {
+    setConfirmDialogOpen(false);
     setLoading(true);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -138,6 +155,8 @@ export default function Withdraw() {
       setLoading(false);
       return;
     }
+
+    const withdrawAmount = getTotalValue();
 
     // Verify user still has the items
     for (const si of selectedItems) {
@@ -279,7 +298,7 @@ export default function Withdraw() {
                     </h2>
                   </div>
 
-                  <form onSubmit={handleWithdraw} className="space-y-4">
+                  <form onSubmit={handleWithdrawSubmit} className="space-y-4">
                     <div>
                       <Label>Select Items from Inventory</Label>
                       <Button 
@@ -428,6 +447,48 @@ export default function Withdraw() {
         multiSelect={true}
         selectedItems={selectedItems.map(si => si.item.id)}
       />
+
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              Confirm Withdrawal Request
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p className="font-semibold text-foreground">
+                You are about to withdraw ${getTotalValue().toFixed(2)} worth of items.
+              </p>
+              <p className="text-destructive font-medium">
+                ⚠️ Warning: These items will be immediately removed from your inventory upon submission.
+              </p>
+              <p>
+                Selected items ({selectedItems.length}):
+              </p>
+              <div className="max-h-32 overflow-y-auto space-y-1 text-sm">
+                {selectedItems.map((si) => (
+                  <div key={si.item.id} className="flex justify-between items-center text-foreground">
+                    <span>{si.item.name} x{si.quantity}</span>
+                    <span className="font-semibold text-primary">${(si.item.value * si.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="pt-2">
+                Your withdrawal request will be reviewed by our team. Are you sure you want to proceed?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleWithdraw}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Confirm Withdrawal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
