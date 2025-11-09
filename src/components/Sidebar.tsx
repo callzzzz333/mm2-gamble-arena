@@ -56,18 +56,18 @@ export const Sidebar = () => {
         onClick={() => navigate("/")}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-white/5 to-blue-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="relative">
+        <div className="relative [perspective:600px]">
           <img
             src={logo}
             alt="Royale Logo"
             className="h-16 w-auto relative z-10 group-hover:scale-105 transition-transform"
           />
-          <Snowflake className="absolute -top-2 -right-2 w-5 h-5 text-blue-400 animate-float opacity-80" />
-          <Snowflake
-            className="absolute -bottom-2 -left-2 w-4 h-4 text-white/60 animate-float"
-            style={{ animationDelay: "1.5s" }}
-          />
-          <Sparkles className="absolute top-0 left-0 w-3 h-3 text-yellow-300/70 animate-pulse" />
+          <div className="absolute inset-0 pointer-events-none [transform-style:preserve-3d]">
+            <Snowflake className="absolute -top-2 -right-2 w-5 h-5 text-blue-400 animate-spin" style={{ animationDuration: "10s", transform: "translateZ(30px) rotateY(25deg)" }} />
+            <Snowflake className="absolute -bottom-3 left-4 w-6 h-6 text-white/60 animate-spin" style={{ animationDuration: "14s", transform: "translateZ(10px) rotateY(-30deg)" }} />
+            <Snowflake className="absolute top-1/2 -left-3 w-4 h-4 text-blue-300 animate-spin" style={{ animationDuration: "12s", transform: "translateZ(20px) rotateY(15deg)" }} />
+            <Sparkles className="absolute top-0 left-0 w-3 h-3 text-yellow-300/70" />
+          </div>
         </div>
       </div>
 
@@ -163,47 +163,15 @@ export const Sidebar = () => {
         <Button
           variant="ghost"
           className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all relative border-2 overflow-hidden group",
+            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
             isActive("/christmas-raffle")
-              ? "bg-gradient-to-r from-blue-500/30 via-white/20 to-blue-500/30 text-foreground shadow-[0_0_25px_rgba(59,130,246,0.6)] border-blue-400/50"
-              : "border-blue-500/30 hover:bg-gradient-to-r hover:from-blue-500/20 hover:via-white/10 hover:to-blue-500/20 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)]",
+              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
+              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
           )}
           onClick={() => navigate("/christmas-raffle")}
         >
-          {/* Animated shimmer effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-
-          {/* Animated snowflakes background */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <Snowflake className="absolute -top-2 left-2 w-3 h-3 text-blue-300/80 animate-float" />
-            <Snowflake
-              className="absolute top-1/2 right-4 w-4 h-4 text-white/70 animate-float"
-              style={{ animationDelay: "1s" }}
-            />
-            <Snowflake
-              className="absolute -bottom-1 left-1/3 w-3 h-3 text-blue-400/80 animate-float"
-              style={{ animationDelay: "2s" }}
-            />
-            <Sparkles className="absolute top-2 right-8 w-3 h-3 text-yellow-300/60 animate-pulse" />
-          </div>
-
-          <div className="relative flex items-center gap-3 flex-1 z-10">
-            <div className="relative">
-              <Gift className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
-              <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-yellow-300 animate-pulse opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <span className="font-bold flex-1 text-left bg-gradient-to-r from-blue-300 via-white to-blue-300 bg-clip-text text-transparent flex items-center gap-2">
-              <Ticket className="w-4 h-4 text-blue-400" />
-              Christmas Raffle
-            </span>
-            <div className="relative">
-              <span className="px-2 py-1 bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500 text-white text-[10px] font-bold rounded-full uppercase flex items-center gap-1 shadow-lg animate-pulse">
-                <Ticket className="w-3 h-3" />
-                Live
-              </span>
-              <div className="absolute inset-0 bg-blue-400 rounded-full blur-md opacity-50 animate-pulse" />
-            </div>
-          </div>
+          <CircleDot className="w-5 h-5 text-primary" />
+          <span className="font-medium flex-1 text-left">Christmas Raffle</span>
         </Button>
 
         {/* Divider */}

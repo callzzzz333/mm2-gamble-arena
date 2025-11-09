@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Package, Snowflake } from "lucide-react";
+import { Bell, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import { SoundToggle } from "@/components/SoundToggle";
 import { supabase } from "@/integrations/supabase/client";
-import logoImage from "@/assets/logo.png";
+
 
 export const TopBar = () => {
   const [user, setUser] = useState<any>(null);
@@ -63,15 +63,7 @@ export const TopBar = () => {
     <>
       <div className="fixed top-0 left-64 right-96 bg-background/95 backdrop-blur-sm border-b border-border z-40">
         <div className="h-16 flex items-center justify-between px-12">
-          {/* Christmas Logo with Effects */}
-          <div className="relative group cursor-pointer" onClick={() => navigate("/")}>
-            <div className="absolute -inset-2 bg-gradient-to-r from-blue-500/20 via-white/10 to-blue-500/20 rounded-lg blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative">
-              <img src={logoImage} alt="Logo" className="h-10 w-10 relative z-10" />
-              <Snowflake className="absolute -top-1 -right-1 w-4 h-4 text-blue-400 animate-spin" style={{ animationDuration: "8s" }} />
-              <Snowflake className="absolute -bottom-1 -left-1 w-3 h-3 text-white/60 animate-spin" style={{ animationDuration: "12s" }} />
-            </div>
-          </div>
+          <div className="w-10" />
           
           {/* Centered Inventory Button */}
           <div className="flex-1 flex justify-center">

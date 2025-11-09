@@ -195,7 +195,7 @@ const ChristmasRaffle = () => {
       const { data, error } = await supabase
         .from("christmas_raffle")
         .select("*")
-        .eq("year", 2024)
+        .eq("year", 2025)
         .single();
 
       if (error) throw error;

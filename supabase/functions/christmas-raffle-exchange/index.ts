@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
     const { data: raffle } = await supabaseAdmin
       .from('christmas_raffle')
       .select('*')
-      .eq('year', 2024)
+      .eq('year', 2025)
       .single();
 
     if (raffle) {
