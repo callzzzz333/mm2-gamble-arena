@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, ArrowRight, Sparkles } from "lucide-react";
+import { TrendingUp, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 
@@ -24,7 +24,8 @@ export default function Upgrader() {
   const [items, setItems] = useState<Item[]>([]);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [result, setResult] = useState<"won" | "lost" | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,9 +44,8 @@ export default function Upgrader() {
   const handleSelectItem = (item: Item & { quantity: number }) => {
     setSelectedItem(item);
     setInventoryOpen(false);
-    
-    // Find potential upgrade targets (items worth more)
-    const potentialTargets = items.filter(i => Number(i.value) > Number(item.value));
+
+    const potentialTargets = items.filter((i) => Number(i.value) > Number(item.value));
     if (potentialTargets.length > 0) {
       setTargetItem(potentialTargets[0]);
     }
@@ -61,10 +61,10 @@ export default function Upgrader() {
     if (!selectedItem || !targetItem) return;
 
     setUpgrading(true);
-    setIsAnimating(true);
-    
-    // Animation delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    setIsSpinning(true);
+    setResult(null);
+
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -82,9 +82,9 @@ export default function Upgrader() {
         throw new Error("You don't have this item");
       }
 
-      // Calculate success
       const chance = calculateSuccessChance();
       const won = Math.random() * 100 < chance;
+      setResult(won ? "won" : "lost");
 
       // Remove input item
       if (userItem.quantity === 1) {
@@ -124,40 +124,34 @@ export default function Upgrader() {
         }
       }
 
-      // Record game
-      await supabase
-        .from("upgrader_games")
-        .insert({
-          user_id: user.id,
-          input_item_id: selectedItem.id,
-          target_item_id: targetItem.id,
-          success_chance: chance,
-          won,
-          won_item_id: won ? targetItem.id : null,
-          completed_at: new Date().toISOString(),
-        });
-
-      // Record transaction for live activity
-      await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          amount: won ? Number(targetItem.value) : -Number(selectedItem.value),
-          type: won ? 'win' : 'loss',
-          game_type: 'upgrader',
-          description: won ? `Upgraded to ${targetItem.name}` : `Failed to upgrade to ${targetItem.name}`,
-        });
-
-      toast({
-        title: won ? "Upgrade Successful!" : "Upgrade Failed",
-        description: won 
-          ? `You received ${targetItem.name}!`
-          : `Better luck next time`,
-        variant: won ? "default" : "destructive",
+      await supabase.from("upgrader_games").insert({
+        user_id: user.id,
+        input_item_id: selectedItem.id,
+        target_item_id: targetItem.id,
+        success_chance: chance,
+        won,
+        won_item_id: won ? targetItem.id : null,
+        completed_at: new Date().toISOString(),
       });
 
-      setSelectedItem(null);
-      setTargetItem(null);
+      await supabase.from("transactions").insert({
+        user_id: user.id,
+        amount: won ? Number(targetItem.value) : -Number(selectedItem.value),
+        type: won ? "win" : "loss",
+        game_type: "upgrader",
+        description: won ? `Upgraded to ${targetItem.name}` : `Failed to upgrade to ${targetItem.name}`,
+      });
+
+      setTimeout(() => {
+        toast({
+          title: won ? "Upgrade Successful!" : "Upgrade Failed",
+          description: won ? `You received ${targetItem.name}!` : `Better luck next time`,
+          variant: won ? "default" : "destructive",
+        });
+        setSelectedItem(null);
+        setTargetItem(null);
+        setIsSpinning(false);
+      }, 1500);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -166,7 +160,7 @@ export default function Upgrader() {
       });
     } finally {
       setUpgrading(false);
-      setIsAnimating(false);
+      setIsSpinning(false);
     }
   };
 
@@ -208,7 +202,7 @@ export default function Upgrader() {
                 </h2>
                 {selectedItem ? (
                   <div className="space-y-4">
-                    <div className={`relative ${isAnimating ? 'animate-pulse' : ''}`}>
+                    <div className={`relative ${isSpinning ? 'animate-pulse' : ''}`}>
                       {selectedItem.image_url && (
                         <img
                           src={selectedItem.image_url}
@@ -246,7 +240,7 @@ export default function Upgrader() {
 
               {/* Arrow */}
               <div className="flex items-center justify-center">
-                <ArrowRight className={`w-12 h-12 text-primary ${isAnimating ? 'animate-pulse' : ''}`} />
+                <TrendingUp className={`w-12 h-12 text-primary ${isSpinning ? 'animate-pulse' : ''}`} />
               </div>
 
               {/* Target Item */}
@@ -257,7 +251,7 @@ export default function Upgrader() {
                 </h2>
                 {targetItem ? (
                   <div className="space-y-4">
-                    <div className={`relative ${isAnimating ? 'animate-bounce' : ''}`}>
+                    <div className={`relative ${isSpinning ? 'animate-bounce' : ''}`}>
                       {targetItem.image_url && (
                         <img
                           src={targetItem.image_url}
@@ -330,7 +324,7 @@ export default function Upgrader() {
             {selectedItem && targetItem && (
               <Card className="p-6 bg-gradient-to-r from-primary/20 via-purple-500/20 to-pink-500/20 border-primary/50 shadow-xl">
                 <div className="text-center space-y-4">
-                  <div className={isAnimating ? 'animate-pulse' : ''}>
+                  <div className={isSpinning ? 'animate-pulse' : ''}>
                     <p className="text-sm text-muted-foreground mb-2">Success Chance</p>
                     <p className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
                       {calculateSuccessChance().toFixed(1)}%

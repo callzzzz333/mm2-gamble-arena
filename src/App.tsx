@@ -21,7 +21,8 @@ import Leaderboard from "./pages/Leaderboard";
 import Rewards from "./pages/Rewards";
 import ChristmasRaffle from "./pages/ChristmasRaffle";
 import Upgrader from "./pages/Upgrader";
-import BlackjackDuel from "./pages/BlackjackDuel";
+import Roulette from "./pages/Roulette";
+import Crash from "./pages/Crash";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,7 +52,8 @@ const App = () => (
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/christmas-raffle" element={<ChristmasRaffle />} />
           <Route path="/upgrader" element={<Upgrader />} />
-          <Route path="/blackjack-duel" element={<BlackjackDuel />} />
+          <Route path="/roulette" element={<Roulette />} />
+          <Route path="/crash" element={<Crash />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

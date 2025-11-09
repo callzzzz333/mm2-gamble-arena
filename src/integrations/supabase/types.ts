@@ -267,6 +267,80 @@ export type Database = {
         }
         Relationships: []
       }
+      crash_bets: {
+        Row: {
+          bet_amount: number
+          cashed_out: boolean | null
+          cashout_at: number | null
+          created_at: string | null
+          game_id: string
+          id: string
+          items: Json | null
+          payout_amount: number | null
+          user_id: string
+          won: boolean | null
+        }
+        Insert: {
+          bet_amount: number
+          cashed_out?: boolean | null
+          cashout_at?: number | null
+          created_at?: string | null
+          game_id: string
+          id?: string
+          items?: Json | null
+          payout_amount?: number | null
+          user_id: string
+          won?: boolean | null
+        }
+        Update: {
+          bet_amount?: number
+          cashed_out?: boolean | null
+          cashout_at?: number | null
+          created_at?: string | null
+          game_id?: string
+          id?: string
+          items?: Json | null
+          payout_amount?: number | null
+          user_id?: string
+          won?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crash_bets_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "crash_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crash_games: {
+        Row: {
+          crash_point: number | null
+          crashed_at: string | null
+          created_at: string | null
+          id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          crash_point?: number | null
+          crashed_at?: string | null
+          created_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          crash_point?: number | null
+          crashed_at?: string | null
+          created_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       crate_items: {
         Row: {
           crate_id: string
@@ -654,6 +728,80 @@ export type Database = {
           username?: string
           verification_code?: string | null
           verified_at?: string | null
+        }
+        Relationships: []
+      }
+      roulette_bets: {
+        Row: {
+          bet_amount: number
+          bet_color: string
+          created_at: string | null
+          game_id: string
+          id: string
+          items: Json | null
+          payout_amount: number | null
+          user_id: string
+          won: boolean | null
+        }
+        Insert: {
+          bet_amount: number
+          bet_color: string
+          created_at?: string | null
+          game_id: string
+          id?: string
+          items?: Json | null
+          payout_amount?: number | null
+          user_id: string
+          won?: boolean | null
+        }
+        Update: {
+          bet_amount?: number
+          bet_color?: string
+          created_at?: string | null
+          game_id?: string
+          id?: string
+          items?: Json | null
+          payout_amount?: number | null
+          user_id?: string
+          won?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roulette_bets_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "roulette_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roulette_games: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          spin_color: string | null
+          spin_result: number | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          spin_color?: string | null
+          spin_result?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          spin_color?: string | null
+          spin_result?: number | null
+          started_at?: string | null
+          status?: string
         }
         Relationships: []
       }

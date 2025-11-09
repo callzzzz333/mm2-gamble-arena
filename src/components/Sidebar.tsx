@@ -45,7 +45,8 @@ export const Sidebar = () => {
     { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
     { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
     { title: "Upgrader", icon: TrendingUp, path: "/upgrader", isNew: true },
-    { title: "Blackjack Duel", icon: Spade, path: "/blackjack-duel", isNew: true },
+    { title: "Roulette", icon: CircleDot, path: "/roulette", isNew: true },
+    { title: "Crash", icon: Zap, path: "/crash", isNew: true },
   ];
 
   return (
