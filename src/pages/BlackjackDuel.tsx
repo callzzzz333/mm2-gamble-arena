@@ -175,6 +175,59 @@ export default function BlackjackDuel() {
     }
   };
 
+  const startGame = async (tableId: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('blackjack-start-game', {
+        body: { tableId }
+      });
+
+      if (error) throw error;
+      
+      toast({ title: "Game started!" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleHit = async (tableId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('blackjack-hit', {
+        body: { tableId }
+      });
+
+      if (error) throw error;
+      
+      if (data.status === 'bust') {
+        toast({ title: "Bust!", description: "You went over 21", variant: "destructive" });
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStand = async (tableId: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('blackjack-stand', {
+        body: { tableId }
+      });
+
+      if (error) throw error;
+      
+      toast({ title: "Standing", description: "Waiting for other players..." });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getCardDisplay = (card: any) => {
     if (!card) return "??";
     return `${card.rank}${card.suit}`;
@@ -258,13 +311,24 @@ export default function BlackjackDuel() {
                         </div>
                         
                         {table.status === "waiting" && (
-                          <Button
-                            onClick={() => joinTable(table.id, table.bet_amount)}
-                            disabled={loading || tablePlayers.some(p => p.user_id === user?.id)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Join Table
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => joinTable(table.id, table.bet_amount)}
+                              disabled={loading || tablePlayers.some(p => p.user_id === user?.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Join Table
+                            </Button>
+                            {tablePlayers.some(p => p.user_id === user?.id) && tablePlayers.length >= 2 && (
+                              <Button
+                                onClick={() => startGame(table.id)}
+                                disabled={loading}
+                                className="bg-primary hover:bg-primary/90"
+                              >
+                                Start Game
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -304,6 +368,8 @@ export default function BlackjackDuel() {
                           <div className="grid grid-cols-3 gap-6 max-w-5xl mx-auto">
                             {tablePlayers.map((player, index) => {
                               const isWinner = table.status === "completed" && player.won;
+                              const isCurrentUser = player.user_id === user?.id;
+                              const canPlay = isCurrentUser && table.status === "in_progress" && player.status === "playing";
                               
                               return (
                                 <Card 
@@ -311,6 +377,8 @@ export default function BlackjackDuel() {
                                   className={`p-4 transition-all duration-300 ${
                                     isWinner 
                                       ? "bg-gradient-to-b from-yellow-500/20 to-background border-yellow-500 shadow-lg shadow-yellow-500/50 scale-105" 
+                                      : isCurrentUser 
+                                      ? "bg-gradient-to-b from-primary/20 to-background border-primary"
                                       : "bg-background/90"
                                   }`}
                                 >
@@ -323,7 +391,10 @@ export default function BlackjackDuel() {
                                       />
                                     )}
                                     <div className="flex-1 min-w-0">
-                                      <p className="font-bold text-sm truncate">{player.profiles.username}</p>
+                                      <p className="font-bold text-sm truncate">
+                                        {player.profiles.username}
+                                        {isCurrentUser && " (You)"}
+                                      </p>
                                       <p className="text-xs text-muted-foreground">
                                         Bet: ${Number(player.bet_amount).toFixed(2)}
                                       </p>
@@ -355,6 +426,28 @@ export default function BlackjackDuel() {
                                         {player.status === "bust" ? "💥 Bust" : player.score === 21 ? "🎯 Blackjack!" : `Score: ${player.score}`}
                                       </Badge>
                                     </div>
+
+                                    {/* Hit/Stand Buttons */}
+                                    {canPlay && (
+                                      <div className="flex gap-2 mt-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleHit(table.id)}
+                                          disabled={loading}
+                                          className="flex-1 bg-green-600 hover:bg-green-700"
+                                        >
+                                          Hit
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleStand(table.id)}
+                                          disabled={loading}
+                                          className="flex-1 bg-red-600 hover:bg-red-700"
+                                        >
+                                          Stand
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
                                 </Card>
                               );
