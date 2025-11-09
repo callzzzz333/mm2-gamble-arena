@@ -231,88 +231,150 @@ export default function BlackjackDuel() {
                   <p className="text-muted-foreground">No active tables. Create one to start!</p>
                 </Card>
               ) : (
-                tables.map((table) => (
-                  <Card key={table.id} className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant={table.status === "waiting" ? "default" : "secondary"}>
-                            {table.status === "waiting" ? "Waiting" : "In Progress"}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            Bet: <span className="text-primary font-bold">${table.bet_amount}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Users className="w-4 h-4" />
-                          {(players[table.id] || []).length} / {table.max_players} players
-                        </div>
-                      </div>
-                      
-                      {table.status === "waiting" && (
-                        <Button
-                          onClick={() => joinTable(table.id, table.bet_amount)}
-                          disabled={loading || (players[table.id] || []).some(p => p.user_id === user?.id)}
-                        >
-                          Join Table
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Players */}
-                    <div className="grid grid-cols-3 gap-4 mt-4">
-                      {(players[table.id] || []).map((player) => (
-                        <Card key={player.id} className="p-4 bg-muted/50">
-                          <div className="flex items-center gap-2 mb-2">
-                            {player.profiles.avatar_url && (
-                              <img
-                                src={player.profiles.avatar_url}
-                                alt={player.profiles.username}
-                                className="w-8 h-8 rounded-full"
-                              />
-                            )}
-                            <p className="font-semibold text-sm">{player.profiles.username}</p>
+                tables.map((table) => {
+                  const tablePlayers = players[table.id] || [];
+                  const totalPot = tablePlayers.reduce((sum, p) => sum + Number(p.bet_amount), 0);
+                  
+                  return (
+                    <Card key={table.id} className="p-8 bg-gradient-to-b from-green-900/20 to-background border-green-500/30">
+                      {/* Table Header */}
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <Badge variant={table.status === "waiting" ? "default" : "secondary"} className="text-sm">
+                              {table.status === "waiting" ? "⏳ Waiting" : "🎲 In Progress"}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              Entry: <span className="text-primary font-bold">${table.bet_amount}</span>
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              Total Pot: <span className="text-green-400 font-bold">${totalPot.toFixed(2)}</span>
+                            </span>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground">
-                              Score: <span className="font-bold text-foreground">{player.score}</span>
-                            </p>
-                            <div className="flex gap-1">
-                              {(player.hand || []).map((card: any, idx: number) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {getCardDisplay(card)}
-                                </Badge>
-                              ))}
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Users className="w-4 h-4" />
+                            {tablePlayers.length} / {table.max_players} players
+                          </div>
+                        </div>
+                        
+                        {table.status === "waiting" && (
+                          <Button
+                            onClick={() => joinTable(table.id, table.bet_amount)}
+                            disabled={loading || tablePlayers.some(p => p.user_id === user?.id)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Join Table
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Blackjack Table Visual */}
+                      <div className="relative bg-green-800/30 rounded-3xl border-4 border-green-600/50 p-8 min-h-[500px]">
+                        {/* Dealer Section at Top */}
+                        <div className="absolute top-8 left-1/2 -translate-x-1/2 w-64">
+                          <div className="text-center mb-4">
+                            <div className="inline-flex items-center gap-2 bg-background/90 px-4 py-2 rounded-full border border-border">
+                              <Spade className="w-5 h-5 text-primary" />
+                              <span className="font-bold text-lg">Dealer</span>
                             </div>
-                            <Badge
-                              variant={player.status === "bust" ? "destructive" : "default"}
-                              className="text-xs"
-                            >
-                              {player.status}
-                            </Badge>
                           </div>
-                        </Card>
-                      ))}
-                    </div>
-
-                    {/* Dealer */}
-                    {table.status === "in_progress" && Array.isArray(table.dealer_hand) && table.dealer_hand.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <p className="text-sm font-bold mb-2">Dealer</p>
-                        <div className="flex gap-2">
-                          {table.dealer_hand.map((card: any, idx: number) => (
-                            <Badge key={idx} variant="secondary">
-                              {getCardDisplay(card)}
-                            </Badge>
-                          ))}
-                          <span className="text-sm text-muted-foreground ml-2">
-                            Score: {table.dealer_score}
-                          </span>
+                          
+                          {table.status === "in_progress" && Array.isArray(table.dealer_hand) && table.dealer_hand.length > 0 && (
+                            <div className="flex flex-col items-center gap-3 animate-fade-in">
+                              <div className="flex gap-2 flex-wrap justify-center">
+                                {table.dealer_hand.map((card: any, idx: number) => (
+                                  <div 
+                                    key={idx}
+                                    className="bg-white text-black font-bold text-lg px-4 py-6 rounded-lg shadow-lg border-2 border-gray-300 min-w-[60px] text-center animate-scale-in"
+                                    style={{ animationDelay: `${idx * 0.2}s` }}
+                                  >
+                                    {getCardDisplay(card)}
+                                  </div>
+                                ))}
+                              </div>
+                              <Badge variant="secondary" className="text-base px-4 py-1">
+                                Score: {table.dealer_score}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Players Around the Table */}
+                        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full px-8">
+                          <div className="grid grid-cols-3 gap-6 max-w-5xl mx-auto">
+                            {tablePlayers.map((player, index) => {
+                              const isWinner = table.status === "completed" && player.won;
+                              
+                              return (
+                                <Card 
+                                  key={player.id} 
+                                  className={`p-4 transition-all duration-300 ${
+                                    isWinner 
+                                      ? "bg-gradient-to-b from-yellow-500/20 to-background border-yellow-500 shadow-lg shadow-yellow-500/50 scale-105" 
+                                      : "bg-background/90"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 mb-3">
+                                    {player.profiles.avatar_url && (
+                                      <img
+                                        src={player.profiles.avatar_url}
+                                        alt={player.profiles.username}
+                                        className="w-10 h-10 rounded-full border-2 border-primary"
+                                      />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-bold text-sm truncate">{player.profiles.username}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Bet: ${Number(player.bet_amount).toFixed(2)}
+                                      </p>
+                                    </div>
+                                    {isWinner && <Trophy className="w-5 h-5 text-yellow-500 animate-pulse" />}
+                                  </div>
+                                  
+                                  {/* Player Cards */}
+                                  <div className="space-y-2">
+                                    {Array.isArray(player.hand) && player.hand.length > 0 && (
+                                      <div className="flex gap-1 flex-wrap justify-center">
+                                        {player.hand.map((card: any, idx: number) => (
+                                          <div
+                                            key={idx}
+                                            className="bg-white text-black font-bold text-sm px-3 py-4 rounded shadow-md border border-gray-300 min-w-[45px] text-center animate-scale-in"
+                                            style={{ animationDelay: `${idx * 0.15}s` }}
+                                          >
+                                            {getCardDisplay(card)}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    <div className="flex items-center justify-between gap-2">
+                                      <Badge
+                                        variant={player.status === "bust" ? "destructive" : player.score === 21 ? "default" : "secondary"}
+                                        className="text-xs"
+                                      >
+                                        {player.status === "bust" ? "💥 Bust" : player.score === 21 ? "🎯 Blackjack!" : `Score: ${player.score}`}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Center Pot Display */}
+                        {table.status === "in_progress" && (
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                            <div className="bg-background/95 border-2 border-primary rounded-full px-6 py-3 shadow-xl">
+                              <p className="text-xs text-muted-foreground text-center">Total Pot</p>
+                              <p className="text-2xl font-bold text-primary text-center">${totalPot.toFixed(2)}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </Card>
-                ))
+                    </Card>
+                  );
+                })
               )}
             </div>
           </div>

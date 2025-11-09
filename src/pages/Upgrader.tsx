@@ -24,6 +24,7 @@ export default function Upgrader() {
   const [items, setItems] = useState<Item[]>([]);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,6 +61,10 @@ export default function Upgrader() {
     if (!selectedItem || !targetItem) return;
 
     setUpgrading(true);
+    setIsAnimating(true);
+    
+    // Animation delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -150,6 +155,7 @@ export default function Upgrader() {
       });
     } finally {
       setUpgrading(false);
+      setIsAnimating(false);
     }
   };
 
@@ -184,17 +190,22 @@ export default function Upgrader() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Input Item */}
-              <Card className="p-6">
-                <h2 className="text-xl font-bold mb-4">Input Item</h2>
+              <Card className="p-6 bg-gradient-to-br from-background to-primary/5">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  Input Item
+                </h2>
                 {selectedItem ? (
                   <div className="space-y-4">
-                    {selectedItem.image_url && (
-                      <img
-                        src={selectedItem.image_url}
-                        alt={selectedItem.name}
-                        className="w-full h-48 object-contain rounded-lg bg-muted"
-                      />
-                    )}
+                    <div className={`relative ${isAnimating ? 'animate-pulse' : ''}`}>
+                      {selectedItem.image_url && (
+                        <img
+                          src={selectedItem.image_url}
+                          alt={selectedItem.name}
+                          className="w-full h-48 object-contain rounded-lg bg-muted/50 p-4"
+                        />
+                      )}
+                    </div>
                     <div>
                       <p className="font-bold text-lg">{selectedItem.name}</p>
                       <Badge className={getRarityColor(selectedItem.rarity)}>
@@ -207,7 +218,7 @@ export default function Upgrader() {
                     <Button
                       variant="outline"
                       onClick={() => setInventoryOpen(true)}
-                      className="w-full"
+                      className="w-full border-primary/50 hover:bg-primary/10"
                     >
                       Change Item
                     </Button>
@@ -215,7 +226,7 @@ export default function Upgrader() {
                 ) : (
                   <Button
                     onClick={() => setInventoryOpen(true)}
-                    className="w-full h-48"
+                    className="w-full h-48 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700"
                   >
                     Select Item
                   </Button>
@@ -224,47 +235,34 @@ export default function Upgrader() {
 
               {/* Arrow */}
               <div className="flex items-center justify-center">
-                <ArrowRight className="w-12 h-12 text-primary" />
+                <ArrowRight className={`w-12 h-12 text-primary ${isAnimating ? 'animate-pulse' : ''}`} />
               </div>
 
               {/* Target Item */}
-              <Card className="p-6">
-                <h2 className="text-xl font-bold mb-4">Target Item</h2>
+              <Card className="p-6 bg-gradient-to-br from-background to-purple-500/5">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                  Target Item
+                </h2>
                 {targetItem ? (
                   <div className="space-y-4">
-                    {targetItem.image_url && (
-                      <img
-                        src={targetItem.image_url}
-                        alt={targetItem.name}
-                        className="w-full h-48 object-contain rounded-lg bg-muted"
-                      />
-                    )}
+                    <div className={`relative ${isAnimating ? 'animate-bounce' : ''}`}>
+                      {targetItem.image_url && (
+                        <img
+                          src={targetItem.image_url}
+                          alt={targetItem.name}
+                          className="w-full h-48 object-contain rounded-lg bg-muted/50 p-4"
+                        />
+                      )}
+                    </div>
                     <div>
                       <p className="font-bold text-lg">{targetItem.name}</p>
                       <Badge className={getRarityColor(targetItem.rarity)}>
                         {targetItem.rarity}
                       </Badge>
-                      <p className="text-primary font-bold mt-2">
+                      <p className="text-purple-500 font-bold mt-2">
                         ${Number(targetItem.value).toFixed(2)}
                       </p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">Select Target:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {items
-                          .filter(i => selectedItem && Number(i.value) > Number(selectedItem.value))
-                          .slice(0, 5)
-                          .map(item => (
-                            <Button
-                              key={item.id}
-                              size="sm"
-                              variant={targetItem.id === item.id ? "default" : "outline"}
-                              onClick={() => setTargetItem(item)}
-                            >
-                              ${Number(item.value).toFixed(0)}
-                            </Button>
-                          ))}
-                      </div>
                     </div>
                   </div>
                 ) : (
@@ -275,12 +273,55 @@ export default function Upgrader() {
               </Card>
             </div>
 
+            {/* All Available Items Grid */}
+            {selectedItem && (
+              <Card className="p-6 bg-gradient-to-br from-background to-accent/5">
+                <h2 className="text-xl font-bold mb-4">Select Target Item</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                  {items
+                    .filter(i => Number(i.value) > Number(selectedItem.value))
+                    .map(item => {
+                      const chance = Math.min(95, Math.max(5, (Number(selectedItem.value) / Number(item.value)) * 100));
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => setTargetItem(item)}
+                          className={`p-3 rounded-lg border-2 transition-all hover:scale-105 ${
+                            targetItem?.id === item.id
+                              ? 'border-primary bg-primary/10 shadow-lg shadow-primary/50'
+                              : 'border-border hover:border-primary/50 bg-card'
+                          }`}
+                        >
+                          {item.image_url && (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="w-full h-20 object-contain mb-2"
+                            />
+                          )}
+                          <p className="text-xs font-semibold truncate">{item.name}</p>
+                          <Badge className={`${getRarityColor(item.rarity)} text-xs mt-1`}>
+                            {item.rarity}
+                          </Badge>
+                          <p className="text-primary font-bold text-sm mt-1">
+                            ${Number(item.value).toFixed(2)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {chance.toFixed(1)}% chance
+                          </p>
+                        </button>
+                      );
+                    })}
+                </div>
+              </Card>
+            )}
+
             {selectedItem && targetItem && (
-              <Card className="p-6 bg-gradient-to-r from-primary/10 to-purple-500/10">
+              <Card className="p-6 bg-gradient-to-r from-primary/20 via-purple-500/20 to-pink-500/20 border-primary/50 shadow-xl">
                 <div className="text-center space-y-4">
-                  <div>
+                  <div className={isAnimating ? 'animate-pulse' : ''}>
                     <p className="text-sm text-muted-foreground mb-2">Success Chance</p>
-                    <p className="text-4xl font-bold text-primary">
+                    <p className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
                       {calculateSuccessChance().toFixed(1)}%
                     </p>
                   </div>
@@ -288,10 +329,13 @@ export default function Upgrader() {
                     onClick={handleUpgrade}
                     disabled={upgrading}
                     size="lg"
-                    className="w-full max-w-md mx-auto bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700"
+                    className="w-full max-w-md mx-auto bg-gradient-to-r from-primary via-purple-600 to-pink-600 hover:from-primary/90 hover:via-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all"
                   >
                     {upgrading ? (
-                      "Upgrading..."
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 animate-spin" />
+                        Upgrading...
+                      </span>
                     ) : (
                       <>
                         <Sparkles className="w-5 h-5 mr-2" />
