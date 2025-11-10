@@ -67,7 +67,7 @@ export default function Roulette() {
       .eq("status", "waiting")
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (currentGame) {
       const { data: betsData } = await supabase
@@ -76,9 +76,12 @@ export default function Roulette() {
           *,
           profiles!roulette_bets_user_id_fkey(username, avatar_url, roblox_username)
         `)
-        .eq("game_id", currentGame.id);
+        .eq("game_id", currentGame.id)
+        .order("created_at", { ascending: false });
 
       if (betsData) setBets(betsData as any);
+    } else {
+      setBets([]);
     }
   }, []);
 
@@ -120,7 +123,23 @@ export default function Roulette() {
     fetchLastResults();
     setReelItems(generateReelItems());
 
-    const interval = setInterval(async () => {
+    // Subscribe to bet changes
+    const channel = supabase
+      .channel('roulette-bets')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'roulette_bets'
+        },
+        () => {
+          fetchBets();
+        }
+      )
+      .subscribe();
+
+    const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           triggerSpin();
@@ -130,7 +149,10 @@ export default function Roulette() {
       });
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [fetchBets, fetchLastResults]);
 
   const triggerSpin = async () => {
@@ -143,53 +165,102 @@ export default function Roulette() {
         .limit(1)
         .maybeSingle();
 
-      if (!currentGame) return;
+      if (!currentGame) {
+        // Create new game if none exists
+        const { data: newGame } = await supabase
+          .from("roulette_games")
+          .insert({ status: "waiting" })
+          .select()
+          .single();
+        
+        if (!newGame) return;
+      }
 
       setGameStatus("spinning");
       setIsAnimating(true);
 
+      // Fetch the game again to ensure we have the latest
+      const { data: gameToSpin } = await supabase
+        .from("roulette_games")
+        .select("*")
+        .eq("status", "waiting")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!gameToSpin) {
+        setGameStatus("waiting");
+        setIsAnimating(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("roulette-spin", {
-        body: { gameId: currentGame.id },
+        body: { gameId: gameToSpin.id },
       });
 
       if (error) {
         console.error("Spin error:", error);
         setGameStatus("waiting");
         setIsAnimating(false);
+        toast({ title: "Spin failed", description: error.message, variant: "destructive" });
         return;
       }
 
       const resultColor = data.result;
+      const resultNumber = data.number;
+      
+      // Generate reel with result at position 25
       const newReelItems = generateReelItems(resultColor);
       setReelItems(newReelItems);
 
+      // Reset reel position
       if (reelRef.current) {
         reelRef.current.style.transition = "none";
         reelRef.current.style.transform = "translateX(0)";
         
+        // Start animation after a brief delay
         setTimeout(() => {
           if (reelRef.current) {
+            // Calculate exact position to land on index 25
+            // Each item is 80px wide + 8px gap = 88px per item
+            const itemWidth = 88;
+            const targetIndex = 25;
+            const offset = (targetIndex * itemWidth) - (window.innerWidth / 2 - itemWidth / 2);
+            
             reelRef.current.style.transition = "transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)";
-            reelRef.current.style.transform = `translateX(-${25 * 80 - 40}px)`;
+            reelRef.current.style.transform = `translateX(-${offset}px)`;
           }
         }, 50);
       }
 
+      // Wait for animation to complete
       setTimeout(() => {
         setGameStatus("completed");
         setIsAnimating(false);
         fetchLastResults();
         
+        // Show result notification
+        toast({
+          title: `Result: ${resultColor.toUpperCase()} (${resultNumber})`,
+          description: `The wheel landed on ${resultColor}!`,
+        });
+        
+        // Reset after showing result
         setTimeout(() => {
           setGameStatus("waiting");
           setReelItems(generateReelItems());
+          if (reelRef.current) {
+            reelRef.current.style.transition = "none";
+            reelRef.current.style.transform = "translateX(0)";
+          }
           fetchBets();
         }, 3000);
-      }, 5000);
+      }, 5200);
     } catch (error) {
       console.error("Error triggering spin:", error);
       setGameStatus("waiting");
       setIsAnimating(false);
+      toast({ title: "Error", description: "Failed to spin roulette", variant: "destructive" });
     }
   };
 
@@ -245,6 +316,11 @@ export default function Roulette() {
       return;
     }
 
+    if (gameStatus !== "waiting") {
+      toast({ title: "Wait for current round", description: "Please wait for the current spin to complete", variant: "destructive" });
+      return;
+    }
+
     setIsPlacingBet(true);
 
     try {
@@ -254,7 +330,7 @@ export default function Roulette() {
         .eq("status", "waiting")
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (!currentGame) {
         const { data: newGame } = await supabase
@@ -274,6 +350,23 @@ export default function Roulette() {
         rarity: si.item.rarity,
       }));
 
+      // Validate user has all items
+      for (const si of selectedItems[color]) {
+        const { data: userItem } = await supabase
+          .from("user_items")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("item_id", si.item.id)
+          .maybeSingle();
+
+        if (!userItem || userItem.quantity < si.quantity) {
+          toast({ title: "Insufficient items", description: `You don't have enough ${si.item.name}`, variant: "destructive" });
+          setIsPlacingBet(false);
+          return;
+        }
+      }
+
+      // Remove items from inventory
       for (const si of selectedItems[color]) {
         const { data: userItem } = await supabase
           .from("user_items")
@@ -294,7 +387,7 @@ export default function Roulette() {
         }
       }
 
-      await supabase.from("roulette_bets").insert({
+      const { error: betError } = await supabase.from("roulette_bets").insert({
         game_id: currentGame.id,
         user_id: user.id,
         bet_color: color,
@@ -302,10 +395,13 @@ export default function Roulette() {
         items: itemsData,
       });
 
+      if (betError) throw betError;
+
       setSelectedItems(prev => ({ ...prev, [color]: [] }));
-      toast({ title: "Bet placed!", description: `Betting on ${color.toUpperCase()}` });
+      toast({ title: "Bet placed!", description: `Betting on ${color.toUpperCase()} with $${getTotalValue(color).toFixed(2)}` });
       fetchBets();
     } catch (error: any) {
+      console.error("Bet placement error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsPlacingBet(false);
@@ -429,13 +525,141 @@ export default function Roulette() {
               </div>
             </Card>
 
+            {/* All Bets Display */}
+            {bets.length > 0 && (
+              <Card className="p-6">
+                <h2 className="text-xl font-bold mb-4">Current Round Bets</h2>
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Red Bets */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-amber-500/30">
+                      <img src={rouletteRedIcon} alt="red" className="w-5 h-5" />
+                      <span className="font-bold text-amber-500">Red Bets ({getColorBetsCount("red")})</span>
+                    </div>
+                    {bets.filter(b => b.bet_color === "red").map((bet) => (
+                      <div key={bet.id} className="p-3 bg-amber-500/5 rounded-lg border border-amber-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <img 
+                            src={bet.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bet.profiles?.username}`} 
+                            alt={bet.profiles?.username}
+                            className="w-8 h-8 rounded-full"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm truncate">
+                              {bet.profiles?.roblox_username || bet.profiles?.username}
+                            </p>
+                            <p className="text-xs text-muted-foreground">${Number(bet.bet_amount).toFixed(2)}</p>
+                          </div>
+                        </div>
+                        {bet.items && Array.isArray(bet.items) && bet.items.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {bet.items.slice(0, 3).map((item: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-1 bg-background/50 rounded px-1.5 py-0.5">
+                                {item.image_url && (
+                                  <img src={item.image_url} alt={item.name} className="w-4 h-4 object-contain" />
+                                )}
+                                <span className="text-xs">{item.name} x{item.quantity}</span>
+                              </div>
+                            ))}
+                            {bet.items.length > 3 && (
+                              <span className="text-xs text-muted-foreground">+{bet.items.length - 3} more</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Green Bets */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-pink-500/30">
+                      <img src={rouletteGreenIcon} alt="green" className="w-5 h-5" />
+                      <span className="font-bold text-pink-500">Green Bets ({getColorBetsCount("green")})</span>
+                    </div>
+                    {bets.filter(b => b.bet_color === "green").map((bet) => (
+                      <div key={bet.id} className="p-3 bg-pink-500/5 rounded-lg border border-pink-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <img 
+                            src={bet.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bet.profiles?.username}`} 
+                            alt={bet.profiles?.username}
+                            className="w-8 h-8 rounded-full"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm truncate">
+                              {bet.profiles?.roblox_username || bet.profiles?.username}
+                            </p>
+                            <p className="text-xs text-muted-foreground">${Number(bet.bet_amount).toFixed(2)}</p>
+                          </div>
+                        </div>
+                        {bet.items && Array.isArray(bet.items) && bet.items.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {bet.items.slice(0, 3).map((item: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-1 bg-background/50 rounded px-1.5 py-0.5">
+                                {item.image_url && (
+                                  <img src={item.image_url} alt={item.name} className="w-4 h-4 object-contain" />
+                                )}
+                                <span className="text-xs">{item.name} x{item.quantity}</span>
+                              </div>
+                            ))}
+                            {bet.items.length > 3 && (
+                              <span className="text-xs text-muted-foreground">+{bet.items.length - 3} more</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Black Bets */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-blue-500/30">
+                      <img src={rouletteBlueIcon} alt="black" className="w-5 h-5" />
+                      <span className="font-bold text-blue-500">Black Bets ({getColorBetsCount("black")})</span>
+                    </div>
+                    {bets.filter(b => b.bet_color === "black").map((bet) => (
+                      <div key={bet.id} className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <img 
+                            src={bet.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bet.profiles?.username}`} 
+                            alt={bet.profiles?.username}
+                            className="w-8 h-8 rounded-full"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm truncate">
+                              {bet.profiles?.roblox_username || bet.profiles?.username}
+                            </p>
+                            <p className="text-xs text-muted-foreground">${Number(bet.bet_amount).toFixed(2)}</p>
+                          </div>
+                        </div>
+                        {bet.items && Array.isArray(bet.items) && bet.items.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {bet.items.slice(0, 3).map((item: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-1 bg-background/50 rounded px-1.5 py-0.5">
+                                {item.image_url && (
+                                  <img src={item.image_url} alt={item.name} className="w-4 h-4 object-contain" />
+                                )}
+                                <span className="text-xs">{item.name} x{item.quantity}</span>
+                              </div>
+                            ))}
+                            {bet.items.length > 3 && (
+                              <span className="text-xs text-muted-foreground">+{bet.items.length - 3} more</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Betting Sections */}
             <div className="grid grid-cols-3 gap-4">
               {/* Red Section */}
-              <Card className="p-6 bg-amber-500/10 border-amber-500/30">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <img src={rouletteRedIcon} alt="red" className="w-6 h-6" />
-                  <span className="text-xl font-bold">Win 2x</span>
+              <Card className="p-4 bg-amber-500/10 border-amber-500/30">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <img src={rouletteRedIcon} alt="red" className="w-5 h-5" />
+                  <span className="text-lg font-bold">Win 2x</span>
                 </div>
                 
                 <Button
@@ -443,34 +667,41 @@ export default function Roulette() {
                     setActiveColor("red");
                     setInventoryOpen(true);
                   }}
-                  disabled={isAnimating}
-                  className="w-full h-14 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-lg mb-3"
+                  disabled={isAnimating || gameStatus !== "waiting"}
+                  className="w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold mb-2"
                 >
-                  Place Bet
+                  Select Items
                 </Button>
 
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span>{getColorBetsCount("red")} Bets</span>
-                  <span className="font-bold text-amber-500">${totals.red.toFixed(2)}</span>
-                </div>
-
                 {selectedItems.red.length > 0 && (
-                  <div className="mt-3 p-2 bg-background/50 rounded space-y-1">
-                    {selectedItems.red.map(si => (
-                      <div key={si.item.id} className="text-xs flex justify-between">
-                        <span>{si.item.name} x{si.quantity}</span>
-                        <span>${(si.item.value * si.quantity).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <div className="mt-2 p-2 bg-background/50 rounded space-y-1 max-h-32 overflow-y-auto">
+                      {selectedItems.red.map(si => (
+                        <div key={si.item.id} className="text-xs flex items-center justify-between gap-2">
+                          {si.item.image_url && (
+                            <img src={si.item.image_url} alt={si.item.name} className="w-4 h-4 object-contain" />
+                          )}
+                          <span className="flex-1 truncate">{si.item.name} x{si.quantity}</span>
+                          <span className="font-semibold">${(si.item.value * si.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={() => placeBet("red")}
+                      disabled={isPlacingBet || isAnimating || gameStatus !== "waiting"}
+                      className="w-full h-10 bg-amber-600 hover:bg-amber-700 mt-2"
+                    >
+                      Place Bet ${getTotalValue("red").toFixed(2)}
+                    </Button>
+                  </>
                 )}
               </Card>
 
               {/* Green Section */}
-              <Card className="p-6 bg-pink-500/10 border-pink-500/30">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <img src={rouletteGreenIcon} alt="green" className="w-6 h-6" />
-                  <span className="text-xl font-bold">Win 14x</span>
+              <Card className="p-4 bg-pink-500/10 border-pink-500/30">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <img src={rouletteGreenIcon} alt="green" className="w-5 h-5" />
+                  <span className="text-lg font-bold">Win 14x</span>
                 </div>
                 
                 <Button
@@ -478,34 +709,41 @@ export default function Roulette() {
                     setActiveColor("green");
                     setInventoryOpen(true);
                   }}
-                  disabled={isAnimating}
-                  className="w-full h-14 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold text-lg mb-3"
+                  disabled={isAnimating || gameStatus !== "waiting"}
+                  className="w-full h-12 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold mb-2"
                 >
-                  Place Bet
+                  Select Items
                 </Button>
 
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span>{getColorBetsCount("green")} Bets</span>
-                  <span className="font-bold text-pink-500">${totals.green.toFixed(2)}</span>
-                </div>
-
                 {selectedItems.green.length > 0 && (
-                  <div className="mt-3 p-2 bg-background/50 rounded space-y-1">
-                    {selectedItems.green.map(si => (
-                      <div key={si.item.id} className="text-xs flex justify-between">
-                        <span>{si.item.name} x{si.quantity}</span>
-                        <span>${(si.item.value * si.quantity).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <div className="mt-2 p-2 bg-background/50 rounded space-y-1 max-h-32 overflow-y-auto">
+                      {selectedItems.green.map(si => (
+                        <div key={si.item.id} className="text-xs flex items-center justify-between gap-2">
+                          {si.item.image_url && (
+                            <img src={si.item.image_url} alt={si.item.name} className="w-4 h-4 object-contain" />
+                          )}
+                          <span className="flex-1 truncate">{si.item.name} x{si.quantity}</span>
+                          <span className="font-semibold">${(si.item.value * si.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={() => placeBet("green")}
+                      disabled={isPlacingBet || isAnimating || gameStatus !== "waiting"}
+                      className="w-full h-10 bg-pink-600 hover:bg-pink-700 mt-2"
+                    >
+                      Place Bet ${getTotalValue("green").toFixed(2)}
+                    </Button>
+                  </>
                 )}
               </Card>
 
               {/* Black Section */}
-              <Card className="p-6 bg-blue-500/10 border-blue-500/30">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <img src={rouletteBlueIcon} alt="black" className="w-6 h-6" />
-                  <span className="text-xl font-bold">Win 2x</span>
+              <Card className="p-4 bg-blue-500/10 border-blue-500/30">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <img src={rouletteBlueIcon} alt="black" className="w-5 h-5" />
+                  <span className="text-lg font-bold">Win 2x</span>
                 </div>
                 
                 <Button
@@ -513,26 +751,33 @@ export default function Roulette() {
                     setActiveColor("black");
                     setInventoryOpen(true);
                   }}
-                  disabled={isAnimating}
-                  className="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-lg mb-3"
+                  disabled={isAnimating || gameStatus !== "waiting"}
+                  className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold mb-2"
                 >
-                  Place Bet
+                  Select Items
                 </Button>
 
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span>{getColorBetsCount("black")} Bets</span>
-                  <span className="font-bold text-blue-500">${totals.black.toFixed(2)}</span>
-                </div>
-
                 {selectedItems.black.length > 0 && (
-                  <div className="mt-3 p-2 bg-background/50 rounded space-y-1">
-                    {selectedItems.black.map(si => (
-                      <div key={si.item.id} className="text-xs flex justify-between">
-                        <span>{si.item.name} x{si.quantity}</span>
-                        <span>${(si.item.value * si.quantity).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <div className="mt-2 p-2 bg-background/50 rounded space-y-1 max-h-32 overflow-y-auto">
+                      {selectedItems.black.map(si => (
+                        <div key={si.item.id} className="text-xs flex items-center justify-between gap-2">
+                          {si.item.image_url && (
+                            <img src={si.item.image_url} alt={si.item.name} className="w-4 h-4 object-contain" />
+                          )}
+                          <span className="flex-1 truncate">{si.item.name} x{si.quantity}</span>
+                          <span className="font-semibold">${(si.item.value * si.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={() => placeBet("black")}
+                      disabled={isPlacingBet || isAnimating || gameStatus !== "waiting"}
+                      className="w-full h-10 bg-blue-600 hover:bg-blue-700 mt-2"
+                    >
+                      Place Bet ${getTotalValue("black").toFixed(2)}
+                    </Button>
+                  </>
                 )}
               </Card>
             </div>
