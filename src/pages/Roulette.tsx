@@ -56,7 +56,9 @@ export default function Roulette() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const reelRef = useRef<HTMLDivElement>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -139,24 +141,48 @@ export default function Roulette() {
       )
       .subscribe();
 
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          triggerSpin();
-          return 15;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
     return () => {
-      clearInterval(interval);
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
       supabase.removeChannel(channel);
     };
   }, [fetchBets, fetchLastResults]);
 
+  // Separate effect for countdown
+  useEffect(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+
+    countdownIntervalRef.current = setInterval(() => {
+      if (!isPaused && gameStatus === "waiting") {
+        setCountdown((prev) => {
+          if (prev <= 0.1) {
+            triggerSpin();
+            return 15;
+          }
+          return Math.max(0, prev - 0.1);
+        });
+      }
+    }, 100);
+
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, [isPaused, gameStatus]);
+
   const triggerSpin = async () => {
+    if (gameStatus !== "waiting") return;
+    
     try {
+      // Pause countdown
+      setIsPaused(true);
+      setGameStatus("spinning");
+      setIsAnimating(true);
+
       const { data: currentGame } = await supabase
         .from("roulette_games")
         .select("*")
@@ -173,11 +199,13 @@ export default function Roulette() {
           .select()
           .single();
         
-        if (!newGame) return;
+        if (!newGame) {
+          setGameStatus("waiting");
+          setIsAnimating(false);
+          setIsPaused(false);
+          return;
+        }
       }
-
-      setGameStatus("spinning");
-      setIsAnimating(true);
 
       // Fetch the game again to ensure we have the latest
       const { data: gameToSpin } = await supabase
@@ -191,6 +219,7 @@ export default function Roulette() {
       if (!gameToSpin) {
         setGameStatus("waiting");
         setIsAnimating(false);
+        setIsPaused(false);
         return;
       }
 
@@ -202,6 +231,7 @@ export default function Roulette() {
         console.error("Spin error:", error);
         setGameStatus("waiting");
         setIsAnimating(false);
+        setIsPaused(false);
         toast({ title: "Spin failed", description: error.message, variant: "destructive" });
         return;
       }
@@ -227,17 +257,16 @@ export default function Roulette() {
             const targetIndex = 25;
             const offset = (targetIndex * itemWidth) - (window.innerWidth / 2 - itemWidth / 2);
             
-            reelRef.current.style.transition = "transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)";
+            // Longer spin animation - 8 seconds
+            reelRef.current.style.transition = "transform 8s cubic-bezier(0.17, 0.67, 0.12, 0.99)";
             reelRef.current.style.transform = `translateX(-${offset}px)`;
           }
         }, 50);
       }
 
-      // Wait for animation to complete
+      // Wait for animation to complete (8 seconds + 200ms buffer)
       setTimeout(() => {
         setGameStatus("completed");
-        setIsAnimating(false);
-        fetchLastResults();
         
         // Show result notification
         toast({
@@ -245,21 +274,28 @@ export default function Roulette() {
           description: `The wheel landed on ${resultColor}!`,
         });
         
-        // Reset after showing result
+        // Wait 3 seconds to show result before resetting
         setTimeout(() => {
           setGameStatus("waiting");
+          setIsAnimating(false);
+          setIsPaused(false);
+          setCountdown(15); // Reset countdown to 15 seconds
           setReelItems(generateReelItems());
+          
           if (reelRef.current) {
             reelRef.current.style.transition = "none";
             reelRef.current.style.transform = "translateX(0)";
           }
+          
           fetchBets();
+          fetchLastResults();
         }, 3000);
-      }, 5200);
+      }, 8200);
     } catch (error) {
       console.error("Error triggering spin:", error);
       setGameStatus("waiting");
       setIsAnimating(false);
+      setIsPaused(false);
       toast({ title: "Error", description: "Failed to spin roulette", variant: "destructive" });
     }
   };
@@ -519,9 +555,16 @@ export default function Roulette() {
               {/* Rolling Text & Progress */}
               <div className="text-center mb-4">
                 <p className="text-2xl font-bold mb-2">
-                  {gameStatus === "spinning" ? "SPINNING..." : `ROLLING IN ${countdown.toFixed(2)}`}
+                  {gameStatus === "spinning" 
+                    ? "SPINNING..." 
+                    : gameStatus === "completed"
+                    ? "ROUND COMPLETE"
+                    : `ROLLING IN ${countdown.toFixed(1)}s`}
                 </p>
-                <Progress value={(countdown / 15) * 100} className="h-2" />
+                <Progress 
+                  value={gameStatus === "waiting" ? (countdown / 15) * 100 : 0} 
+                  className="h-2" 
+                />
               </div>
             </Card>
 
