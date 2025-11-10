@@ -5,11 +5,14 @@ import { LiveChat } from "@/components/LiveChat";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { CircleDot, DollarSign, Gem, Coins } from "lucide-react";
+import { CircleDot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { Progress } from "@/components/ui/progress";
+import rouletteRedIcon from "@/assets/roulette-red.svg";
+import rouletteGreenIcon from "@/assets/roulette-green.svg";
+import rouletteBlueIcon from "@/assets/roulette-blue.svg";
 
 interface Item {
   id: string;
@@ -36,7 +39,7 @@ interface RouletteBet {
 
 interface ReelItem {
   color: "red" | "black" | "green";
-  icon: any;
+  icon: string;
   isResult?: boolean;
 }
 
@@ -101,9 +104,11 @@ export default function Roulette() {
         ? (resultColor as "red" | "black" | "green")
         : colors[Math.floor(Math.random() * colors.length)];
       
+      const icon = color === "green" ? rouletteGreenIcon : color === "red" ? rouletteRedIcon : rouletteBlueIcon;
+      
       items.push({
         color,
-        icon: color === "green" ? Gem : color === "red" ? Coins : DollarSign,
+        icon,
         isResult: i === 25 && resultColor !== undefined
       });
     }
@@ -320,9 +325,9 @@ export default function Roulette() {
   };
 
   const getColorIcon = (color: string) => {
-    if (color === "red") return Coins;
-    if (color === "black") return DollarSign;
-    return Gem;
+    if (color === "red") return rouletteRedIcon;
+    if (color === "black") return rouletteBlueIcon;
+    return rouletteGreenIcon;
   };
 
   const totals = getColorTotals();
@@ -374,7 +379,7 @@ export default function Roulette() {
             {/* Last 10 Results Circles */}
             <div className="flex gap-2">
               {lastResults.slice(0, 10).map((color, idx) => {
-                const Icon = getColorIcon(color);
+                const iconSrc = getColorIcon(color);
                 return (
                   <div
                     key={idx}
@@ -382,7 +387,7 @@ export default function Roulette() {
                       color === "red" ? "bg-amber-500" : color === "green" ? "bg-pink-500" : "bg-blue-500"
                     }`}
                   >
-                    <Icon className="w-5 h-5 text-white" />
+                    <img src={iconSrc} alt={color} className="w-5 h-5" />
                   </div>
                 );
               })}
@@ -397,7 +402,6 @@ export default function Roulette() {
                 {/* Reel */}
                 <div ref={reelRef} className="flex gap-2 items-center" style={{ paddingLeft: "50%" }}>
                   {reelItems.map((item, idx) => {
-                    const Icon = item.icon;
                     return (
                       <div
                         key={idx}
@@ -409,7 +413,7 @@ export default function Roulette() {
                             : "bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/50"
                         } ${item.isResult ? "ring-4 ring-white" : ""}`}
                       >
-                        <Icon className="w-10 h-10 text-white" />
+                        <img src={item.icon} alt={item.color} className="w-10 h-10" />
                       </div>
                     );
                   })}
@@ -430,7 +434,7 @@ export default function Roulette() {
               {/* Red Section */}
               <Card className="p-6 bg-amber-500/10 border-amber-500/30">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  <Coins className="w-6 h-6 text-amber-500" />
+                  <img src={rouletteRedIcon} alt="red" className="w-6 h-6" />
                   <span className="text-xl font-bold">Win 2x</span>
                 </div>
                 
@@ -465,7 +469,7 @@ export default function Roulette() {
               {/* Green Section */}
               <Card className="p-6 bg-pink-500/10 border-pink-500/30">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  <Gem className="w-6 h-6 text-pink-500" />
+                  <img src={rouletteGreenIcon} alt="green" className="w-6 h-6" />
                   <span className="text-xl font-bold">Win 14x</span>
                 </div>
                 
@@ -500,7 +504,7 @@ export default function Roulette() {
               {/* Black Section */}
               <Card className="p-6 bg-blue-500/10 border-blue-500/30">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  <DollarSign className="w-6 h-6 text-blue-500" />
+                  <img src={rouletteBlueIcon} alt="black" className="w-6 h-6" />
                   <span className="text-xl font-bold">Win 2x</span>
                 </div>
                 
