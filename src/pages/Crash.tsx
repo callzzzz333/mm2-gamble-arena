@@ -78,30 +78,26 @@ export default function Crash() {
   useEffect(() => {
     fetchBets();
 
-    // Simulate game loop
-    const interval = setInterval(() => {
+    // Game loop
+    const interval = setInterval(async () => {
       if (gameStatus === "waiting") {
         setCountdown((prev) => {
           if (prev <= 1) {
-            setGameStatus("flying");
-            setCurrentMultiplier(1.0);
+            startGame();
             return 5;
           }
           return prev - 1;
         });
       } else if (gameStatus === "flying") {
         setCurrentMultiplier((prev) => {
-          const next = prev + 0.01;
-          // Random crash between 1.5x and 10x
-          if (Math.random() < 0.005 * (next - 1)) {
-            setCrashPoint(next);
-            setGameStatus("crashed");
-            setTimeout(() => {
-              setGameStatus("waiting");
-              setCountdown(5);
-              setHasBet(false);
-            }, 3000);
+          const next = prev + 0.02;
+          
+          // Check if we should crash (random between 1.2x and 10x)
+          const shouldCrash = Math.random() < 0.008 * (next - 1);
+          if (shouldCrash) {
+            handleCrash(next);
           }
+          
           return next;
         });
       }
@@ -109,6 +105,72 @@ export default function Crash() {
 
     return () => clearInterval(interval);
   }, [gameStatus, fetchBets]);
+
+  const startGame = async () => {
+    try {
+      // Get or create game
+      let { data: currentGame } = await supabase
+        .from("crash_games")
+        .select("*")
+        .eq("status", "waiting")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!currentGame) {
+        const { data: newGame } = await supabase
+          .from("crash_games")
+          .insert({ status: "flying", started_at: new Date().toISOString() })
+          .select()
+          .single();
+        currentGame = newGame;
+      } else {
+        await supabase
+          .from("crash_games")
+          .update({ status: "flying", started_at: new Date().toISOString() })
+          .eq("id", currentGame.id);
+      }
+
+      setGameStatus("flying");
+      setCurrentMultiplier(1.0);
+    } catch (error) {
+      console.error("Error starting game:", error);
+    }
+  };
+
+  const handleCrash = async (crashMultiplier: number) => {
+    setCrashPoint(crashMultiplier);
+    setGameStatus("crashed");
+
+    try {
+      // Get current game
+      const { data: currentGame } = await supabase
+        .from("crash_games")
+        .select("*")
+        .in("status", ["flying"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (currentGame) {
+        // Call edge function to process crash and payouts
+        await supabase.functions.invoke("crash-spin", {
+          body: { gameId: currentGame.id, crashPoint: crashMultiplier },
+        });
+      }
+
+      // Reset after showing result
+      setTimeout(() => {
+        setGameStatus("waiting");
+        setCountdown(5);
+        setHasBet(false);
+        setCrashPoint(null);
+        fetchBets();
+      }, 3000);
+    } catch (error) {
+      console.error("Error handling crash:", error);
+    }
+  };
 
   // Draw graph
   useEffect(() => {
@@ -296,41 +358,56 @@ export default function Crash() {
             </div>
 
             {/* Game Display */}
-            <Card className="p-8 bg-gradient-to-br from-card to-secondary/20">
-              <div className="text-center mb-4">
+            <Card className="p-8 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 border-2 border-primary/30 shadow-2xl">
+              <div className="text-center mb-6">
                 {gameStatus === "waiting" ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Starting in</p>
-                    <p className="text-5xl font-bold text-primary">{countdown}s</p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Next round starts in</p>
+                    <div className="relative inline-block">
+                      <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full"></div>
+                      <p className="text-6xl font-bold text-primary relative animate-pulse">{countdown}s</p>
+                    </div>
                   </div>
                 ) : gameStatus === "crashed" ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Crashed at</p>
-                    <p className="text-5xl font-bold text-destructive">{crashPoint?.toFixed(2)}x</p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Crashed at</p>
+                    <div className="relative inline-block">
+                      <div className="absolute inset-0 bg-destructive/20 blur-2xl rounded-full"></div>
+                      <p className="text-6xl font-bold text-destructive relative">{crashPoint?.toFixed(2)}x</p>
+                    </div>
                   </div>
                 ) : (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Current Multiplier</p>
-                    <p className="text-6xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent animate-pulse">
-                      {currentMultiplier.toFixed(2)}x
-                    </p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Current Multiplier</p>
+                    <div className="relative inline-block">
+                      <div className="absolute inset-0 bg-green-500/30 blur-3xl rounded-full animate-pulse"></div>
+                      <p className="text-7xl font-bold bg-gradient-to-r from-green-400 via-green-500 to-green-600 bg-clip-text text-transparent relative">
+                        {currentMultiplier.toFixed(2)}x
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Graph */}
-              <div className="relative bg-zinc-900/50 rounded-lg p-4 border border-border">
-                <canvas ref={canvasRef} width={800} height={300} className="w-full" />
+              <div className="relative bg-gradient-to-b from-zinc-900/80 to-zinc-950 rounded-xl p-6 border border-primary/20 overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent"></div>
+                <canvas ref={canvasRef} width={800} height={300} className="w-full relative z-10" />
                 {gameStatus === "flying" && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <Rocket className="w-16 h-16 text-primary animate-bounce" />
+                  <div className="absolute bottom-8 left-8 z-20 animate-pulse">
+                    <Rocket className="w-12 h-12 text-green-500 drop-shadow-[0_0_15px_rgba(34,197,94,0.8)]" />
                   </div>
                 )}
               </div>
 
               {/* Cashout Button */}
               {gameStatus === "flying" && hasBet && (
-                <Button onClick={cashout} size="lg" className="w-full mt-4 bg-green-600 hover:bg-green-700 text-2xl h-16">
+                <Button 
+                  onClick={cashout} 
+                  size="lg" 
+                  className="w-full mt-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-2xl h-16 font-bold shadow-lg shadow-green-500/50 animate-pulse"
+                >
+                  <TrendingUp className="w-6 h-6 mr-2" />
                   CASHOUT @ {currentMultiplier.toFixed(2)}x
                 </Button>
               )}

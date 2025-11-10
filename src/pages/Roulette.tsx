@@ -79,15 +79,66 @@ export default function Roulette() {
   useEffect(() => {
     fetchBets();
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       setCountdown((prev) => {
-        if (prev <= 1) return 15;
+        if (prev <= 1) {
+          // Trigger spin when countdown reaches 0
+          triggerSpin();
+          return 15;
+        }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(interval);
   }, [fetchBets]);
+
+  const triggerSpin = async () => {
+    try {
+      // Get current waiting game
+      const { data: currentGame } = await supabase
+        .from("roulette_games")
+        .select("*")
+        .eq("status", "waiting")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!currentGame) return;
+
+      // Set spinning state
+      setGameStatus("spinning");
+      setSpinningNumber(null);
+
+      // Call edge function to process spin
+      const { data, error } = await supabase.functions.invoke("roulette-spin", {
+        body: { gameId: currentGame.id },
+      });
+
+      if (error) {
+        console.error("Spin error:", error);
+        setGameStatus("waiting");
+        return;
+      }
+
+      // Animate the wheel spinning
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Show result
+      setSpinningNumber(data.number);
+      setGameStatus("completed");
+
+      // Reset after showing result
+      setTimeout(() => {
+        setGameStatus("waiting");
+        setSpinningNumber(null);
+        fetchBets();
+      }, 3000);
+    } catch (error) {
+      console.error("Error triggering spin:", error);
+      setGameStatus("waiting");
+    }
+  };
 
   const handleSelectItem = useCallback((itemWithQty: Item & { quantity: number }) => {
     setSelectedItems((prev) => {
@@ -221,18 +272,38 @@ export default function Roulette() {
               </div>
             </div>
 
-            {/* Countdown */}
+            {/* Countdown & Status */}
             <Card className="p-6 bg-gradient-to-r from-primary/20 to-accent/20 border-primary/50">
               <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">Next spin in</p>
-                <p className="text-5xl font-bold text-primary">{countdown}s</p>
+                {gameStatus === "spinning" ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Spinning...</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-primary animate-pulse"></div>
+                      <div className="w-3 h-3 rounded-full bg-primary animate-pulse delay-100"></div>
+                      <div className="w-3 h-3 rounded-full bg-primary animate-pulse delay-200"></div>
+                    </div>
+                  </div>
+                ) : gameStatus === "completed" && spinningNumber !== null ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Landed on</p>
+                    <p className="text-5xl font-bold text-primary">{spinningNumber}</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Next spin in</p>
+                    <p className="text-5xl font-bold text-primary">{countdown}s</p>
+                  </div>
+                )}
               </div>
             </Card>
 
             {/* Roulette Wheel */}
-            <Card className="p-8 bg-card">
+            <Card className="p-8 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 border-2 border-amber-600/30 shadow-2xl">
               <div className="flex justify-center items-center mb-6">
-                <div className="relative w-80 h-80 rounded-full bg-gradient-to-br from-amber-900/40 via-zinc-900 to-amber-900/40 border-8 border-amber-600/50 shadow-2xl">
+                <div className={`relative w-80 h-80 rounded-full bg-gradient-to-br from-amber-900/40 via-zinc-900 to-amber-900/40 border-8 border-amber-600/50 shadow-[0_0_60px_rgba(217,119,6,0.3)] ${
+                  gameStatus === "spinning" ? "animate-spin" : ""
+                }`} style={{ animationDuration: gameStatus === "spinning" ? "3s" : "0s" }}>
                   {/* Outer rim with numbers */}
                   <div className="absolute inset-2 rounded-full overflow-hidden">
                     {NUMBERS.map((item, idx) => {
@@ -271,13 +342,13 @@ export default function Roulette() {
                   
                   {/* Center green circle */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-600 to-green-700 border-4 border-amber-600/70 shadow-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-3xl">0</span>
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-600 to-green-700 border-4 border-amber-600/70 shadow-[0_0_30px_rgba(22,163,74,0.6)] flex items-center justify-center">
+                      <span className="text-white font-bold text-3xl drop-shadow-lg">0</span>
                     </div>
                   </div>
                   
                   {/* Pointer */}
-                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[16px] border-t-foreground z-10"></div>
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[16px] border-t-foreground z-10 drop-shadow-lg"></div>
                 </div>
               </div>
 
