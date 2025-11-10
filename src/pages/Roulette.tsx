@@ -1,16 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { CircleDot, Trophy } from "lucide-react";
+import { CircleDot, DollarSign, Gem, Coins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { Progress } from "@/components/ui/progress";
 
 interface Item {
   id: string;
@@ -32,25 +31,29 @@ interface RouletteBet {
   bet_amount: string;
   won: boolean | null;
   profiles: any;
+  items: any;
 }
 
-const NUMBERS = [
-  { num: 1, color: "red" }, { num: 2, color: "black" }, { num: 3, color: "red" },
-  { num: 4, color: "black" }, { num: 5, color: "red" }, { num: 6, color: "black" },
-  { num: 7, color: "red" }, { num: 8, color: "black" }, { num: 9, color: "red" },
-  { num: 10, color: "black" }, { num: 11, color: "red" }, { num: 12, color: "black" },
-  { num: 13, color: "red" }, { num: 14, color: "black" }
-];
+interface ReelItem {
+  color: "red" | "black" | "green";
+  icon: any;
+  isResult?: boolean;
+}
 
 export default function Roulette() {
-  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-  const [selectedColor, setSelectedColor] = useState<"red" | "black" | "green">("red");
+  const [selectedItems, setSelectedItems] = useState<{ red: SelectedItem[], green: SelectedItem[], black: SelectedItem[] }>({
+    red: [], green: [], black: []
+  });
+  const [activeColor, setActiveColor] = useState<"red" | "black" | "green" | null>(null);
   const [bets, setBets] = useState<RouletteBet[]>([]);
   const [gameStatus, setGameStatus] = useState<"waiting" | "spinning" | "completed">("waiting");
   const [countdown, setCountdown] = useState(15);
-  const [spinningNumber, setSpinningNumber] = useState<number | null>(null);
+  const [lastResults, setLastResults] = useState<string[]>([]);
+  const [reelItems, setReelItems] = useState<ReelItem[]>([]);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const reelRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -76,13 +79,45 @@ export default function Roulette() {
     }
   }, []);
 
+  const fetchLastResults = useCallback(async () => {
+    const { data } = await supabase
+      .from("roulette_games")
+      .select("spin_color")
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(100);
+    
+    if (data) {
+      setLastResults(data.map(g => g.spin_color).filter(Boolean));
+    }
+  }, []);
+
+  const generateReelItems = (resultColor?: string) => {
+    const items: ReelItem[] = [];
+    const colors: ("red" | "black" | "green")[] = ["red", "black", "green"];
+    
+    for (let i = 0; i < 50; i++) {
+      const color = i === 25 && resultColor 
+        ? (resultColor as "red" | "black" | "green")
+        : colors[Math.floor(Math.random() * colors.length)];
+      
+      items.push({
+        color,
+        icon: color === "green" ? Gem : color === "red" ? Coins : DollarSign,
+        isResult: i === 25 && resultColor !== undefined
+      });
+    }
+    return items;
+  };
+
   useEffect(() => {
     fetchBets();
+    fetchLastResults();
+    setReelItems(generateReelItems());
 
     const interval = setInterval(async () => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          // Trigger spin when countdown reaches 0
           triggerSpin();
           return 15;
         }
@@ -91,11 +126,10 @@ export default function Roulette() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [fetchBets]);
+  }, [fetchBets, fetchLastResults]);
 
   const triggerSpin = async () => {
     try {
-      // Get current waiting game
       const { data: currentGame } = await supabase
         .from("roulette_games")
         .select("*")
@@ -106,11 +140,9 @@ export default function Roulette() {
 
       if (!currentGame) return;
 
-      // Set spinning state
       setGameStatus("spinning");
-      setSpinningNumber(null);
+      setIsAnimating(true);
 
-      // Call edge function to process spin
       const { data, error } = await supabase.functions.invoke("roulette-spin", {
         body: { gameId: currentGame.id },
       });
@@ -118,53 +150,92 @@ export default function Roulette() {
       if (error) {
         console.error("Spin error:", error);
         setGameStatus("waiting");
+        setIsAnimating(false);
         return;
       }
 
-      // Animate the wheel spinning
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const resultColor = data.result;
+      const newReelItems = generateReelItems(resultColor);
+      setReelItems(newReelItems);
 
-      // Show result
-      setSpinningNumber(data.number);
-      setGameStatus("completed");
+      if (reelRef.current) {
+        reelRef.current.style.transition = "none";
+        reelRef.current.style.transform = "translateX(0)";
+        
+        setTimeout(() => {
+          if (reelRef.current) {
+            reelRef.current.style.transition = "transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)";
+            reelRef.current.style.transform = `translateX(-${25 * 80 - 40}px)`;
+          }
+        }, 50);
+      }
 
-      // Reset after showing result
       setTimeout(() => {
-        setGameStatus("waiting");
-        setSpinningNumber(null);
-        fetchBets();
-      }, 3000);
+        setGameStatus("completed");
+        setIsAnimating(false);
+        fetchLastResults();
+        
+        setTimeout(() => {
+          setGameStatus("waiting");
+          setReelItems(generateReelItems());
+          fetchBets();
+        }, 3000);
+      }, 5000);
     } catch (error) {
       console.error("Error triggering spin:", error);
       setGameStatus("waiting");
+      setIsAnimating(false);
     }
   };
 
-  const handleSelectItem = useCallback((itemWithQty: Item & { quantity: number }) => {
+  const handleSelectItem = useCallback((itemWithQty: Item & { quantity: number }, color: "red" | "black" | "green") => {
     setSelectedItems((prev) => {
-      const existing = prev.find((si) => si.item.id === itemWithQty.id);
+      const colorItems = prev[color];
+      const existing = colorItems.find((si) => si.item.id === itemWithQty.id);
+      
       if (existing) {
-        return prev.map((si) =>
-          si.item.id === itemWithQty.id ? { ...si, quantity: si.quantity + 1 } : si
-        );
+        return {
+          ...prev,
+          [color]: colorItems.map((si) =>
+            si.item.id === itemWithQty.id ? { ...si, quantity: si.quantity + 1 } : si
+          )
+        };
       } else {
         const { quantity, ...item } = itemWithQty;
-        return [...prev, { item, quantity: 1 }];
+        return {
+          ...prev,
+          [color]: [...colorItems, { item, quantity: 1 }]
+        };
       }
     });
   }, []);
 
-  const getTotalValue = () => {
-    return selectedItems.reduce((sum, si) => sum + si.item.value * si.quantity, 0);
+  const getTotalValue = (color: "red" | "black" | "green") => {
+    return selectedItems[color].reduce((sum, si) => sum + si.item.value * si.quantity, 0);
   };
 
-  const placeBet = async () => {
+  const clearBets = (color: "red" | "black" | "green") => {
+    setSelectedItems(prev => ({ ...prev, [color]: [] }));
+  };
+
+  const adjustBetAmount = (color: "red" | "black" | "green", multiplier: number) => {
+    // Adjust item quantities
+    setSelectedItems(prev => ({
+      ...prev,
+      [color]: prev[color].map(si => ({
+        ...si,
+        quantity: Math.max(1, Math.floor(si.quantity * multiplier))
+      }))
+    }));
+  };
+
+  const placeBet = async (color: "red" | "black" | "green") => {
     if (!user) {
       toast({ title: "Please login first", variant: "destructive" });
       return;
     }
 
-    if (selectedItems.length === 0) {
+    if (selectedItems[color].length === 0) {
       toast({ title: "Please select items to bet", variant: "destructive" });
       return;
     }
@@ -172,7 +243,6 @@ export default function Roulette() {
     setIsPlacingBet(true);
 
     try {
-      // Get or create current game
       let { data: currentGame } = await supabase
         .from("roulette_games")
         .select("*")
@@ -190,7 +260,7 @@ export default function Roulette() {
         currentGame = newGame;
       }
 
-      const itemsData = selectedItems.map((si) => ({
+      const itemsData = selectedItems[color].map((si) => ({
         item_id: si.item.id,
         name: si.item.name,
         value: si.item.value,
@@ -199,8 +269,7 @@ export default function Roulette() {
         rarity: si.item.rarity,
       }));
 
-      // Remove items from inventory
-      for (const si of selectedItems) {
+      for (const si of selectedItems[color]) {
         const { data: userItem } = await supabase
           .from("user_items")
           .select("*")
@@ -223,25 +292,19 @@ export default function Roulette() {
       await supabase.from("roulette_bets").insert({
         game_id: currentGame.id,
         user_id: user.id,
-        bet_color: selectedColor,
-        bet_amount: getTotalValue(),
+        bet_color: color,
+        bet_amount: getTotalValue(color),
         items: itemsData,
       });
 
-      setSelectedItems([]);
-      toast({ title: "Bet placed!", description: `Betting on ${selectedColor.toUpperCase()}` });
+      setSelectedItems(prev => ({ ...prev, [color]: [] }));
+      toast({ title: "Bet placed!", description: `Betting on ${color.toUpperCase()}` });
       fetchBets();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsPlacingBet(false);
     }
-  };
-
-  const getColorClass = (color: string) => {
-    if (color === "red") return "bg-red-600 hover:bg-red-700";
-    if (color === "black") return "bg-zinc-900 hover:bg-zinc-800";
-    return "bg-green-600 hover:bg-green-700";
   };
 
   const getColorTotals = () => {
@@ -252,8 +315,22 @@ export default function Roulette() {
     return totals;
   };
 
+  const getColorBetsCount = (color: "red" | "black" | "green") => {
+    return bets.filter(b => b.bet_color === color).length;
+  };
+
+  const getColorIcon = (color: string) => {
+    if (color === "red") return Coins;
+    if (color === "black") return DollarSign;
+    return Gem;
+  };
+
   const totals = getColorTotals();
-  const grandTotal = totals.red + totals.black + totals.green;
+  const lastResultsCounts = {
+    red: lastResults.filter(r => r === "red").length,
+    green: lastResults.filter(r => r === "green").length,
+    black: lastResults.filter(r => r === "black").length,
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -261,214 +338,214 @@ export default function Roulette() {
       <div className="ml-64 mr-96">
         <TopBar />
         <main className="p-8 pt-24">
-          <div className="max-w-6xl mx-auto space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">
-                <CircleDot className="w-7 h-7" />
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <CircleDot className="w-7 h-7" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold">Roulette</h1>
+                  <p className="text-muted-foreground">Bet on red, black, or green to win</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold">Roulette</h1>
-                <p className="text-muted-foreground">Bet on red, black, or green to win big</p>
+              
+              {/* Last 100 Results */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-muted-foreground uppercase">LAST 100</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                    <span className="text-sm font-bold">{lastResultsCounts.red}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-pink-500" />
+                    <span className="text-sm font-bold">{lastResultsCounts.green}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <span className="text-sm font-bold">{lastResultsCounts.black}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Countdown & Status */}
-            <Card className="p-6 bg-gradient-to-r from-primary/20 to-accent/20 border-primary/50">
-              <div className="text-center">
-                {gameStatus === "spinning" ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Spinning...</p>
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-primary animate-pulse"></div>
-                      <div className="w-3 h-3 rounded-full bg-primary animate-pulse delay-100"></div>
-                      <div className="w-3 h-3 rounded-full bg-primary animate-pulse delay-200"></div>
-                    </div>
+            {/* Last 10 Results Circles */}
+            <div className="flex gap-2">
+              {lastResults.slice(0, 10).map((color, idx) => {
+                const Icon = getColorIcon(color);
+                return (
+                  <div
+                    key={idx}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      color === "red" ? "bg-amber-500" : color === "green" ? "bg-pink-500" : "bg-blue-500"
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 text-white" />
                   </div>
-                ) : gameStatus === "completed" && spinningNumber !== null ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Landed on</p>
-                    <p className="text-5xl font-bold text-primary">{spinningNumber}</p>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Next spin in</p>
-                    <p className="text-5xl font-bold text-primary">{countdown}s</p>
-                  </div>
-                )}
+                );
+              })}
+            </div>
+
+            {/* Reel Container */}
+            <Card className="p-6 bg-card/50 backdrop-blur">
+              <div className="relative overflow-hidden mb-6" style={{ height: "120px" }}>
+                {/* Winning Indicator */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-1 bg-white z-20 shadow-[0_0_20px_rgba(255,255,255,0.8)]" />
+                
+                {/* Reel */}
+                <div ref={reelRef} className="flex gap-2 items-center" style={{ paddingLeft: "50%" }}>
+                  {reelItems.map((item, idx) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex-shrink-0 w-20 h-20 rounded-xl flex items-center justify-center shadow-lg ${
+                          item.color === "red"
+                            ? "bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-500/50"
+                            : item.color === "green"
+                            ? "bg-gradient-to-br from-pink-500 to-pink-600 shadow-pink-500/50"
+                            : "bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/50"
+                        } ${item.isResult ? "ring-4 ring-white" : ""}`}
+                      >
+                        <Icon className="w-10 h-10 text-white" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Rolling Text & Progress */}
+              <div className="text-center mb-4">
+                <p className="text-2xl font-bold mb-2">
+                  {gameStatus === "spinning" ? "SPINNING..." : `ROLLING IN ${countdown.toFixed(2)}`}
+                </p>
+                <Progress value={(countdown / 15) * 100} className="h-2" />
               </div>
             </Card>
 
-            {/* Roulette Wheel */}
-            <Card className="p-8 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 border-2 border-amber-600/30 shadow-2xl">
-              <div className="flex justify-center items-center mb-6">
-                <div className={`relative w-80 h-80 rounded-full bg-gradient-to-br from-amber-900/40 via-zinc-900 to-amber-900/40 border-8 border-amber-600/50 shadow-[0_0_60px_rgba(217,119,6,0.3)] ${
-                  gameStatus === "spinning" ? "animate-spin" : ""
-                }`} style={{ animationDuration: gameStatus === "spinning" ? "3s" : "0s" }}>
-                  {/* Outer rim with numbers */}
-                  <div className="absolute inset-2 rounded-full overflow-hidden">
-                    {NUMBERS.map((item, idx) => {
-                      const segmentAngle = 360 / NUMBERS.length;
-                      const startAngle = idx * segmentAngle;
-                      
-                      return (
-                        <div
-                          key={idx}
-                          className="absolute inset-0"
-                          style={{
-                            transform: `rotate(${startAngle}deg)`,
-                          }}
-                        >
-                          <div
-                            className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-24 origin-bottom ${
-                              item.color === "red" ? "bg-gradient-to-b from-amber-600 to-amber-700" : "bg-gradient-to-b from-zinc-800 to-zinc-900"
-                            } border-r border-l border-zinc-950/50`}
-                            style={{
-                              clipPath: "polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%)",
-                            }}
-                          >
-                            <div
-                              className="absolute top-2 left-1/2 -translate-x-1/2 w-6 h-6 flex items-center justify-center text-white font-bold text-xs"
-                              style={{
-                                transform: `rotate(${-startAngle}deg)`,
-                              }}
-                            >
-                              {item.num}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Center green circle */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-600 to-green-700 border-4 border-amber-600/70 shadow-[0_0_30px_rgba(22,163,74,0.6)] flex items-center justify-center">
-                      <span className="text-white font-bold text-3xl drop-shadow-lg">0</span>
-                    </div>
-                  </div>
-                  
-                  {/* Pointer */}
-                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[16px] border-t-foreground z-10 drop-shadow-lg"></div>
+            {/* Betting Sections */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* Red Section */}
+              <Card className="p-6 bg-amber-500/10 border-amber-500/30">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <Coins className="w-6 h-6 text-amber-500" />
+                  <span className="text-xl font-bold">Win 2x</span>
                 </div>
-              </div>
-
-              {/* Color Totals */}
-              <div className="grid grid-cols-3 gap-4 mt-6">
-                <div className="text-center p-4 bg-red-600/20 rounded-lg border border-red-600/30">
-                  <p className="text-sm text-muted-foreground mb-1">Red</p>
-                  <p className="text-2xl font-bold text-red-500">${totals.red.toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {grandTotal > 0 ? ((totals.red / grandTotal) * 100).toFixed(1) : 0}%
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-green-600/20 rounded-lg border border-green-600/30">
-                  <p className="text-sm text-muted-foreground mb-1">Green (0)</p>
-                  <p className="text-2xl font-bold text-green-500">${totals.green.toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {grandTotal > 0 ? ((totals.green / grandTotal) * 100).toFixed(1) : 0}%
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">
-                  <p className="text-sm text-muted-foreground mb-1">Black</p>
-                  <p className="text-2xl font-bold">${totals.black.toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {grandTotal > 0 ? ((totals.black / grandTotal) * 100).toFixed(1) : 0}%
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            {/* Place Bet */}
-            <Card className="p-6">
-              <h2 className="text-xl font-bold mb-4">Place Your Bet</h2>
-              
-              {/* Color Selection */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
+                
                 <Button
-                  onClick={() => setSelectedColor("red")}
-                  className={`h-16 ${selectedColor === "red" ? "ring-2 ring-primary" : ""} ${getColorClass("red")}`}
+                  onClick={() => {
+                    setActiveColor("red");
+                    setInventoryOpen(true);
+                  }}
+                  disabled={isAnimating}
+                  className="w-full h-14 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-lg mb-3"
                 >
-                  RED (2x)
+                  Place Bet
                 </Button>
-                <Button
-                  onClick={() => setSelectedColor("green")}
-                  className={`h-16 ${selectedColor === "green" ? "ring-2 ring-primary" : ""} ${getColorClass("green")}`}
-                >
-                  GREEN (14x)
-                </Button>
-                <Button
-                  onClick={() => setSelectedColor("black")}
-                  className={`h-16 ${selectedColor === "black" ? "ring-2 ring-primary" : ""} ${getColorClass("black")}`}
-                >
-                  BLACK (2x)
-                </Button>
-              </div>
 
-              {/* Selected Items */}
-              <div className="mb-4 min-h-[100px] p-4 bg-secondary/30 rounded-lg">
-                {selectedItems.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedItems.map((si) => (
-                      <div key={si.item.id} className="flex items-center gap-2 bg-card p-2 rounded border">
-                        {si.item.image_url && (
-                          <img src={si.item.image_url} alt={si.item.name} className="w-8 h-8 object-contain" />
-                        )}
-                        <span className="text-sm">{si.item.name} x{si.quantity}</span>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span>{getColorBetsCount("red")} Bets</span>
+                  <span className="font-bold text-amber-500">${totals.red.toFixed(2)}</span>
+                </div>
+
+                {selectedItems.red.length > 0 && (
+                  <div className="mt-3 p-2 bg-background/50 rounded space-y-1">
+                    {selectedItems.red.map(si => (
+                      <div key={si.item.id} className="text-xs flex justify-between">
+                        <span>{si.item.name} x{si.quantity}</span>
+                        <span>${(si.item.value * si.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-muted-foreground text-center">No items selected</p>
                 )}
-              </div>
-
-              <div className="flex gap-3">
-                <Button onClick={() => setInventoryOpen(true)} variant="outline" className="flex-1">
-                  Select Items (${getTotalValue().toFixed(2)})
-                </Button>
-                <Button onClick={placeBet} disabled={isPlacingBet || selectedItems.length === 0} className="flex-1">
-                  Place Bet on {selectedColor.toUpperCase()}
-                </Button>
-              </div>
-            </Card>
-
-            {/* Active Bets */}
-            {bets.length > 0 && (
-              <Card className="p-6">
-                <h2 className="text-xl font-bold mb-4">Active Bets</h2>
-                <div className="space-y-2">
-                  {bets.map((bet) => (
-                    <div key={bet.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={bet.profiles?.avatar_url || undefined} />
-                          <AvatarFallback>{bet.profiles?.username?.[0] || "U"}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold">{bet.profiles?.roblox_username || bet.profiles?.username}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Badge className={bet.bet_color === "red" ? "bg-red-600" : bet.bet_color === "green" ? "bg-green-600" : "bg-zinc-900"}>
-                          {bet.bet_color.toUpperCase()}
-                        </Badge>
-                        <span className="font-bold">${Number(bet.bet_amount).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </Card>
-            )}
+
+              {/* Green Section */}
+              <Card className="p-6 bg-pink-500/10 border-pink-500/30">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <Gem className="w-6 h-6 text-pink-500" />
+                  <span className="text-xl font-bold">Win 14x</span>
+                </div>
+                
+                <Button
+                  onClick={() => {
+                    setActiveColor("green");
+                    setInventoryOpen(true);
+                  }}
+                  disabled={isAnimating}
+                  className="w-full h-14 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold text-lg mb-3"
+                >
+                  Place Bet
+                </Button>
+
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span>{getColorBetsCount("green")} Bets</span>
+                  <span className="font-bold text-pink-500">${totals.green.toFixed(2)}</span>
+                </div>
+
+                {selectedItems.green.length > 0 && (
+                  <div className="mt-3 p-2 bg-background/50 rounded space-y-1">
+                    {selectedItems.green.map(si => (
+                      <div key={si.item.id} className="text-xs flex justify-between">
+                        <span>{si.item.name} x{si.quantity}</span>
+                        <span>${(si.item.value * si.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              {/* Black Section */}
+              <Card className="p-6 bg-blue-500/10 border-blue-500/30">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <DollarSign className="w-6 h-6 text-blue-500" />
+                  <span className="text-xl font-bold">Win 2x</span>
+                </div>
+                
+                <Button
+                  onClick={() => {
+                    setActiveColor("black");
+                    setInventoryOpen(true);
+                  }}
+                  disabled={isAnimating}
+                  className="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-lg mb-3"
+                >
+                  Place Bet
+                </Button>
+
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span>{getColorBetsCount("black")} Bets</span>
+                  <span className="font-bold text-blue-500">${totals.black.toFixed(2)}</span>
+                </div>
+
+                {selectedItems.black.length > 0 && (
+                  <div className="mt-3 p-2 bg-background/50 rounded space-y-1">
+                    {selectedItems.black.map(si => (
+                      <div key={si.item.id} className="text-xs flex justify-between">
+                        <span>{si.item.name} x{si.quantity}</span>
+                        <span>${(si.item.value * si.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </div>
           </div>
         </main>
       </div>
       <LiveChat />
       
-      <UserInventoryDialog
-        open={inventoryOpen}
-        onOpenChange={setInventoryOpen}
-        onSelectItem={handleSelectItem}
-        multiSelect={true}
-        selectedItems={[]}
-      />
+      {activeColor && (
+        <UserInventoryDialog
+          open={inventoryOpen}
+          onOpenChange={setInventoryOpen}
+          onSelectItem={(item) => handleSelectItem(item, activeColor)}
+          multiSelect={true}
+          selectedItems={[]}
+        />
+      )}
     </div>
   );
 }
