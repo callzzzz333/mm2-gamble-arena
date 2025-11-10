@@ -2,3 +2,9 @@ project_id = "sopoblahrqujfzwshqeg"
 
 [functions.crypto-payment-webhook]
 verify_jwt = false
+
+[functions.roulette-spin]
+verify_jwt = false
+
+[functions.crash-spin]
+verify_jwt = false

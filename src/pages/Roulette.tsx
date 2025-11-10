@@ -232,37 +232,52 @@ export default function Roulette() {
             {/* Roulette Wheel */}
             <Card className="p-8 bg-card">
               <div className="flex justify-center items-center mb-6">
-                <div className="relative w-96 h-96 rounded-full bg-gradient-to-br from-zinc-800 to-zinc-900 border-8 border-primary/30 shadow-2xl">
-                  <div className="absolute inset-0 rounded-full border-8 border-zinc-700">
+                <div className="relative w-80 h-80 rounded-full bg-gradient-to-br from-amber-900/40 via-zinc-900 to-amber-900/40 border-8 border-amber-600/50 shadow-2xl">
+                  {/* Outer rim with numbers */}
+                  <div className="absolute inset-2 rounded-full overflow-hidden">
                     {NUMBERS.map((item, idx) => {
-                      const angle = (idx * 360) / NUMBERS.length - 90;
-                      const radius = 140;
-                      const x = Math.cos((angle * Math.PI) / 180) * radius;
-                      const y = Math.sin((angle * Math.PI) / 180) * radius;
+                      const segmentAngle = 360 / NUMBERS.length;
+                      const startAngle = idx * segmentAngle;
                       
                       return (
                         <div
                           key={idx}
-                          className={`absolute w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg border-2 border-zinc-600 ${
-                            item.color === "red" ? "bg-red-600" : "bg-zinc-900"
-                          }`}
+                          className="absolute inset-0"
                           style={{
-                            left: `calc(50% + ${x}px - 24px)`,
-                            top: `calc(50% + ${y}px - 24px)`,
+                            transform: `rotate(${startAngle}deg)`,
                           }}
                         >
-                          {item.num}
+                          <div
+                            className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-24 origin-bottom ${
+                              item.color === "red" ? "bg-gradient-to-b from-amber-600 to-amber-700" : "bg-gradient-to-b from-zinc-800 to-zinc-900"
+                            } border-r border-l border-zinc-950/50`}
+                            style={{
+                              clipPath: "polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%)",
+                            }}
+                          >
+                            <div
+                              className="absolute top-2 left-1/2 -translate-x-1/2 w-6 h-6 flex items-center justify-center text-white font-bold text-xs"
+                              style={{
+                                transform: `rotate(${-startAngle}deg)`,
+                              }}
+                            >
+                              {item.num}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
+                  
+                  {/* Center green circle */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-green-600 border-4 border-zinc-700 flex items-center justify-center text-white font-bold text-xl">
-                      0
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-600 to-green-700 border-4 border-amber-600/70 shadow-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-3xl">0</span>
                     </div>
                   </div>
+                  
                   {/* Pointer */}
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 w-4 h-8 bg-primary clip-triangle"></div>
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[16px] border-t-foreground z-10"></div>
                 </div>
               </div>
 

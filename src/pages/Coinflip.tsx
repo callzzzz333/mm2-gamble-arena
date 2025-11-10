@@ -159,7 +159,7 @@ const Coinflip = () => {
 
               if (user && (updatedGame.creator_id === user.id || updatedGame.joiner_id === user.id)) {
                 toast({
-                  title: updatedGame.winner_id === user.id ? "You won! 🎉" : "You lost 😢",
+                  title: updatedGame.winner_id === user.id ? "You Won" : "You Lost",
                   description: `Result: ${updatedGame.result.toUpperCase()}. Items have been paid out.`,
                   duration: 5000,
                 });

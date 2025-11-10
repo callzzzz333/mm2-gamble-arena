@@ -61,14 +61,19 @@ export default function Upgrader() {
     setResult(null);
 
     const chance = calculateSuccessChance();
-    const won = Math.random() * 100 < chance;
-
-    // Calculate landing rotation
-    const winAngle = 90;
-    const loseAngle = 270;
-    const targetAngle = won ? winAngle : loseAngle;
+    
+    // Calculate random landing position within the wheel
+    const randomDegree = Math.random() * 360;
+    
+    // Determine if won based on where it lands
+    // Success zone is from 0 to successChance% of the circle
+    const successZoneDegrees = (chance / 100) * 360;
+    const normalizedLanding = randomDegree % 360;
+    const won = normalizedLanding <= successZoneDegrees;
+    
+    // Calculate final rotation with multiple spins + landing position
     const spins = 5;
-    const finalRotation = 360 * spins + targetAngle;
+    const finalRotation = 360 * spins + randomDegree;
     setRotation(finalRotation);
 
     await new Promise((resolve) => setTimeout(resolve, 3000));

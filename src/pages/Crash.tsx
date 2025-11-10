@@ -322,8 +322,8 @@ export default function Crash() {
               <div className="relative bg-zinc-900/50 rounded-lg p-4 border border-border">
                 <canvas ref={canvasRef} width={800} height={300} className="w-full" />
                 {gameStatus === "flying" && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-6xl animate-bounce">
-                    🚀
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <Rocket className="w-16 h-16 text-primary animate-bounce" />
                   </div>
                 )}
               </div>
