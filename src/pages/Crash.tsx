@@ -343,9 +343,9 @@ export default function Crash() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64 mr-96">
+      <div className="md:ml-64 md:mr-96">
         <TopBar />
-        <main className="p-8 pt-24">
+        <main className="p-4 md:p-8 pt-20 md:pt-24">
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">

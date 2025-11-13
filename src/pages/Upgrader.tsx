@@ -188,9 +188,9 @@ export default function Upgrader() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64 mr-96">
+      <div className="md:ml-64 md:mr-96">
         <TopBar />
-        <main className="p-6 pt-20">
+        <main className="p-4 md:p-6 pt-20 md:pt-20">
           <div className="max-w-4xl mx-auto space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">

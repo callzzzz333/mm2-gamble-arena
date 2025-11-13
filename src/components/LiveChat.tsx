@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Send, FileText, Gift, ChevronRight, ChevronLeft } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Send, FileText, Gift, ChevronRight, ChevronLeft, MessageCircle, X } from "lucide-react";
 import { LevelCrown } from "@/components/LevelCrown";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { OnlineCounter } from "@/components/OnlineCounter";
 import { GiveawayWidget } from "@/components/GiveawayWidget";
 import { CreateGiveawayDialog } from "@/components/CreateGiveawayDialog";
@@ -37,8 +39,10 @@ export const LiveChat = () => {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const { toast } = useToast();
 
   const fetchMessages = useCallback(async () => {
@@ -142,23 +146,8 @@ export const LiveChat = () => {
     }
   }, [user, profile, newMessage, toast]);
 
-  return (
+  const chatContent = (
     <>
-      {/* Toggle Button - Always Visible */}
-      <Button
-        onClick={() => setIsChatOpen(!isChatOpen)}
-        className="fixed right-2 top-1/2 -translate-y-1/2 z-50 h-12 w-8 p-0 shadow-glow"
-        style={{ right: isChatOpen ? '384px' : '8px' }}
-      >
-        {isChatOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-      </Button>
-
-      {/* Chat Panel */}
-      <div 
-        className={`fixed right-0 top-0 h-screen w-96 bg-card/95 backdrop-blur-sm border-l border-border flex flex-col shadow-2xl z-40 transition-transform duration-300 ${
-          isChatOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
       <div className="p-4 border-b border-border/50 bg-gradient-to-r from-card to-card/80">
         <div className="flex items-center justify-center mb-3">
           <img src={logo} alt="RBXRoyale" className="h-12" />
@@ -174,7 +163,6 @@ export const LiveChat = () => {
                 </Button>
               }
             />
-            
 
           <Dialog open={tosOpen} onOpenChange={setTosOpen}>
             <DialogTrigger asChild>
@@ -272,7 +260,6 @@ export const LiveChat = () => {
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          {/* Chat Messages */}
           {messages.map((msg) => (
             <div key={msg.id} className="mb-3">
               <div className="bg-secondary/30 border border-border rounded-lg p-3 hover:bg-secondary/50 transition-colors">
@@ -336,13 +323,63 @@ export const LiveChat = () => {
           </Button>
         </div>
       </form>
-    </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="fixed right-4 top-4 z-50 md:hidden"
+            >
+              <MessageCircle className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:w-96 p-0">
+            <div className="flex flex-col h-full">
+              {chatContent}
+            </div>
+          </SheetContent>
+        </Sheet>
+        
+        <UserProfileDialog 
+          open={profileDialogOpen}
+          onOpenChange={setProfileDialogOpen}
+          userId={selectedUserId}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* Toggle Button - Desktop Only */}
+      <Button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className="fixed right-2 top-1/2 -translate-y-1/2 z-50 h-12 w-8 p-0 shadow-glow hidden md:flex"
+        style={{ right: isChatOpen ? '384px' : '8px' }}
+      >
+        {isChatOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+      </Button>
+
+      {/* Chat Panel - Desktop */}
+      <div 
+        className={`fixed right-0 top-0 h-screen w-96 bg-card/95 backdrop-blur-sm border-l border-border flex flex-col shadow-2xl z-40 transition-transform duration-300 hidden md:flex ${
+          isChatOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {chatContent}
+      </div>
     
-    <UserProfileDialog 
-      open={profileDialogOpen}
-      onOpenChange={setProfileDialogOpen}
-      userId={selectedUserId}
-    />
+      <UserProfileDialog 
+        open={profileDialogOpen}
+        onOpenChange={setProfileDialogOpen}
+        userId={selectedUserId}
+      />
     </>
   );
 };

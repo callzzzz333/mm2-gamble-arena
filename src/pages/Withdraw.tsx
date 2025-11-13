@@ -274,9 +274,9 @@ export default function Withdraw() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64">
+      <div className="md:ml-64">
         <TopBar />
-        <main className="p-8">
+        <main className="p-4 md:p-8 pt-20 md:pt-8">
           <div className="max-w-6xl mx-auto space-y-8">
               {/* Header */}
               <div>

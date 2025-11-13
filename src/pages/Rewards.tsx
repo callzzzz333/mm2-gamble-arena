@@ -325,7 +325,7 @@ const Rewards = () => {
       <TopBar />
       <LiveChat />
       
-      <main className="ml-64 mr-96 pt-24 pb-8 px-12">
+      <main className="md:ml-64 md:mr-96 pt-24 pb-8 px-4 md:px-12">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2 flex items-center gap-2">

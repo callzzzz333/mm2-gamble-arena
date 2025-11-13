@@ -305,10 +305,10 @@ const ChristmasRaffle = () => {
     <div className="min-h-screen w-full flex">
       <Sidebar />
 
-      <div className="flex-1 ml-64 mr-96">
+      <div className="flex-1 md:ml-64 md:mr-96">
         <TopBar />
 
-        <main className="pt-16 px-12 py-8">
+        <main className="pt-20 md:pt-16 px-4 md:px-12 py-8">
           <div className="max-w-6xl mx-auto space-y-8">
             {/* Enhanced Header with Christmas Effects */}
             <div className="relative flex items-center gap-3 overflow-hidden rounded-xl p-8 bg-gradient-to-r from-blue-500/20 via-white/10 to-blue-500/20 border-2 border-blue-500/30">

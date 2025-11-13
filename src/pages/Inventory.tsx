@@ -217,9 +217,9 @@ const Inventory = () => {
     return (
       <div className="min-h-screen w-full flex">
         <Sidebar />
-        <div className="flex-1 ml-64 mr-96">
+        <div className="flex-1 md:ml-64 md:mr-96">
           <TopBar />
-          <main className="pt-16 px-12 py-8">
+          <main className="pt-20 md:pt-16 px-4 md:px-12 py-8">
             <Card className="p-12 text-center">
               <p className="text-muted-foreground">
                 You don't have permission to manage inventories
@@ -236,10 +236,10 @@ const Inventory = () => {
     <div className="min-h-screen w-full flex">
       <Sidebar />
       
-      <div className="flex-1 ml-64 mr-96">
+      <div className="flex-1 md:ml-64 md:mr-96">
         <TopBar />
         
-        <main className="pt-16 px-12 py-8">
+        <main className="pt-20 md:pt-16 px-4 md:px-12 py-8">
           <div className="max-w-7xl mx-auto space-y-8">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">

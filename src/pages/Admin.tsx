@@ -386,10 +386,10 @@ const Admin = () => {
     <div className="min-h-screen w-full flex">
       <Sidebar />
       
-      <div className="flex-1 ml-64 mr-96">
+      <div className="flex-1 md:ml-64 md:mr-96">
         <TopBar />
         
-        <main className="pt-16 px-12 py-12">
+        <main className="pt-20 md:pt-16 px-4 md:px-12 py-8 md:py-12">
           <div className="flex items-center gap-3 mb-8">
             <Shield className="w-8 h-8 text-primary" />
             <h1 className="text-4xl font-bold">Admin Panel</h1>

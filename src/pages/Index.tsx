@@ -13,12 +13,12 @@ const Index = () => {
     <div className="min-h-screen w-full flex">
       <Sidebar />
       
-      <div className="flex-1 ml-64 mr-96">
+      <div className="flex-1 md:ml-64 md:mr-96">
         <TopBar />
         
         <main className="pt-16">
           {/* Discord Banner with Rounded Corners */}
-          <section className="px-12 py-6">
+          <section className="px-4 md:px-12 py-6">
             <div 
               className="relative h-64 overflow-hidden rounded-2xl cursor-pointer transition-transform hover:scale-[1.02] duration-300"
               onClick={() => window.open('https://discord.gg/xBbrVPsPqs', '_blank')}
@@ -32,7 +32,7 @@ const Index = () => {
           </section>
 
           {/* Game Modes */}
-          <section className="px-12 py-12">
+          <section className="px-4 md:px-12 py-12">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 <Trophy className="w-5 h-5" />
@@ -93,7 +93,7 @@ const Index = () => {
           </section>
 
           {/* Live Bets */}
-          <section className="px-12 pb-12">
+          <section className="px-4 md:px-12 pb-12">
             <LiveBets />
           </section>
         </main>

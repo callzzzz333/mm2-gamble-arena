@@ -30,10 +30,10 @@ export default function TeamShowdown() {
     <div className="min-h-screen bg-background flex">
       <Sidebar />
       
-      <div className="flex-1 ml-64 mr-96">
+      <div className="flex-1 md:ml-64 md:mr-96">
         <TopBar />
         
-        <main className="p-8 pt-24">
+        <main className="p-4 md:p-8 pt-20 md:pt-24">
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="relative h-64 rounded-xl overflow-hidden border border-border shadow-glow">
               <img src={teamShowdownImg} alt="Team Showdown" className="w-full h-full object-cover" />
