@@ -159,6 +159,8 @@ const Leaderboard = () => {
             </CardContent>
           </Card>
         </div>
+        
+        <div className="h-20 md:hidden" />
       </main>
     </div>
   );

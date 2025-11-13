@@ -23,7 +23,7 @@ export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon, r
   };
 
   return (
-    <div className="group relative bg-card rounded-xl border border-border overflow-hidden transition-all duration-300 hover:border-primary/50 hover:shadow-glow min-w-[240px] max-w-[280px]">
+    <div className="group relative bg-card rounded-xl border border-border overflow-hidden transition-all duration-300 hover:border-primary/50 hover:shadow-glow min-w-[200px] md:min-w-[240px] max-w-[280px] flex-shrink-0">
       <div className="relative h-full">
         {isNew && (
           <Badge className="absolute top-3 right-3 z-10 bg-primary text-primary-foreground">
@@ -37,7 +37,7 @@ export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon, r
         )}
         
         {image ? (
-          <div className="relative h-40 overflow-hidden">
+          <div className="relative h-32 md:h-40 overflow-hidden">
             <img 
               src={image} 
               alt={title}
@@ -46,23 +46,23 @@ export const GameModeCard = ({ title, subtitle, icon: Icon, isNew, comingSoon, r
             <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
           </div>
         ) : (
-          <div className="flex items-center justify-center h-40 py-8">
-            <Icon className="w-16 h-16 text-primary/60 group-hover:text-primary transition-colors" />
+          <div className="flex items-center justify-center h-32 md:h-40 py-6 md:py-8">
+            <Icon className="w-12 h-12 md:w-16 md:h-16 text-primary/60 group-hover:text-primary transition-colors" />
           </div>
         )}
         
-        <div className="p-4 space-y-3">
+        <div className="p-3 md:p-4 space-y-2 md:space-y-3">
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-foreground">{title}</h3>
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <h3 className="text-base md:text-lg font-bold text-foreground">{title}</h3>
+            <p className="text-xs text-muted-foreground hidden md:block">{subtitle}</p>
           </div>
           
           <Button 
-            className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 hover:border-primary transition-all"
+            className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 hover:border-primary transition-all h-9 md:h-10 text-sm md:text-base"
             disabled={comingSoon}
             onClick={handlePlayClick}
           >
-            {comingSoon ? "Coming Soon" : "Play Now"}
+            {comingSoon ? "Soon" : "Play"}
           </Button>
         </div>
       </div>

@@ -350,6 +350,8 @@ export default function Upgrader() {
         multiSelect={false}
         selectedItems={[]}
       />
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 }

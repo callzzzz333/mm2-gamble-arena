@@ -520,6 +520,8 @@ const Rewards = () => {
           )}
         </DialogContent>
       </Dialog>
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 };

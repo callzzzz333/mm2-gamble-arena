@@ -750,6 +750,8 @@ const Admin = () => {
       </div>
 
       <LiveChat />
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 };

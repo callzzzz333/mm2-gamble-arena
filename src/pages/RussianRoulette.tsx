@@ -305,6 +305,8 @@ export default function RussianRoulette() {
         onOpenChange={setInventoryOpen}
         onSelectItem={handleSelectItem}
       />
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 }

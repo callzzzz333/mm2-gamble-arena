@@ -489,6 +489,8 @@ export default function Withdraw() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 }

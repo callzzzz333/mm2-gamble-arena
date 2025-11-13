@@ -228,6 +228,8 @@ const Inventory = () => {
           </main>
         </div>
         <LiveChat />
+        
+        <div className="h-20 md:hidden" />
       </div>
     );
   }
@@ -380,6 +382,8 @@ const Inventory = () => {
       </div>
 
       <LiveChat />
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 };

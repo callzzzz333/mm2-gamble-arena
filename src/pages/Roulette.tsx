@@ -838,6 +838,8 @@ export default function Roulette() {
           selectedItems={[]}
         />
       )}
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 }

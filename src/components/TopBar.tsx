@@ -6,7 +6,9 @@ import { Progress } from "@/components/ui/progress";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { UserInventoryDialog } from "@/components/UserInventoryDialog";
 import { SoundToggle } from "@/components/SoundToggle";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
+import logo from "@/assets/logo.png";
 
 
 export const TopBar = () => {
@@ -14,6 +16,7 @@ export const TopBar = () => {
   const [profile, setProfile] = useState<any>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -61,44 +64,57 @@ export const TopBar = () => {
 
   return (
     <>
-      <div className="fixed top-0 left-64 right-96 bg-background/95 backdrop-blur-sm border-b border-border z-40">
-        <div className="h-16 flex items-center justify-between px-12">
-          <div className="w-10" />
+      <div className={`fixed top-0 ${isMobile ? 'left-0 right-0' : 'left-64 right-96'} bg-background/95 backdrop-blur-sm border-b border-border z-40`}>
+        <div className={`h-16 flex items-center justify-between ${isMobile ? 'px-4' : 'px-12'}`}>
+          {/* Mobile Logo */}
+          {isMobile && (
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="RBXRoyale" className="h-10" />
+            </div>
+          )}
           
-          {/* Centered Inventory Button */}
-          <div className="flex-1 flex justify-center">
-            {user && (
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={() => setInventoryOpen(true)}
-                className="gap-2 border-primary/20 hover:border-primary hover:shadow-glow transition-all font-semibold"
-              >
-                <Package className="w-5 h-5" />
-                Inventory
-              </Button>
-            )}
-          </div>
+          {/* Desktop: Empty space for balance */}
+          {!isMobile && <div className="w-10" />}
+          
+          {/* Centered Inventory Button (Desktop Only) */}
+          {!isMobile && (
+            <div className="flex-1 flex justify-center">
+              {user && (
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  onClick={() => setInventoryOpen(true)}
+                  className="gap-2 border-primary/20 hover:border-primary hover:shadow-glow transition-all font-semibold"
+                >
+                  <Package className="w-5 h-5" />
+                  Inventory
+                </Button>
+              )}
+            </div>
+          )}
         
         {/* Right Side Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {user ? (
             <>
-              <SoundToggle />
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="relative border border-border shadow-glow hover:bg-muted/50"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
-              </Button>
+              {!isMobile && <SoundToggle />}
+              {!isMobile && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative border border-border shadow-glow hover:bg-muted/50"
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
+                </Button>
+              )}
               <ProfileDropdown />
             </>
           ) : (
             <Button 
               onClick={() => navigate("/auth")} 
               className="bg-primary hover:bg-primary/90 shadow-glow"
+              size={isMobile ? "sm" : "default"}
             >
               Login
             </Button>

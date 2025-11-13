@@ -140,6 +140,8 @@ export default function CaseBattles() {
         </main>
       </div>
       <LiveChat />
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 }

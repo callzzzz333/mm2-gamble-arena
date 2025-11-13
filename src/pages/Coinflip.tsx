@@ -798,6 +798,8 @@ const Coinflip = () => {
         onJoin={joinGame}
         isJoining={isJoining}
       />
+      
+      <div className="h-20 md:hidden" />
     </div>
   );
 };
