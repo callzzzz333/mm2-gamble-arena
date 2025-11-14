@@ -1,25 +1,13 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
-  Trophy,
   DollarSign,
-  Shield,
-  Coins,
-  Dices,
-  Zap,
-  Gift,
   Star,
-  CircleDot,
-  Percent,
-  Skull,
-  Crown,
-  Target,
-  Users,
   Ticket,
-  TrendingUp,
-  Swords,
   Menu,
   X,
+  Package,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -53,18 +41,15 @@ export const Sidebar = () => {
     if (isMobile) setOpen(false);
   };
 
-  const gameMenuItems: GameMenuItem[] = [
-    { title: "Coinflip", icon: Coins, path: "/coinflip", isNew: true },
-    { title: "Jackpot", icon: Trophy, path: "/jackpot", isNew: true },
-    { title: "Upgrader", icon: TrendingUp, path: "/upgrader", isNew: true },
-    { title: "Roulette", icon: CircleDot, path: "/roulette", isNew: true },
-    { title: "Crash", icon: Zap, path: "/crash", isNew: true },
-    { title: "Case Battles", icon: Swords, path: "/case-battles", isNew: true },
+  const marketplaceMenuItems: GameMenuItem[] = [
+    { title: "Market", icon: Package, path: "/market" },
+    { title: "My Listings", icon: Ticket, path: "/my-listings" },
+    { title: "Deposit", icon: DollarSign, path: "/deposit" },
+    { title: "Item Values", icon: Star, path: "/items" },
   ];
 
   const sidebarContent = (
     <>
-      {/* Logo */}
       <div
         className="px-6 mb-8 cursor-pointer flex items-center justify-center relative group"
         onClick={() => handleNavigation("/")}
@@ -77,7 +62,6 @@ export const Sidebar = () => {
         />
       </div>
 
-      {/* Navigation */}
       <div className="flex-1 space-y-1 px-3">
         <Button
           variant="ghost"
@@ -93,15 +77,13 @@ export const Sidebar = () => {
           <span className="font-medium">Home</span>
         </Button>
 
-        {/* Divider */}
         <div className="py-4">
           <div className="px-3 mb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Game Modes</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Marketplace</p>
           </div>
         </div>
 
-        {/* Game Modes */}
-        {gameMenuItems.map((item) => (
+        {marketplaceMenuItems.map((item) => (
           <Button
             key={item.title}
             variant="ghost"
@@ -110,173 +92,63 @@ export const Sidebar = () => {
               item.path && isActive(item.path)
                 ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
                 : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
-              item.comingSoon && "opacity-60 cursor-not-allowed",
             )}
-            onClick={() => item.path && !item.comingSoon && handleNavigation(item.path)}
-            disabled={item.comingSoon}
+            onClick={() => item.path && handleNavigation(item.path)}
           >
             <item.icon className="w-5 h-5" />
             <span className="font-medium flex-1 text-left">{item.title}</span>
-            {item.isNew && (
-              <span className="px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded uppercase">
-                New
-              </span>
-            )}
-            {item.comingSoon && (
-              <span className="px-1.5 py-0.5 bg-muted text-muted-foreground text-[10px] font-bold rounded uppercase">
-                Soon
-              </span>
-            )}
           </Button>
         ))}
 
-        {/* Divider */}
-        <div className="py-4">
-          <div className="h-px bg-border" />
-        </div>
-
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
-            isActive("/leaderboard")
-              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
-              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
-          )}
-          onClick={() => handleNavigation("/leaderboard")}
-        >
-          <Target className="w-5 h-5" />
-          <span className="font-medium">Leaderboard</span>
-        </Button>
-
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all relative border border-border",
-            isActive("/rewards")
-              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
-              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
-          )}
-          onClick={() => handleNavigation("/rewards")}
-        >
-          <Gift className="w-5 h-5" />
-          <span className="font-medium flex-1 text-left">Daily Rewards</span>
-          <span className="px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded uppercase">
-            New
-          </span>
-        </Button>
-
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
-            isActive("/christmas-raffle")
-              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
-              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
-          )}
-          onClick={() => handleNavigation("/christmas-raffle")}
-        >
-          <CircleDot className="w-5 h-5 text-primary" />
-          <span className="font-medium flex-1 text-left">Christmas Raffle</span>
-        </Button>
-
-        {/* Divider */}
-        <div className="py-4">
-          <div className="h-px bg-border" />
-        </div>
-
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
-            isActive("/items")
-              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
-              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
-          )}
-          onClick={() => handleNavigation("/items")}
-        >
-          <Star className="w-5 h-5" />
-          <span className="font-medium">Item Values</span>
-        </Button>
-
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
-            isActive("/deposit")
-              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
-              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
-          )}
-          onClick={() => handleNavigation("/deposit")}
-        >
-          <DollarSign className="w-5 h-5" />
-          <span className="font-medium">Deposit</span>
-        </Button>
-
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
-            isActive("/withdraw")
-              ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
-              : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
-          )}
-          onClick={() => handleNavigation("/withdraw")}
-        >
-          <DollarSign className="w-5 h-5" />
-          <span className="font-medium">Withdraw</span>
-        </Button>
-
         {isAdmin && (
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
-              isActive("/admin")
-                ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
-                : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
-            )}
-            onClick={() => handleNavigation("/admin")}
-          >
-            <Shield className="w-5 h-5" />
-            <span className="font-medium">Admin Panel</span>
-          </Button>
-        )}
-      </div>
+          <>
+            <div className="py-4">
+              <div className="h-px bg-border" />
+            </div>
 
-      {/* Footer */}
-      <div className="px-6 pt-4 border-t border-border">
-        <p className="text-xs text-muted-foreground text-center">© 2024 RBXROYALE</p>
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border",
+                isActive("/admin")
+                  ? "bg-destructive/20 text-destructive shadow-[0_0_15px_hsl(var(--destructive)/0.4)]"
+                  : "hover:bg-destructive/10 hover:shadow-[0_0_10px_hsl(var(--destructive)/0.2)]",
+              )}
+              onClick={() => handleNavigation("/admin")}
+            >
+              <Shield className="w-5 h-5" />
+              <span className="font-medium">Admin Panel</span>
+            </Button>
+          </>
+        )}
       </div>
     </>
   );
 
   if (isMobile) {
     return (
-      <>
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="fixed left-4 top-4 z-50 md:hidden"
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
-            <div className="flex flex-col h-full py-6 overflow-y-auto scrollbar-hide">
-              {sidebarContent}
-            </div>
-          </SheetContent>
-        </Sheet>
-      </>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="fixed top-4 left-4 z-50 lg:hidden"
+          >
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0">
+          <div className="flex flex-col h-full py-6 overflow-y-auto">
+            {sidebarContent}
+          </div>
+        </SheetContent>
+      </Sheet>
     );
   }
 
   return (
-    <div className="fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col py-6 z-50 overflow-y-auto scrollbar-hide">
+    <aside className="hidden lg:flex w-64 border-r bg-card flex-col py-6 overflow-y-auto">
       {sidebarContent}
-    </div>
+    </aside>
   );
 };
