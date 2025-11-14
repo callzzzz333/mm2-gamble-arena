@@ -94,19 +94,21 @@ export const ProfileDropdown = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="outline-none">
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-          <Avatar className="w-10 h-10 ring-2 ring-primary/30">
-            <AvatarImage src={profile.avatar_url || undefined} alt={profile.roblox_username || profile.username} />
-            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-primary font-bold">
-              {(profile.roblox_username || profile.username)[0].toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="text-left hidden lg:block">
-            <p className="text-sm font-semibold">{profile.roblox_username || profile.username}</p>
-            <p className="text-xs text-muted-foreground">${profile.balance.toFixed(2)}</p>
+      <DropdownMenuTrigger asChild>
+        <button className="outline-none">
+          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+            <Avatar className="w-10 h-10 ring-2 ring-primary/30">
+              <AvatarImage src={profile.avatar_url || undefined} alt={profile.roblox_username || profile.username} />
+              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-primary font-bold">
+                {(profile.roblox_username || profile.username)[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-left hidden lg:block">
+              <p className="text-sm font-semibold">{profile.roblox_username || profile.username}</p>
+              <p className="text-xs text-muted-foreground">${profile.balance.toFixed(2)}</p>
+            </div>
           </div>
-        </div>
+        </button>
       </DropdownMenuTrigger>
       
       <DropdownMenuContent align="end" className="w-80 p-0">

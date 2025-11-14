@@ -36,10 +36,11 @@ const Items = () => {
     try {
       // Cast supabase client to any to bypass deep type inference issues
       const client: any = supabase;
+      // @ts-ignore - suppress deep instantiation from client chain
       const result = await client
         .from("items")
         .select("*")
-        .eq("game_type", selectedGame)
+        .eq("game_type", selectedGame as any)
         .order("value", { ascending: false });
 
       if (result.error) {
