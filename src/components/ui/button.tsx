@@ -74,7 +74,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         onClick={handleClick}
         {...props}
       >
-        {(isProcessing || loading) && <Loader2 className="animate-spin" />}
+        {(isProcessing || loading) && !asChild && <Loader2 className="animate-spin" />}
         {children}
       </Comp>
     );
