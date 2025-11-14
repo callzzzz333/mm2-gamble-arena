@@ -33,18 +33,24 @@ const Items = () => {
   }, [selectedGame]);
 
   const fetchItems = async () => {
-    const { data, error } = await supabase
-      .from("items")
-      .select("*")
-      .eq("game_type", selectedGame)
-      .order("value", { ascending: false });
+    try {
+      // Cast supabase client to any to bypass deep type inference issues
+      const client: any = supabase;
+      const result = await client
+        .from("items")
+        .select("*")
+        .eq("game_type", selectedGame)
+        .order("value", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching items:", error);
-      return;
+      if (result.error) {
+        console.error("Error fetching items:", result.error);
+        return;
+      }
+
+      setItems((result.data || []) as Item[]);
+    } catch (err) {
+      console.error("Error in fetchItems:", err);
     }
-
-    setItems(data || []);
   };
 
   // Real-time subscription for items
@@ -102,13 +108,15 @@ const Items = () => {
     return items.filter(item => item.rarity === rarity).length;
   };
 
-  const gameInfo: Record<"MM2" | "SAB" | "PVB" | "GAG", {
-    title: string;
-    description: string;
-    conversionRate: string;
-    source: string;
-    externalUrl?: string;
-  }> = {
+interface GameInfo {
+  title: string;
+  description: string;
+  conversionRate: string;
+  source: string;
+  externalUrl?: string;
+}
+
+  const gameInfo: Record<"MM2" | "SAB" | "PVB" | "GAG", GameInfo> = {
     MM2: {
       title: "MM2 Items",
       description: "All Murder Mystery 2 items with USD values",
@@ -188,8 +196,10 @@ const Items = () => {
                         className="hidden md:flex"
                       >
                         <a href={gameInfo[selectedGame].externalUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          Visit Official Site
+                          <span className="flex items-center">
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Visit Official Site
+                          </span>
                         </a>
                       </Button>
                     )}
@@ -306,8 +316,10 @@ const Items = () => {
                     {gameInfo[selectedGame].externalUrl && items.length === 0 && (
                       <Button variant="outline" asChild>
                         <a href={gameInfo[selectedGame].externalUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          View on Official Site
+                          <span className="flex items-center">
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            View on Official Site
+                          </span>
                         </a>
                       </Button>
                     )}
