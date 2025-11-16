@@ -18,6 +18,7 @@ import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCryptoPrice } from "@/hooks/useCryptoPrice";
 import logo from "@/assets/logo.png";
+import litecoinLogo from "@/assets/litecoin-logo.png";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -98,76 +99,64 @@ export const Sidebar = () => {
         </div>
 
         {isLoading ? (
-          <div className="mx-3 p-4 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm animate-pulse">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-muted" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-muted rounded w-16" />
-                <div className="h-3 bg-muted rounded w-20" />
+          <div className="mx-3 p-3 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-muted" />
+              <div className="flex-1 space-y-1">
+                <div className="h-3 bg-muted rounded w-16" />
+                <div className="h-5 bg-muted rounded w-20" />
               </div>
             </div>
-            <div className="h-6 bg-muted rounded w-24" />
           </div>
         ) : cryptoData ? (
-          <div className="mx-3 p-4 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm space-y-3">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bitcoin className="w-6 h-6 text-primary" />
+          <div className="mx-3 p-3 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <img src={litecoinLogo} alt="Litecoin" className="w-8 h-8" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold">{cryptoData.symbol}</span>
+                  <div className={cn(
+                    "flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded",
+                    cryptoData.isPositive 
+                      ? "bg-green-500/10 text-green-500" 
+                      : "bg-red-500/10 text-red-500"
+                  )}>
+                    {cryptoData.isPositive ? (
+                      <ArrowUpRight className="w-3 h-3" />
+                    ) : (
+                      <ArrowDownRight className="w-3 h-3" />
+                    )}
+                    {Math.abs(cryptoData.change24h).toFixed(2)}%
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{cryptoData.symbol}</p>
-                  <p className="text-xs text-muted-foreground">{cryptoData.name}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-end justify-between">
-              <div>
                 <p className="text-lg font-bold text-foreground">
                   ${cryptoData.price.toFixed(2)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatDistanceToNow(cryptoData.lastUpdated, { addSuffix: true })}
-                </p>
-              </div>
-              <div className={cn(
-                "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded",
-                cryptoData.isPositive 
-                  ? "bg-green-500/10 text-green-500" 
-                  : "bg-red-500/10 text-red-500"
-              )}>
-                {cryptoData.isPositive ? (
-                  <ArrowUpRight className="w-3 h-3" />
-                ) : (
-                  <ArrowDownRight className="w-3 h-3" />
-                )}
-                {Math.abs(cryptoData.change24h).toFixed(2)}%
               </div>
             </div>
 
-            <div className="pt-3 border-t border-border/50 space-y-2">
-              <div className="flex justify-between text-xs">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs pt-2 border-t border-border/50">
+              <div className="flex flex-col">
                 <span className="text-muted-foreground">24h High</span>
                 <span className="font-medium">${cryptoData.high24h.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-xs">
+              <div className="flex flex-col">
                 <span className="text-muted-foreground">24h Low</span>
                 <span className="font-medium">${cryptoData.low24h.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-xs">
+              <div className="flex flex-col">
                 <span className="text-muted-foreground">Volume</span>
                 <span className="font-medium">{formatNumber(cryptoData.volume24h)}</span>
               </div>
-              <div className="flex justify-between text-xs">
+              <div className="flex flex-col">
                 <span className="text-muted-foreground">Market Cap</span>
                 <span className="font-medium">{formatNumber(cryptoData.marketCap)}</span>
               </div>
             </div>
           </div>
         ) : (
-          <div className="mx-3 p-4 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm">
-            <p className="text-xs text-muted-foreground text-center">Failed to load crypto data</p>
+          <div className="mx-3 p-3 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm">
+            <p className="text-xs text-muted-foreground text-center">Failed to load</p>
           </div>
         )}
 
