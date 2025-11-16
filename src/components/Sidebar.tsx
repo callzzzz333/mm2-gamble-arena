@@ -12,7 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useCryptoPrice } from "@/hooks/useCryptoPrice";
 import logo from "@/assets/logo.png";
 import litecoinLogo from "@/assets/litecoin-logo.png";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export const Sidebar = () => {
   const navigate = useNavigate();
