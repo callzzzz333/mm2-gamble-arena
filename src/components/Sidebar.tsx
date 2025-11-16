@@ -5,8 +5,10 @@ import {
   X,
   Shield,
   TrendingUp,
-  Coins,
+  Bitcoin,
   ExternalLink,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -40,13 +42,14 @@ export const Sidebar = () => {
     if (isMobile) setOpen(false);
   };
 
-  const cryptoCoins = [
-    { name: "Bitcoin", symbol: "BTC" },
-    { name: "Ethereum", symbol: "ETH" },
-    { name: "Litecoin", symbol: "LTC" },
-    { name: "USDT", symbol: "USDT" },
-    { name: "BNB", symbol: "BNB" },
-  ];
+  // Litecoin statistics (would be fetched from API in production)
+  const litecoinStats = {
+    symbol: "LTC",
+    name: "Litecoin",
+    price: 84.23,
+    change24h: 2.45,
+    isPositive: true,
+  };
 
   const gameItems = [
     { title: "SAB", path: "/items?game=sab" },
@@ -87,22 +90,46 @@ export const Sidebar = () => {
 
         <div className="py-4">
           <div className="px-3 mb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Coins className="w-4 h-4" />
-              Crypto Statistics
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Crypto
             </p>
           </div>
         </div>
 
-        {cryptoCoins.map((coin) => (
-          <div
-            key={coin.symbol}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-card/50 mb-1 flex items-center justify-between"
-          >
-            <span className="text-sm font-medium">{coin.name}</span>
-            <span className="text-xs text-muted-foreground">{coin.symbol}</span>
+        <div className="mx-3 p-4 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bitcoin className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">{litecoinStats.symbol}</p>
+                <p className="text-xs text-muted-foreground">{litecoinStats.name}</p>
+              </div>
+            </div>
           </div>
-        ))}
+          
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-lg font-bold text-foreground">
+                ${litecoinStats.price.toFixed(2)}
+              </p>
+            </div>
+            <div className={cn(
+              "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded",
+              litecoinStats.isPositive 
+                ? "bg-green-500/10 text-green-500" 
+                : "bg-red-500/10 text-red-500"
+            )}>
+              {litecoinStats.isPositive ? (
+                <ArrowUpRight className="w-3 h-3" />
+              ) : (
+                <ArrowDownRight className="w-3 h-3" />
+              )}
+              {Math.abs(litecoinStats.change24h)}%
+            </div>
+          </div>
+        </div>
 
         <div className="py-4">
           <div className="px-3 mb-2">
