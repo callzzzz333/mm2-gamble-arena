@@ -16,8 +16,10 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCryptoPrice } from "@/hooks/useCryptoPrice";
 import logo from "@/assets/logo.png";
 import { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 
 interface GameMenuItem {
   title: string;
@@ -34,6 +36,7 @@ export const Sidebar = () => {
   const { isAdmin } = useAdminCheck(user);
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
+  const { cryptoData, isLoading } = useCryptoPrice("litecoin");
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -42,13 +45,11 @@ export const Sidebar = () => {
     if (isMobile) setOpen(false);
   };
 
-  // Litecoin statistics (would be fetched from API in production)
-  const litecoinStats = {
-    symbol: "LTC",
-    name: "Litecoin",
-    price: 84.23,
-    change24h: 2.45,
-    isPositive: true,
+  const formatNumber = (num: number) => {
+    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
+    return `$${num.toFixed(2)}`;
   };
 
   const gameItems = [
@@ -96,40 +97,79 @@ export const Sidebar = () => {
           </div>
         </div>
 
-        <div className="mx-3 p-4 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bitcoin className="w-6 h-6 text-primary" />
+        {isLoading ? (
+          <div className="mx-3 p-4 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm animate-pulse">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-muted" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-muted rounded w-16" />
+                <div className="h-3 bg-muted rounded w-20" />
               </div>
+            </div>
+            <div className="h-6 bg-muted rounded w-24" />
+          </div>
+        ) : cryptoData ? (
+          <div className="mx-3 p-4 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Bitcoin className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">{cryptoData.symbol}</p>
+                  <p className="text-xs text-muted-foreground">{cryptoData.name}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-end justify-between">
               <div>
-                <p className="text-sm font-bold text-foreground">{litecoinStats.symbol}</p>
-                <p className="text-xs text-muted-foreground">{litecoinStats.name}</p>
+                <p className="text-lg font-bold text-foreground">
+                  ${cryptoData.price.toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatDistanceToNow(cryptoData.lastUpdated, { addSuffix: true })}
+                </p>
+              </div>
+              <div className={cn(
+                "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded",
+                cryptoData.isPositive 
+                  ? "bg-green-500/10 text-green-500" 
+                  : "bg-red-500/10 text-red-500"
+              )}>
+                {cryptoData.isPositive ? (
+                  <ArrowUpRight className="w-3 h-3" />
+                ) : (
+                  <ArrowDownRight className="w-3 h-3" />
+                )}
+                {Math.abs(cryptoData.change24h).toFixed(2)}%
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-border/50 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">24h High</span>
+                <span className="font-medium">${cryptoData.high24h.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">24h Low</span>
+                <span className="font-medium">${cryptoData.low24h.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Volume</span>
+                <span className="font-medium">{formatNumber(cryptoData.volume24h)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Market Cap</span>
+                <span className="font-medium">{formatNumber(cryptoData.marketCap)}</span>
               </div>
             </div>
           </div>
-          
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-lg font-bold text-foreground">
-                ${litecoinStats.price.toFixed(2)}
-              </p>
-            </div>
-            <div className={cn(
-              "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded",
-              litecoinStats.isPositive 
-                ? "bg-green-500/10 text-green-500" 
-                : "bg-red-500/10 text-red-500"
-            )}>
-              {litecoinStats.isPositive ? (
-                <ArrowUpRight className="w-3 h-3" />
-              ) : (
-                <ArrowDownRight className="w-3 h-3" />
-              )}
-              {Math.abs(litecoinStats.change24h)}%
-            </div>
+        ) : (
+          <div className="mx-3 p-4 rounded-xl border border-border bg-gradient-to-br from-card to-card/50 backdrop-blur-sm">
+            <p className="text-xs text-muted-foreground text-center">Failed to load crypto data</p>
           </div>
-        </div>
+        )}
 
         <div className="py-4">
           <div className="px-3 mb-2">
