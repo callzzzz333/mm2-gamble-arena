@@ -1,13 +1,12 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
-  DollarSign,
-  Star,
-  Ticket,
   Menu,
   X,
-  Package,
   Shield,
+  TrendingUp,
+  Coins,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -41,11 +40,20 @@ export const Sidebar = () => {
     if (isMobile) setOpen(false);
   };
 
-  const marketplaceMenuItems: GameMenuItem[] = [
-    { title: "Market", icon: Package, path: "/market" },
-    { title: "My Listings", icon: Ticket, path: "/my-listings" },
-    { title: "Deposit", icon: DollarSign, path: "/deposit" },
-    { title: "Item Values", icon: Star, path: "/items" },
+  const cryptoCoins = [
+    { name: "Bitcoin", symbol: "BTC" },
+    { name: "Ethereum", symbol: "ETH" },
+    { name: "Litecoin", symbol: "LTC" },
+    { name: "USDT", symbol: "USDT" },
+    { name: "BNB", symbol: "BNB" },
+  ];
+
+  const gameItems = [
+    { title: "SAB", path: "/items?game=sab" },
+    { title: "PVB", path: "/items?game=pvb" },
+    { title: "GAG", path: "/items?game=gag" },
+    { title: "MM2", path: "/items?game=mm2" },
+    { title: "ADM", path: "/items?game=adm" },
   ];
 
   const sidebarContent = (
@@ -79,26 +87,56 @@ export const Sidebar = () => {
 
         <div className="py-4">
           <div className="px-3 mb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Marketplace</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Coins className="w-4 h-4" />
+              Crypto Statistics
+            </p>
           </div>
         </div>
 
-        {marketplaceMenuItems.map((item) => (
+        {cryptoCoins.map((coin) => (
+          <div
+            key={coin.symbol}
+            className="w-full px-3 py-2 rounded-lg border border-border bg-card/50 mb-1 flex items-center justify-between"
+          >
+            <span className="text-sm font-medium">{coin.name}</span>
+            <span className="text-xs text-muted-foreground">{coin.symbol}</span>
+          </div>
+        ))}
+
+        <div className="py-4">
+          <div className="px-3 mb-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Game Item Values
+            </p>
+          </div>
+        </div>
+
+        {gameItems.map((item) => (
           <Button
             key={item.title}
             variant="ghost"
             className={cn(
               "w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all relative border border-border",
-              item.path && isActive(item.path)
+              isActive(item.path)
                 ? "bg-accent text-accent-foreground shadow-[0_0_15px_hsl(var(--glow-primary)/0.4)]"
                 : "hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)]",
             )}
-            onClick={() => item.path && handleNavigation(item.path)}
+            onClick={() => handleNavigation(item.path)}
           >
-            <item.icon className="w-5 h-5" />
-            <span className="font-medium flex-1 text-left">{item.title}</span>
+            <span className="font-bold text-lg">{item.title}</span>
           </Button>
         ))}
+
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 h-11 px-3 rounded-lg transition-all border border-border hover:bg-accent/50 hover:shadow-[0_0_10px_hsl(var(--glow-primary)/0.2)] mt-2"
+          onClick={() => window.open("https://www.rolimons.com/", "_blank")}
+        >
+          <ExternalLink className="w-5 h-5" />
+          <span className="font-medium">Rolimons Stats</span>
+        </Button>
 
         {isAdmin && (
           <>

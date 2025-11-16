@@ -591,24 +591,33 @@ export type Database = {
       items: {
         Row: {
           created_at: string | null
+          demand: number | null
+          game_type: string
           id: string
           image_url: string | null
+          metadata: Json | null
           name: string
           rarity: string
           value: number
         }
         Insert: {
           created_at?: string | null
+          demand?: number | null
+          game_type?: string
           id?: string
           image_url?: string | null
+          metadata?: Json | null
           name: string
           rarity: string
           value?: number
         }
         Update: {
           created_at?: string | null
+          demand?: number | null
+          game_type?: string
           id?: string
           image_url?: string | null
+          metadata?: Json | null
           name?: string
           rarity?: string
           value?: number
@@ -682,6 +691,89 @@ export type Database = {
           winner_id?: string | null
         }
         Relationships: []
+      }
+      marketplace_listings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          items: Json
+          price: number
+          sold_at: string | null
+          sold_to: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          items?: Json
+          price: number
+          sold_at?: string | null
+          sold_to?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          items?: Json
+          price?: number
+          sold_at?: string | null
+          sold_to?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      marketplace_transactions: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          items: Json
+          listing_id: string
+          price: number
+          seller_id: string
+          status: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          items: Json
+          listing_id: string
+          price: number
+          seller_id: string
+          status?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          items?: Json
+          listing_id?: string
+          price?: number
+          seller_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_transactions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
