@@ -2,16 +2,7 @@
 // NOTE: Only the button styles and layering details have been upgraded — logic unchanged.
 
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  Home,
-  Menu,
-  X,
-  Shield,
-  TrendingUp,
-  ExternalLink,
-  ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
+import { Home, Menu, X, Shield, TrendingUp, ExternalLink, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -63,17 +54,14 @@ export const Sidebar = () => {
      hover:shadow-[inset_0_0_12px_rgba(255,255,255,0.08),0_6px_16px_rgba(0,140,255,0.25)] \
      backdrop-blur-sm";
 
-  const glowLayer =
-    "absolute inset-0 opacity-0 group-hover:opacity-100 \\
-     bg-gradient-to-r from-blue-500/20 via-blue-400/20 to-blue-500/20 \\
-     blur-xl transition-opacity \\
-     animate-[pulse_1.8s_ease-in-out_infinite]";
+  const glowLayer = `absolute inset-0 opacity-0 group-hover:opacity-100
+     bg-gradient-to-r from-blue-500/20 via-blue-400/20 to-blue-500/20
+     blur-xl transition-opacity
+     animate-[pulse_1.8s_ease-in-out_infinite]`;
 
-  const activeGlow =
-    "shadow-[0_0_18px_rgba(0,140,255,0.5)] ring-1 ring-blue-400/60";
+  const activeGlow = "shadow-[0_0_18px_rgba(0,140,255,0.5)] ring-1 ring-blue-400/60";
 
-  const hoverLift =
-    "group-hover:-translate-y-[1px] group-active:translate-y-[1px] transition-transform";
+  const hoverLift = "group-hover:-translate-y-[1px] group-active:translate-y-[1px] transition-transform";
 
   const sidebarContent = (
     <>
@@ -108,9 +96,7 @@ export const Sidebar = () => {
 
         <div className="py-4">
           <div className="px-3 mb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Crypto
-            </p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Crypto</p>
           </div>
         </div>
 
@@ -126,9 +112,7 @@ export const Sidebar = () => {
                   <div
                     className={cn(
                       "flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded",
-                      cryptoData.isPositive
-                        ? "bg-green-500/10 text-green-500"
-                        : "bg-red-500/10 text-red-500",
+                      cryptoData.isPositive ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500",
                     )}
                   >
                     {cryptoData.isPositive ? (
@@ -139,9 +123,7 @@ export const Sidebar = () => {
                     {Math.abs(cryptoData.change24h).toFixed(2)}%
                   </div>
                 </div>
-                <p className="text-lg font-bold text-foreground">
-                  ${cryptoData.price.toFixed(2)}
-                </p>
+                <p className="text-lg font-bold text-foreground">${cryptoData.price.toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -184,11 +166,7 @@ export const Sidebar = () => {
 
         <Button
           variant="ghost"
-          className={cn(
-            buttonBase,
-            hoverLift,
-            "mt-2 hover:bg-accent/40 hover:shadow-[0_0_12px_rgba(0,140,255,0.3)]",
-          )}
+          className={cn(buttonBase, hoverLift, "mt-2 hover:bg-accent/40 hover:shadow-[0_0_12px_rgba(0,140,255,0.3)]")}
           onClick={() => window.open("https://www.rolimons.com/", "_blank")}
         >
           <span className={glowLayer} />
@@ -198,7 +176,9 @@ export const Sidebar = () => {
 
         {isAdmin && (
           <>
-            <div className="py-4"><div className="h-px bg-border" /></div>
+            <div className="py-4">
+              <div className="h-px bg-border" />
+            </div>
 
             <Button
               variant="ghost"
