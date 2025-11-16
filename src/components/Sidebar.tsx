@@ -21,7 +21,17 @@ export const Sidebar = () => {
   const { isAdmin } = useAdminCheck(user);
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
-  const { cryptoData, isLoading } = useCryptoPrice("litecoin");
+  // Fetch Litecoin price every second for realtime updates
+  const { cryptoData, isLoading, refetch } = useCryptoPrice("litecoin");
+
+  // Re-fetch every 1 second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   const isActive = (path) => location.pathname === path;
   const handleNavigation = (path) => {
@@ -38,7 +48,11 @@ export const Sidebar = () => {
   ];
 
   const buttonBase =
-    "w-full justify-start h-11 px-3 rounded-xl transition-all border border-border relative overflow-hidden group";
+    "w-full justify-start h-12 px-4 rounded-xl transition-all border border-border relative overflow-hidden group \
+     bg-gradient-to-br from-card via-card/40 to-card/20 \
+     shadow-[inset_0_0_8px_rgba(255,255,255,0.06),0_4px_12px_rgba(0,0,0,0.25)] \
+     hover:shadow-[inset_0_0_12px_rgba(255,255,255,0.08),0_6px_16px_rgba(0,140,255,0.25)] \
+     backdrop-blur-sm";
 
   const glowLayer =
     "absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-r from-blue-500/10 via-blue-400/10 to-blue-500/10 blur-xl transition-opacity";
@@ -138,7 +152,13 @@ export const Sidebar = () => {
             onClick={() => handleNavigation(item.path)}
           >
             <span className={glowLayer} />
-            <span className="font-bold text-lg relative z-10">{item.title}</span>
+            {item.title === "GAG" ? (
+              <span className="relative z-10 font-extrabold text-lg px-3 py-1 rounded-lg bg-yellow-400 text-black shadow-[0_4px_0px_#d1a200] group-hover:shadow-[0_6px_0px_#b48b00] group-hover:scale-[1.05] group-active:scale-[0.97] transition-all duration-200">
+                GAG
+              </span>
+            ) : (
+              <span className="font-bold text-lg relative z-10">{item.title}</span>
+            )}
           </Button>
         ))}
 
