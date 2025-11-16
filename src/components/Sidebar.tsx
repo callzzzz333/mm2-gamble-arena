@@ -185,7 +185,7 @@ export const Sidebar = () => {
   }
 
   return (
-    <aside className="hidden lg:flex w-64 border-r bg-card flex-col py-6 overflow-y-auto">
+    <aside className="hidden md:flex fixed left-0 top-0 h-screen w-64 border-r bg-card flex-col py-6 overflow-y-auto z-40">
       {sidebarContent}
     </aside>
   );
