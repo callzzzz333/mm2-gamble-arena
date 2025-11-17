@@ -13,6 +13,9 @@ import { useCryptoPrice } from "@/hooks/useCryptoPrice";
 import logo from "@/assets/logo.png";
 import litecoinLogo from "@/assets/litecoin-logo.png";
 import { useState, useEffect } from "react";
+import { BannerGenerator } from "@/components/BannerGenerator";
+import faqBanner from "@/assets/banners/faq-banner.png";
+import giveawaysBanner from "@/assets/banners/giveaways-banner.png";
 
 export const Sidebar = () => {
   const navigate = useNavigate();
@@ -21,6 +24,12 @@ export const Sidebar = () => {
   const { isAdmin } = useAdminCheck(user);
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
+  const [banners, setBanners] = useState<Record<string, string>>({
+    faq: faqBanner,
+    giveaways: giveawaysBanner,
+  });
+  const [showBannerGenerator, setShowBannerGenerator] = useState(true);
+  
   // Fetch Litecoin price every second for realtime updates
   const { cryptoData, isLoading, refresh } = useCryptoPrice("litecoin");
 
@@ -33,6 +42,11 @@ export const Sidebar = () => {
     return () => clearInterval(interval);
   }, [refresh]);
 
+  const handleBannersGenerated = (generatedBanners: Record<string, string>) => {
+    setBanners(prev => ({ ...prev, ...generatedBanners }));
+    setShowBannerGenerator(false);
+  };
+
   const isActive = (path) => location.pathname === path;
   const handleNavigation = (path) => {
     navigate(path);
@@ -40,11 +54,17 @@ export const Sidebar = () => {
   };
 
   const gameItems = [
-    { title: "SAB", path: "/items?game=sab" },
-    { title: "PVB", path: "/items?game=pvb" },
-    { title: "GAG", path: "/items?game=gag" },
-    { title: "MM2", path: "/items?game=mm2" },
-    { title: "ADM", path: "/items?game=adm" },
+    { title: "SAB", path: "/items?game=sab", key: "sab" },
+    { title: "PVB", path: "/items?game=pvb", key: "pvb" },
+    { title: "GAG", path: "/items?game=gag", key: "gag" },
+    { title: "MM2", path: "/items?game=mm2", key: "mm2" },
+    { title: "ADM", path: "/items?game=adm", key: "adm" },
+  ];
+
+  const sectionItems = [
+    { title: "Giveaways", path: "/giveaways", key: "giveaways" },
+    { title: "FAQ", path: "/faq", key: "faq" },
+    { title: "Socials", path: "/socials", key: "socials" },
   ];
 
   const buttonBase =
@@ -53,6 +73,8 @@ export const Sidebar = () => {
 
   const sidebarContent = (
     <>
+      {showBannerGenerator && <BannerGenerator onBannersGenerated={handleBannersGenerated} />}
+      
       <div
         className="px-6 mb-8 cursor-pointer flex items-center justify-center"
         onClick={() => handleNavigation("/")}
@@ -128,23 +150,44 @@ export const Sidebar = () => {
             key={item.title}
             variant="ghost"
             className={cn(
-              buttonBase,
-              isActive(item.path) ? "bg-accent text-accent-foreground" : "",
+              "w-full h-20 p-0 rounded-lg overflow-hidden",
+              isActive(item.path) ? "ring-2 ring-primary" : "",
             )}
             onClick={() => handleNavigation(item.path)}
           >
-            <span className="font-bold text-lg">{item.title}</span>
+            {banners[item.key] ? (
+              <img 
+                src={banners[item.key]} 
+                alt={item.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="font-bold text-lg">{item.title}</span>
+            )}
           </Button>
         ))}
 
-        <Button
-          variant="ghost"
-          className={cn(buttonBase, "mt-2")}
-          onClick={() => window.open("https://www.rolimons.com/", "_blank")}
-        >
-          <ExternalLink className="w-5 h-5" />
-          <span className="font-medium">Rolimons Stats</span>
-        </Button>
+        {sectionItems.map((item) => (
+          <Button
+            key={item.title}
+            variant="ghost"
+            className={cn(
+              "w-full h-20 p-0 rounded-lg overflow-hidden",
+              isActive(item.path) ? "ring-2 ring-primary" : "",
+            )}
+            onClick={() => handleNavigation(item.path)}
+          >
+            {banners[item.key] ? (
+              <img 
+                src={banners[item.key]} 
+                alt={item.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="font-bold text-lg">{item.title}</span>
+            )}
+          </Button>
+        ))}
 
         {isAdmin && (
           <>
