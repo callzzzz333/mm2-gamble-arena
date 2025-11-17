@@ -22,16 +22,16 @@ export const Sidebar = () => {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   // Fetch Litecoin price every second for realtime updates
-  const { cryptoData, isLoading, refetch } = useCryptoPrice("litecoin");
+  const { cryptoData, isLoading, refresh } = useCryptoPrice("litecoin");
 
   // Re-fetch every 1 second
   useEffect(() => {
     const interval = setInterval(() => {
-      refetch();
+      refresh();
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [refetch]);
+  }, [refresh]);
 
   const isActive = (path) => location.pathname === path;
   const handleNavigation = (path) => {
@@ -48,32 +48,19 @@ export const Sidebar = () => {
   ];
 
   const buttonBase =
-    "w-full justify-start h-12 px-4 rounded-xl transition-all border border-border relative overflow-hidden group \
-     bg-gradient-to-br from-card via-card/40 to-card/20 \
-     shadow-[inset_0_0_8px_rgba(255,255,255,0.06),0_4px_12px_rgba(0,0,0,0.25)] \
-     hover:shadow-[inset_0_0_12px_rgba(255,255,255,0.08),0_6px_16px_rgba(0,140,255,0.25)] \
-     backdrop-blur-sm";
-
-  const glowLayer = `absolute inset-0 opacity-0 group-hover:opacity-100
-     bg-gradient-to-r from-blue-500/20 via-blue-400/20 to-blue-500/20
-     blur-xl transition-opacity
-     animate-[pulse_1.8s_ease-in-out_infinite]`;
-
-  const activeGlow = "shadow-[0_0_18px_rgba(0,140,255,0.5)] ring-1 ring-blue-400/60";
-
-  const hoverLift = "group-hover:-translate-y-[1px] group-active:translate-y-[1px] transition-transform";
+    "w-full justify-start h-12 px-4 rounded-lg transition-all border-2 border-border/50 \
+     bg-card/50 backdrop-blur-sm hover:bg-card/70 hover:border-border";
 
   const sidebarContent = (
     <>
       <div
-        className="px-6 mb-8 cursor-pointer flex items-center justify-center relative group"
+        className="px-6 mb-8 cursor-pointer flex items-center justify-center"
         onClick={() => handleNavigation("/")}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-white/5 to-blue-500/10 blur-xl opacity-0 group-hover:opacity-100 transition" />
         <img
           src={logo}
           alt="Royale Logo"
-          className="h-16 w-auto relative z-10 group-hover:scale-105 transition-transform"
+          className="h-16 w-auto hover:scale-105 transition-transform"
         />
       </div>
 
@@ -82,16 +69,12 @@ export const Sidebar = () => {
           variant="ghost"
           className={cn(
             buttonBase,
-            hoverLift,
-            isActive("/")
-              ? `bg-accent/60 text-accent-foreground ${activeGlow}`
-              : "hover:bg-accent/40 hover:shadow-[0_0_12px_rgba(0,140,255,0.3)]",
+            isActive("/") ? "bg-accent text-accent-foreground" : "",
           )}
           onClick={() => handleNavigation("/")}
         >
-          <span className={glowLayer} />
-          <Home className="w-5 h-5 relative z-10" />
-          <span className="font-semibold relative z-10">Home</span>
+          <Home className="w-5 h-5" />
+          <span className="font-semibold">Home</span>
         </Button>
 
         <div className="py-4">
@@ -146,32 +129,21 @@ export const Sidebar = () => {
             variant="ghost"
             className={cn(
               buttonBase,
-              hoverLift,
-              isActive(item.path)
-                ? `bg-accent/60 text-accent-foreground ${activeGlow}`
-                : "hover:bg-accent/40 hover:shadow-[0_0_12px_rgba(0,140,255,0.3)]",
+              isActive(item.path) ? "bg-accent text-accent-foreground" : "",
             )}
             onClick={() => handleNavigation(item.path)}
           >
-            <span className={glowLayer} />
-            {item.title === "GAG" ? (
-              <span className="relative z-10 font-extrabold text-lg px-3 py-1 rounded-lg bg-yellow-400 text-black shadow-[0_4px_0px_#d1a200] group-hover:shadow-[0_6px_0px_#b48b00] group-hover:scale-[1.05] group-active:scale-[0.97] transition-all duration-200">
-                GAG
-              </span>
-            ) : (
-              <span className="font-bold text-lg relative z-10">{item.title}</span>
-            )}
+            <span className="font-bold text-lg">{item.title}</span>
           </Button>
         ))}
 
         <Button
           variant="ghost"
-          className={cn(buttonBase, hoverLift, "mt-2 hover:bg-accent/40 hover:shadow-[0_0_12px_rgba(0,140,255,0.3)]")}
+          className={cn(buttonBase, "mt-2")}
           onClick={() => window.open("https://www.rolimons.com/", "_blank")}
         >
-          <span className={glowLayer} />
-          <ExternalLink className="w-5 h-5 relative z-10" />
-          <span className="font-medium relative z-10">Rolimons Stats</span>
+          <ExternalLink className="w-5 h-5" />
+          <span className="font-medium">Rolimons Stats</span>
         </Button>
 
         {isAdmin && (
@@ -184,16 +156,12 @@ export const Sidebar = () => {
               variant="ghost"
               className={cn(
                 buttonBase,
-                hoverLift,
-                isActive("/admin")
-                  ? "bg-destructive/20 text-destructive shadow-[0_0_18px_rgba(255,0,0,0.4)]"
-                  : "hover:bg-destructive/10 hover:shadow-[0_0_12px_rgba(255,0,0,0.3)]",
+                isActive("/admin") ? "bg-destructive/20 text-destructive" : "hover:bg-destructive/10",
               )}
               onClick={() => handleNavigation("/admin")}
             >
-              <span className={"absolute inset-0 bg-red-500/10 blur-xl opacity-0 group-hover:opacity-100 transition"} />
-              <Shield className="w-5 h-5 relative z-10" />
-              <span className="font-medium relative z-10">Admin Panel</span>
+              <Shield className="w-5 h-5" />
+              <span className="font-medium">Admin Panel</span>
             </Button>
           </>
         )}
