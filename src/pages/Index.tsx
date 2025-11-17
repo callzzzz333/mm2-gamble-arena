@@ -1,106 +1,20 @@
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
-import { GameModeCard } from "@/components/GameModeCard";
-import { LiveBets } from "@/components/LiveBets";
 import { LiveChat } from "@/components/LiveChat";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
-import { Coins, Trophy, TrendingUp, CircleDot, Rocket } from "lucide-react";
-import discordBanner from "@/assets/discord-banner.png";
-import coinflipImg from "@/assets/coinflip.png";
-import jackpotImg from "@/assets/jackpot.png";
 
 const Index = () => {
   return (
-    <div className="min-h-screen w-full flex">
+    <div className="min-h-screen bg-background">
       <Sidebar />
-      
-      <div className="flex-1 md:ml-64 md:mr-96">
+      <div className="md:ml-64">
         <TopBar />
-        
-        <main className="pt-16">
-          {/* Discord Banner with Rounded Corners */}
-          <section className="px-4 md:px-12 py-4 md:py-6">
-            <div 
-              className="relative h-40 md:h-64 overflow-hidden rounded-xl md:rounded-2xl cursor-pointer transition-transform hover:scale-[1.02] duration-300"
-              onClick={() => window.open('https://discord.gg/xBbrVPsPqs', '_blank')}
-            >
-              <img 
-                src={discordBanner}
-                alt="Join our Discord - Daily Giveaways & Airdrops"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            </div>
-          </section>
-
-          {/* Game Modes */}
-          <section className="px-4 md:px-12 py-6 md:py-12">
-            <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Trophy className="w-4 h-4 md:w-5 md:h-5" />
-              </div>
-              <h2 className="text-xl md:text-2xl font-bold">Game Modes</h2>
-            </div>
-
-            <div className="flex gap-3 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
-              <GameModeCard
-                title="COINFLIP"
-                subtitle="RBXROYALE ORIGINALS"
-                icon={Coins}
-                isNew
-                route="/coinflip"
-                image={coinflipImg}
-              />
-              <GameModeCard
-                title="JACKPOT"
-                subtitle="RBXROYALE ORIGINALS"
-                icon={Trophy}
-                isNew
-                route="/jackpot"
-                image={jackpotImg}
-              />
-              <GameModeCard
-                title="UPGRADER"
-                subtitle="RBXROYALE ORIGINALS"
-                icon={TrendingUp}
-                isNew
-                route="/upgrader"
-                image={coinflipImg}
-              />
-              <GameModeCard
-                title="ROULETTE"
-                subtitle="RBXROYALE ORIGINALS"
-                icon={CircleDot}
-                isNew
-                route="/roulette"
-                image={jackpotImg}
-              />
-              <GameModeCard
-                title="CRASH"
-                subtitle="RBXROYALE ORIGINALS"
-                icon={Rocket}
-                isNew
-                route="/crash"
-                image={coinflipImg}
-              />
-              <GameModeCard
-                title="CASE BATTLES"
-                subtitle="RBXROYALE ORIGINALS"
-                icon={Trophy}
-                isNew
-                route="/case-battles"
-                image={jackpotImg}
-              />
-            </div>
-          </section>
-
-          {/* Live Bets */}
-          <section className="px-4 md:px-12 pb-20 md:pb-12">
-            <LiveBets />
-          </section>
+        <main className="container mx-auto px-4 py-8 pb-24 md:pb-8">
+          <div className="max-w-3xl mx-auto">
+            <LiveChat />
+          </div>
         </main>
       </div>
-
-      <LiveChat />
       <MobileBottomNav />
     </div>
   );
