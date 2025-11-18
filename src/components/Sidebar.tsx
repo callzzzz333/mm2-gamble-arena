@@ -145,49 +145,59 @@ export const Sidebar = () => {
           </div>
         </div>
 
-        {gameItems.map((item) => (
-          <Button
-            key={item.title}
-            variant="ghost"
-            className={cn(
-              "w-full h-20 p-0 rounded-lg overflow-hidden",
-              isActive(item.path) ? "ring-2 ring-primary" : "",
-            )}
-            onClick={() => handleNavigation(item.path)}
-          >
-            {banners[item.key] ? (
-              <img 
-                src={banners[item.key]} 
-                alt={item.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="font-bold text-lg">{item.title}</span>
-            )}
-          </Button>
-        ))}
+        <div className="grid grid-cols-2 gap-2 px-1">
+          {gameItems.map((item) => (
+            <Button
+              key={item.title}
+              variant="ghost"
+              className={cn(
+                "h-24 p-0 rounded-lg overflow-hidden transition-all hover:scale-105",
+                isActive(item.path) ? "ring-2 ring-primary shadow-lg" : "",
+              )}
+              onClick={() => handleNavigation(item.path)}
+            >
+              {banners[item.key] ? (
+                <img 
+                  src={banners[item.key]} 
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="font-bold text-lg">{item.title}</span>
+              )}
+            </Button>
+          ))}
+        </div>
 
-        {sectionItems.map((item) => (
-          <Button
-            key={item.title}
-            variant="ghost"
-            className={cn(
-              "w-full h-20 p-0 rounded-lg overflow-hidden",
-              isActive(item.path) ? "ring-2 ring-primary" : "",
-            )}
-            onClick={() => handleNavigation(item.path)}
-          >
-            {banners[item.key] ? (
-              <img 
-                src={banners[item.key]} 
-                alt={item.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="font-bold text-lg">{item.title}</span>
-            )}
-          </Button>
-        ))}
+        <div className="py-4">
+          <div className="px-3 mb-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Community</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {sectionItems.map((item) => (
+            <Button
+              key={item.title}
+              variant="ghost"
+              className={cn(
+                "w-full h-20 p-0 rounded-lg overflow-hidden transition-all hover:scale-102",
+                isActive(item.path) ? "ring-2 ring-primary shadow-lg" : "",
+              )}
+              onClick={() => handleNavigation(item.path)}
+            >
+              {banners[item.key] ? (
+                <img 
+                  src={banners[item.key]} 
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="font-bold text-lg">{item.title}</span>
+              )}
+            </Button>
+          ))}
+        </div>
 
         {isAdmin && (
           <>

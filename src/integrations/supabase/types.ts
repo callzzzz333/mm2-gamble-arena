@@ -590,36 +590,60 @@ export type Database = {
       }
       items: {
         Row: {
+          acronym: string | null
           created_at: string | null
+          default_value: number | null
           demand: number | null
           game_type: string
+          hyped: number | null
           id: string
           image_url: string | null
+          last_updated: string | null
           metadata: Json | null
           name: string
+          projected: number | null
+          rap: number | null
+          rare: number | null
           rarity: string
+          rolimons_id: string | null
           value: number
         }
         Insert: {
+          acronym?: string | null
           created_at?: string | null
+          default_value?: number | null
           demand?: number | null
           game_type?: string
+          hyped?: number | null
           id?: string
           image_url?: string | null
+          last_updated?: string | null
           metadata?: Json | null
           name: string
+          projected?: number | null
+          rap?: number | null
+          rare?: number | null
           rarity: string
+          rolimons_id?: string | null
           value?: number
         }
         Update: {
+          acronym?: string | null
           created_at?: string | null
+          default_value?: number | null
           demand?: number | null
           game_type?: string
+          hyped?: number | null
           id?: string
           image_url?: string | null
+          last_updated?: string | null
           metadata?: Json | null
           name?: string
+          projected?: number | null
+          rap?: number | null
+          rare?: number | null
           rarity?: string
+          rolimons_id?: string | null
           value?: number
         }
         Relationships: []
