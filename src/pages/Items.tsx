@@ -218,59 +218,60 @@ interface GameInfo {
                     <p className="text-muted-foreground">Try adjusting your search</p>
                   </Card>
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="space-y-3">
                     {filteredItems.map((item) => (
-                      <Card key={item.rolimons_id} className="overflow-hidden hover:shadow-lg transition-all hover:scale-105">
-                        <div className="aspect-square bg-gradient-to-br from-card to-card/50 flex items-center justify-center p-4">
-                          <Package className="w-16 h-16 text-muted-foreground" />
-                        </div>
-                        <div className="p-4 space-y-3">
-                          <div>
-                            <h3 className="font-semibold text-sm leading-tight line-clamp-2 mb-1">{item.name}</h3>
-                            {item.acronym && (
-                              <p className="text-xs text-muted-foreground">{item.acronym}</p>
-                            )}
+                      <Card key={item.rolimons_id} className="hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-4 p-4">
+                          <div className="w-16 h-16 rounded bg-gradient-to-br from-card to-card/50 flex items-center justify-center flex-shrink-0">
+                            <Package className="w-10 h-10 text-muted-foreground" />
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                RAP
-                              </p>
-                              <p className="font-bold text-lg">{formatValue(item.rap)}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4 mb-2">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-semibold text-base truncate">{item.name}</h3>
+                                {item.acronym && (
+                                  <p className="text-xs text-muted-foreground">{item.acronym}</p>
+                                )}
+                              </div>
+                              
+                              <div className="flex gap-1">
+                                {item.projected !== -1 && (
+                                  <Badge variant="secondary" className="text-xs">P</Badge>
+                                )}
+                                {item.hyped !== -1 && (
+                                  <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-500">H</Badge>
+                                )}
+                                {item.rare !== -1 && (
+                                  <Badge variant="secondary" className="text-xs bg-purple-500/10 text-purple-500">R</Badge>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Value</p>
-                              <p className="font-bold text-lg text-primary">{formatValue(item.value)}</p>
+                            
+                            <div className="flex items-center gap-6">
+                              <div>
+                                <p className="text-xs text-muted-foreground">RAP</p>
+                                <p className="font-bold text-sm">{formatValue(item.rap)}</p>
+                              </div>
+                              
+                              <div>
+                                <p className="text-xs text-muted-foreground">Value</p>
+                                <p className="font-bold text-sm text-primary">{formatValue(item.value)}</p>
+                              </div>
+                              
+                              <div>
+                                <p className="text-xs text-muted-foreground">Demand</p>
+                                <p className={`font-semibold text-sm ${getDemandColor(item.demand)}`}>
+                                  {item.demand === -1 ? "N/A" : `${item.demand}/10`}
+                                </p>
+                              </div>
+                              
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-muted-foreground">Trend:</span>
+                                {getTrendIcon(item.trend)}
+                              </div>
                             </div>
                           </div>
-
-                          <div className="flex justify-between items-center pt-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">Demand:</span>
-                              <span className={`text-sm font-semibold ${getDemandColor(item.demand)}`}>
-                                {item.demand === -1 ? "N/A" : `${item.demand}/10`}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-muted-foreground">Trend:</span>
-                              {getTrendIcon(item.trend)}
-                            </div>
-                          </div>
-
-                          {(item.projected !== -1 || item.hyped !== -1 || item.rare !== -1) && (
-                            <div className="flex gap-1 flex-wrap">
-                              {item.projected !== -1 && (
-                                <Badge variant="secondary" className="text-xs">Projected</Badge>
-                              )}
-                              {item.hyped !== -1 && (
-                                <Badge variant="secondary" className="text-xs">Hyped</Badge>
-                              )}
-                              {item.rare !== -1 && (
-                                <Badge variant="secondary" className="text-xs">Rare</Badge>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </Card>
                     ))}

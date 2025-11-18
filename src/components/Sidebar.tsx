@@ -53,6 +53,10 @@ export const Sidebar = () => {
     if (isMobile) setOpen(false);
   };
 
+  const mainItems = [
+    { title: "Values", path: "/items?game=all", key: "values", icon: TrendingUp },
+  ];
+
   const gameItems = [
     { title: "SAB", path: "/items?game=sab", key: "sab" },
     { title: "PVB", path: "/items?game=pvb", key: "pvb" },
@@ -98,6 +102,21 @@ export const Sidebar = () => {
           <Home className="w-5 h-5" />
           <span className="font-semibold">Home</span>
         </Button>
+
+        {mainItems.map((item) => (
+          <Button
+            key={item.title}
+            variant="ghost"
+            className={cn(
+              buttonBase,
+              location.pathname === "/items" ? "bg-accent text-accent-foreground" : "",
+            )}
+            onClick={() => handleNavigation(item.path)}
+          >
+            <item.icon className="w-5 h-5" />
+            <span className="font-semibold">{item.title}</span>
+          </Button>
+        ))}
 
         <div className="py-4">
           <div className="px-3 mb-2">
