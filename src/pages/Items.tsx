@@ -222,8 +222,16 @@ interface GameInfo {
                     {filteredItems.map((item) => (
                       <Card key={item.rolimons_id} className="hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-4 p-4">
-                          <div className="w-16 h-16 rounded bg-gradient-to-br from-card to-card/50 flex items-center justify-center flex-shrink-0">
-                            <Package className="w-10 h-10 text-muted-foreground" />
+                          <div className="w-16 h-16 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {item.image_url ? (
+                              <img 
+                                src={item.image_url} 
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="w-10 h-10 text-muted-foreground" />
+                            )}
                           </div>
                           
                           <div className="flex-1 min-w-0">

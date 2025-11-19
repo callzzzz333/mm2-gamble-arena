@@ -13,7 +13,6 @@ import { useCryptoPrice } from "@/hooks/useCryptoPrice";
 import logo from "@/assets/logo.png";
 import litecoinLogo from "@/assets/litecoin-logo.png";
 import { useState, useEffect } from "react";
-import { BannerGenerator } from "@/components/BannerGenerator";
 import faqBanner from "@/assets/banners/faq-banner.png";
 import giveawaysBanner from "@/assets/banners/giveaways-banner.png";
 
@@ -24,11 +23,6 @@ export const Sidebar = () => {
   const { isAdmin } = useAdminCheck(user);
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
-  const [banners, setBanners] = useState<Record<string, string>>({
-    faq: faqBanner,
-    giveaways: giveawaysBanner,
-  });
-  const [showBannerGenerator, setShowBannerGenerator] = useState(true);
   
   // Fetch Litecoin price every second for realtime updates
   const { cryptoData, isLoading, refresh } = useCryptoPrice("litecoin");
@@ -41,11 +35,6 @@ export const Sidebar = () => {
 
     return () => clearInterval(interval);
   }, [refresh]);
-
-  const handleBannersGenerated = (generatedBanners: Record<string, string>) => {
-    setBanners(prev => ({ ...prev, ...generatedBanners }));
-    setShowBannerGenerator(false);
-  };
 
   const isActive = (path) => location.pathname === path;
   const handleNavigation = (path) => {
@@ -77,8 +66,6 @@ export const Sidebar = () => {
 
   const sidebarContent = (
     <>
-      {showBannerGenerator && <BannerGenerator onBannersGenerated={handleBannersGenerated} />}
-      
       <div
         className="px-6 mb-8 cursor-pointer flex items-center justify-center"
         onClick={() => handleNavigation("/")}
@@ -170,20 +157,12 @@ export const Sidebar = () => {
               key={item.title}
               variant="ghost"
               className={cn(
-                "h-24 p-0 rounded-lg overflow-hidden transition-all hover:scale-105",
+                "h-24 rounded-lg transition-all hover:scale-105 border-2 border-border/50 bg-card/50",
                 isActive(item.path) ? "ring-2 ring-primary shadow-lg" : "",
               )}
               onClick={() => handleNavigation(item.path)}
             >
-              {banners[item.key] ? (
-                <img 
-                  src={banners[item.key]} 
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="font-bold text-lg">{item.title}</span>
-              )}
+              <span className="font-bold text-lg">{item.title}</span>
             </Button>
           ))}
         </div>
@@ -195,27 +174,46 @@ export const Sidebar = () => {
         </div>
 
         <div className="space-y-2">
-          {sectionItems.map((item) => (
-            <Button
-              key={item.title}
-              variant="ghost"
-              className={cn(
-                "w-full h-20 p-0 rounded-lg overflow-hidden transition-all hover:scale-102",
-                isActive(item.path) ? "ring-2 ring-primary shadow-lg" : "",
-              )}
-              onClick={() => handleNavigation(item.path)}
-            >
-              {banners[item.key] ? (
-                <img 
-                  src={banners[item.key]} 
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="font-bold text-lg">{item.title}</span>
-              )}
-            </Button>
-          ))}
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full h-20 p-0 rounded-lg overflow-hidden transition-all hover:scale-102",
+              isActive("/giveaways") ? "ring-2 ring-primary shadow-lg" : "",
+            )}
+            onClick={() => handleNavigation("/giveaways")}
+          >
+            <img 
+              src={giveawaysBanner} 
+              alt="Giveaways"
+              className="w-full h-full object-cover"
+            />
+          </Button>
+
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full h-20 p-0 rounded-lg overflow-hidden transition-all hover:scale-102",
+              isActive("/faq") ? "ring-2 ring-primary shadow-lg" : "",
+            )}
+            onClick={() => handleNavigation("/faq")}
+          >
+            <img 
+              src={faqBanner} 
+              alt="FAQ"
+              className="w-full h-full object-cover"
+            />
+          </Button>
+
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full h-20 rounded-lg transition-all hover:scale-102 border-2 border-border/50 bg-card/50",
+              isActive("/socials") ? "ring-2 ring-primary shadow-lg" : "",
+            )}
+            onClick={() => handleNavigation("/socials")}
+          >
+            <span className="font-bold text-lg">Socials</span>
+          </Button>
         </div>
 
         {isAdmin && (
