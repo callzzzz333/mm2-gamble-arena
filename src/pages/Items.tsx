@@ -9,8 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useRolimonsData } from "@/hooks/useRolimonsData";
-import { Package, TrendingUp, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { useItemResaleData } from "@/hooks/useItemResaleData";
+import { Package, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface Item {
   rolimons_id: string;
@@ -24,6 +27,7 @@ interface Item {
   projected: number;
   hyped: number;
   rare: number;
+  image_url: string | null;
 }
 
 const Items = () => {
@@ -31,6 +35,8 @@ const Items = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"value-desc" | "value-asc" | "name" | "rap-desc">("value-desc");
   const [selectedGame, setSelectedGame] = useState<"all" | "MM2" | "SAB" | "PVB" | "GAG" | "ADM">("all");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const { data: resaleData, loading: resaleLoading } = useItemResaleData(selectedItemId);
 
   const items = rolimonsData?.items || [];
 
@@ -220,14 +226,27 @@ interface GameInfo {
                 ) : (
                   <div className="space-y-3">
                     {filteredItems.map((item) => (
-                      <Card key={item.rolimons_id} className="hover:shadow-md transition-shadow">
+                      <Card 
+                        key={item.rolimons_id} 
+                        className="hover:shadow-md transition-shadow cursor-pointer"
+                        onClick={() => setSelectedItemId(item.rolimons_id)}
+                      >
                         <div className="flex items-center gap-4 p-4">
                           <div className="w-16 h-16 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
                             {item.image_url ? (
                               <img 
                                 src={item.image_url} 
                                 alt={item.name}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    const icon = document.createElement('div');
+                                    icon.innerHTML = '<svg class="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>';
+                                    parent.appendChild(icon.firstChild!);
+                                  }
+                                }}
                               />
                             ) : (
                               <Package className="w-10 h-10 text-muted-foreground" />
@@ -286,14 +305,141 @@ interface GameInfo {
                   </div>
                 )}
               </TabsContent>
-            ))}
-          </Tabs>
-        </main>
-      </div>
-      <LiveChat />
-      <MobileBottomNav />
+          ))}
+        </Tabs>
+
+        {/* Item Detail Dialog with Trend Chart */}
+        <Dialog open={!!selectedItemId} onOpenChange={() => setSelectedItemId(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            {selectedItemId && (() => {
+              const item = filteredItems.find(i => i.rolimons_id === selectedItemId);
+              if (!item) return null;
+              
+              return (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-3">
+                      {item.image_url && (
+                        <img 
+                          src={item.image_url} 
+                          alt={item.name}
+                          className="w-12 h-12 rounded object-contain bg-muted"
+                        />
+                      )}
+                      {item.name}
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  <div className="space-y-6">
+                    {/* Item Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">RAP</p>
+                        <p className="text-xl font-bold">{formatValue(item.rap)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Value</p>
+                        <p className="text-xl font-bold text-primary">{formatValue(item.value)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Demand</p>
+                        <p className={`text-xl font-bold ${getDemandColor(item.demand)}`}>
+                          {item.demand === -1 ? "N/A" : `${item.demand}/10`}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Trend</p>
+                        <div className="flex items-center gap-1">
+                          {getTrendIcon(item.trend)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Badges */}
+                    <div className="flex gap-2">
+                      {item.projected !== -1 && (
+                        <Badge variant="secondary">Projected</Badge>
+                      )}
+                      {item.hyped !== -1 && (
+                        <Badge variant="secondary" className="bg-orange-500/10 text-orange-500">Hyped</Badge>
+                      )}
+                      {item.rare !== -1 && (
+                        <Badge variant="secondary" className="bg-purple-500/10 text-purple-500">Rare</Badge>
+                      )}
+                    </div>
+
+                    {/* Price History Chart */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Price History</h3>
+                      {resaleLoading ? (
+                        <div className="h-64 flex items-center justify-center">
+                          <p className="text-muted-foreground">Loading chart data...</p>
+                        </div>
+                      ) : resaleData?.hasData && resaleData.sales.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <LineChart data={resaleData.sales}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis 
+                              dataKey="date" 
+                              className="text-xs"
+                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            />
+                            <YAxis 
+                              className="text-xs"
+                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            />
+                            <Tooltip 
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px',
+                              }}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="price" 
+                              stroke="hsl(var(--primary))" 
+                              strokeWidth={2}
+                              dot={{ fill: 'hsl(var(--primary))' }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-64 flex items-center justify-center border rounded-lg bg-muted/20">
+                          <p className="text-muted-foreground">No price history available for this item</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stock Info */}
+                    {resaleData?.hasData && (
+                      <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg">
+                        {resaleData.assetStock !== undefined && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Total Stock</p>
+                            <p className="text-lg font-semibold">{resaleData.assetStock.toLocaleString()}</p>
+                          </div>
+                        )}
+                        {resaleData.numberRemaining !== undefined && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Remaining</p>
+                            <p className="text-lg font-semibold">{resaleData.numberRemaining.toLocaleString()}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
+      </main>
     </div>
-  );
+    <LiveChat />
+    <MobileBottomNav />
+  </div>
+);
 };
 
 export default Items;
