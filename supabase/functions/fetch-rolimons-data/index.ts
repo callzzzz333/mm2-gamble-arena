@@ -40,11 +40,43 @@ serve(async (req) => {
       rare: itemData[9] || 0,
     }));
 
+    // Fetch thumbnails from Roblox API in batches
+    const batchSize = 100;
+    const thumbnailMap: Record<string, string> = {};
+    
+    for (let i = 0; i < transformedItems.length; i += batchSize) {
+      const batch = transformedItems.slice(i, i + batchSize);
+      const assetIds = batch.map(item => item.rolimons_id).join(',');
+      
+      try {
+        const thumbResponse = await fetch(
+          `https://thumbnails.roblox.com/v1/assets?assetIds=${assetIds}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`
+        );
+        
+        if (thumbResponse.ok) {
+          const thumbData = await thumbResponse.json();
+          thumbData.data?.forEach((thumb: any) => {
+            if (thumb.state === 'Completed' && thumb.imageUrl) {
+              thumbnailMap[thumb.targetId.toString()] = thumb.imageUrl;
+            }
+          });
+        }
+      } catch (thumbError) {
+        console.error('Error fetching thumbnails batch:', thumbError);
+      }
+    }
+
+    // Add thumbnail URLs to items
+    const itemsWithThumbnails = transformedItems.map(item => ({
+      ...item,
+      image_url: thumbnailMap[item.rolimons_id] || null,
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
         item_count: data.item_count || 0,
-        items: transformedItems,
+        items: itemsWithThumbnails,
         last_updated: new Date().toISOString(),
       }),
       {

@@ -13,6 +13,7 @@ interface RolimonsItem {
   projected: number;
   hyped: number;
   rare: number;
+  image_url: string | null;
 }
 
 interface RolimonsData {
