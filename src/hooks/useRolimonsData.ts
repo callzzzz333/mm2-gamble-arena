@@ -53,8 +53,8 @@ export const useRolimonsData = () => {
   useEffect(() => {
     fetchData();
     
-    // Auto-refresh every 30 seconds for live updates
-    const interval = setInterval(fetchData, 30000);
+    // Auto-refresh every second for live updates
+    const interval = setInterval(fetchData, 1000);
     
     return () => clearInterval(interval);
   }, []);
