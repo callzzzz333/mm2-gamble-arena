@@ -54,6 +54,11 @@ export const useItemResaleData = (assetId: string | null) => {
     };
 
     fetchResaleData();
+    
+    // Auto-refresh chart data every second
+    const interval = setInterval(fetchResaleData, 1000);
+    
+    return () => clearInterval(interval);
   }, [assetId]);
 
   return { data, loading, error };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo, useMemo } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
@@ -57,7 +57,7 @@ const convertToUSD = (robux: number) => {
   return `$${usd.toFixed(2)}`;
 };
 
-const ItemChart = ({ itemId }: { itemId: string }) => {
+const ItemChart = memo(({ itemId }: { itemId: string }) => {
   const { data: resaleData, loading } = useItemResaleData(itemId);
   
   if (loading) {
@@ -86,14 +86,15 @@ const ItemChart = ({ itemId }: { itemId: string }) => {
             stroke="hsl(var(--primary))" 
             strokeWidth={1.5}
             dot={false}
+            isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
-};
+});
 
-const ItemRow = ({ item, onLoad }: { item: Item; onLoad?: () => void }) => {
+const ItemRow = memo(({ item }: { item: Item }) => {
   const [isVisible, setIsVisible] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
   
@@ -102,10 +103,9 @@ const ItemRow = ({ item, onLoad }: { item: Item; onLoad?: () => void }) => {
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
-          onLoad?.();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1, rootMargin: '50px' }
     );
     
     if (rowRef.current) {
@@ -113,7 +113,7 @@ const ItemRow = ({ item, onLoad }: { item: Item; onLoad?: () => void }) => {
     }
     
     return () => observer.disconnect();
-  }, [onLoad]);
+  }, []);
   
   const formatValue = (value: number) => {
     if (value === -1) return "N/A";
@@ -130,9 +130,9 @@ const ItemRow = ({ item, onLoad }: { item: Item; onLoad?: () => void }) => {
   };
   
   return (
-    <Card ref={rowRef} className="hover:shadow-md transition-shadow">
+    <Card ref={rowRef} className="hover:shadow-md transition-shadow mb-3 optimize-render">
       <div className="flex items-center gap-4 p-4">
-        <div className="w-16 h-16 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div className="w-16 h-16 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
           {item.image_url ? (
             <img 
               src={item.image_url} 
@@ -215,27 +215,45 @@ const ItemRow = ({ item, onLoad }: { item: Item; onLoad?: () => void }) => {
       </div>
     </Card>
   );
-};
+}, (prevProps, nextProps) => {
+  return prevProps.item.rolimons_id === nextProps.item.rolimons_id &&
+    prevProps.item.value === nextProps.item.value &&
+    prevProps.item.rap === nextProps.item.rap &&
+    prevProps.item.demand === nextProps.item.demand &&
+    prevProps.item.trend === nextProps.item.trend;
+});
 
 const Items = () => {
   const { data: rolimonsData, loading, error, refetch } = useRolimonsData();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState<"value-desc" | "value-asc" | "name" | "rap-desc">("value-desc");
   const [selectedGame, setSelectedGame] = useState<"all" | "MM2" | "SAB" | "PVB" | "GAG" | "ADM">("all");
 
-  const items = rolimonsData?.items || [];
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  const filteredItems = items
-    .filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesSearch;
-    })
-    .sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "value-asc") return (a.value === -1 ? Infinity : a.value) - (b.value === -1 ? Infinity : b.value);
-      if (sortBy === "rap-desc") return b.rap - a.rap;
-      return (b.value === -1 ? -Infinity : b.value) - (a.value === -1 ? -Infinity : a.value);
-    });
+  const items = useMemo(() => rolimonsData?.items || [], [rolimonsData]);
+
+  const filteredItems = useMemo(() => 
+    items
+      .filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(debouncedSearch.toLowerCase());
+        return matchesSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === "name") return a.name.localeCompare(b.name);
+        if (sortBy === "value-asc") return (a.value === -1 ? Infinity : a.value) - (b.value === -1 ? Infinity : b.value);
+        if (sortBy === "rap-desc") return b.rap - a.rap;
+        return (b.value === -1 ? -Infinity : b.value) - (a.value === -1 ? -Infinity : a.value);
+      }), 
+    [items, debouncedSearch, sortBy]
+  );
 
   const getTrendIcon = (trend: number) => {
     if (trend === 1) return <ArrowUpRight className="w-4 h-4 text-green-500" />;
@@ -409,7 +427,7 @@ interface GameInfo {
                     <p className="text-muted-foreground">Try adjusting your search</p>
                   </Card>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto scrollbar-thin">
                     {filteredItems.map((item) => (
                       <ItemRow key={item.rolimons_id} item={item} />
                     ))}
