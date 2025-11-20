@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { LiveChat } from "@/components/LiveChat";
@@ -10,10 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useRolimonsData } from "@/hooks/useRolimonsData";
 import { useItemResaleData } from "@/hooks/useItemResaleData";
-import { Package, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, X } from "lucide-react";
+import { Package, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, DollarSign } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, ResponsiveContainer } from "recharts";
 
 interface Item {
   rolimons_id: string;
@@ -30,13 +29,199 @@ interface Item {
   image_url: string | null;
 }
 
+const getTrendIcon = (trend: number) => {
+  if (trend === 1) return <ArrowUpRight className="w-4 h-4 text-green-500" />;
+  if (trend === -1) return <ArrowDownRight className="w-4 h-4 text-red-500" />;
+  return <Minus className="w-4 h-4 text-muted-foreground" />;
+};
+
+const getDemandColor = (demand: number) => {
+  if (demand === -1) return "text-muted-foreground";
+  if (demand >= 8) return "text-green-500";
+  if (demand >= 5) return "text-yellow-500";
+  if (demand >= 3) return "text-orange-500";
+  return "text-red-500";
+};
+
+const formatValue = (value: number) => {
+  if (value === -1) return "N/A";
+  if (value >= 1000000) return `${(value / 1000000).toFixed(2)}M`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+  return value.toString();
+};
+
+const convertToUSD = (robux: number) => {
+  if (robux === -1) return "N/A";
+  // 100 Robux Value = $1.00 USD
+  const usd = robux / 100;
+  return `$${usd.toFixed(2)}`;
+};
+
+const ItemChart = ({ itemId }: { itemId: string }) => {
+  const { data: resaleData, loading } = useItemResaleData(itemId);
+  
+  if (loading) {
+    return (
+      <div className="h-16 w-32 flex items-center justify-center">
+        <div className="text-xs text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+  
+  if (!resaleData?.hasData || resaleData.sales.length === 0) {
+    return (
+      <div className="h-16 w-32 flex items-center justify-center">
+        <div className="text-xs text-muted-foreground">No data</div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="h-16 w-32">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={resaleData.sales}>
+          <Line 
+            type="monotone" 
+            dataKey="price" 
+            stroke="hsl(var(--primary))" 
+            strokeWidth={1.5}
+            dot={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+const ItemRow = ({ item, onLoad }: { item: Item; onLoad?: () => void }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          onLoad?.();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    
+    if (rowRef.current) {
+      observer.observe(rowRef.current);
+    }
+    
+    return () => observer.disconnect();
+  }, [onLoad]);
+  
+  const formatValue = (value: number) => {
+    if (value === -1) return "N/A";
+    if (value >= 1000000) return `${(value / 1000000).toFixed(2)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    return value.toString();
+  };
+  
+  const convertToUSD = (robux: number) => {
+    if (robux === -1) return "N/A";
+    // 100 Robux Value = $1.00 USD
+    const usd = robux / 100;
+    return `$${usd.toFixed(2)}`;
+  };
+  
+  return (
+    <Card ref={rowRef} className="hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-4 p-4">
+        <div className="w-16 h-16 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+          {item.image_url ? (
+            <img 
+              src={item.image_url} 
+              alt={item.name}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  const icon = document.createElement('div');
+                  icon.innerHTML = '<svg class="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>';
+                  parent.appendChild(icon.firstChild!);
+                }
+              }}
+            />
+          ) : (
+            <Package className="w-10 h-10 text-muted-foreground" />
+          )}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-4 mb-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-base truncate">{item.name}</h3>
+              {item.acronym && (
+                <p className="text-xs text-muted-foreground">{item.acronym}</p>
+              )}
+            </div>
+            
+            <div className="flex gap-1">
+              {item.projected !== -1 && (
+                <Badge variant="secondary" className="text-xs">P</Badge>
+              )}
+              {item.hyped !== -1 && (
+                <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-500">H</Badge>
+              )}
+              {item.rare !== -1 && (
+                <Badge variant="secondary" className="text-xs bg-purple-500/10 text-purple-500">R</Badge>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-xs text-muted-foreground">RAP</p>
+              <p className="font-bold text-sm">{formatValue(item.rap)}</p>
+            </div>
+            
+            <div>
+              <p className="text-xs text-muted-foreground">Value</p>
+              <p className="font-bold text-sm text-primary">{formatValue(item.value)}</p>
+            </div>
+            
+            <div>
+              <p className="text-xs text-muted-foreground">USD Value</p>
+              <div className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3 text-green-500" />
+                <p className="font-bold text-sm text-green-500">{convertToUSD(item.value)}</p>
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-xs text-muted-foreground">Demand</p>
+              <p className={`font-semibold text-sm ${getDemandColor(item.demand)}`}>
+                {item.demand === -1 ? "N/A" : `${item.demand}/10`}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Trend:</span>
+              {getTrendIcon(item.trend)}
+            </div>
+            
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Price History</p>
+              {isVisible && <ItemChart itemId={item.rolimons_id} />}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
 const Items = () => {
   const { data: rolimonsData, loading, error, refetch } = useRolimonsData();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"value-desc" | "value-asc" | "name" | "rap-desc">("value-desc");
   const [selectedGame, setSelectedGame] = useState<"all" | "MM2" | "SAB" | "PVB" | "GAG" | "ADM">("all");
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const { data: resaleData, loading: resaleLoading } = useItemResaleData(selectedItemId);
 
   const items = rolimonsData?.items || [];
 
@@ -226,81 +411,7 @@ interface GameInfo {
                 ) : (
                   <div className="space-y-3">
                     {filteredItems.map((item) => (
-                      <Card 
-                        key={item.rolimons_id} 
-                        className="hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => setSelectedItemId(item.rolimons_id)}
-                      >
-                        <div className="flex items-center gap-4 p-4">
-                          <div className="w-16 h-16 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {item.image_url ? (
-                              <img 
-                                src={item.image_url} 
-                                alt={item.name}
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  const parent = e.currentTarget.parentElement;
-                                  if (parent) {
-                                    const icon = document.createElement('div');
-                                    icon.innerHTML = '<svg class="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>';
-                                    parent.appendChild(icon.firstChild!);
-                                  }
-                                }}
-                              />
-                            ) : (
-                              <Package className="w-10 h-10 text-muted-foreground" />
-                            )}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-4 mb-2">
-                              <div className="min-w-0 flex-1">
-                                <h3 className="font-semibold text-base truncate">{item.name}</h3>
-                                {item.acronym && (
-                                  <p className="text-xs text-muted-foreground">{item.acronym}</p>
-                                )}
-                              </div>
-                              
-                              <div className="flex gap-1">
-                                {item.projected !== -1 && (
-                                  <Badge variant="secondary" className="text-xs">P</Badge>
-                                )}
-                                {item.hyped !== -1 && (
-                                  <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-500">H</Badge>
-                                )}
-                                {item.rare !== -1 && (
-                                  <Badge variant="secondary" className="text-xs bg-purple-500/10 text-purple-500">R</Badge>
-                                )}
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-6">
-                              <div>
-                                <p className="text-xs text-muted-foreground">RAP</p>
-                                <p className="font-bold text-sm">{formatValue(item.rap)}</p>
-                              </div>
-                              
-                              <div>
-                                <p className="text-xs text-muted-foreground">Value</p>
-                                <p className="font-bold text-sm text-primary">{formatValue(item.value)}</p>
-                              </div>
-                              
-                              <div>
-                                <p className="text-xs text-muted-foreground">Demand</p>
-                                <p className={`font-semibold text-sm ${getDemandColor(item.demand)}`}>
-                                  {item.demand === -1 ? "N/A" : `${item.demand}/10`}
-                                </p>
-                              </div>
-                              
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs text-muted-foreground">Trend:</span>
-                                {getTrendIcon(item.trend)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
+                      <ItemRow key={item.rolimons_id} item={item} />
                     ))}
                   </div>
                 )}
@@ -308,132 +419,6 @@ interface GameInfo {
           ))}
         </Tabs>
 
-        {/* Item Detail Dialog with Trend Chart */}
-        <Dialog open={!!selectedItemId} onOpenChange={() => setSelectedItemId(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            {selectedItemId && (() => {
-              const item = filteredItems.find(i => i.rolimons_id === selectedItemId);
-              if (!item) return null;
-              
-              return (
-                <>
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-3">
-                      {item.image_url && (
-                        <img 
-                          src={item.image_url} 
-                          alt={item.name}
-                          className="w-12 h-12 rounded object-contain bg-muted"
-                        />
-                      )}
-                      {item.name}
-                    </DialogTitle>
-                  </DialogHeader>
-
-                  <div className="space-y-6">
-                    {/* Item Stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">RAP</p>
-                        <p className="text-xl font-bold">{formatValue(item.rap)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Value</p>
-                        <p className="text-xl font-bold text-primary">{formatValue(item.value)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Demand</p>
-                        <p className={`text-xl font-bold ${getDemandColor(item.demand)}`}>
-                          {item.demand === -1 ? "N/A" : `${item.demand}/10`}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Trend</p>
-                        <div className="flex items-center gap-1">
-                          {getTrendIcon(item.trend)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Badges */}
-                    <div className="flex gap-2">
-                      {item.projected !== -1 && (
-                        <Badge variant="secondary">Projected</Badge>
-                      )}
-                      {item.hyped !== -1 && (
-                        <Badge variant="secondary" className="bg-orange-500/10 text-orange-500">Hyped</Badge>
-                      )}
-                      {item.rare !== -1 && (
-                        <Badge variant="secondary" className="bg-purple-500/10 text-purple-500">Rare</Badge>
-                      )}
-                    </div>
-
-                    {/* Price History Chart */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4">Price History</h3>
-                      {resaleLoading ? (
-                        <div className="h-64 flex items-center justify-center">
-                          <p className="text-muted-foreground">Loading chart data...</p>
-                        </div>
-                      ) : resaleData?.hasData && resaleData.sales.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <LineChart data={resaleData.sales}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis 
-                              dataKey="date" 
-                              className="text-xs"
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                            />
-                            <YAxis 
-                              className="text-xs"
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                            />
-                            <Tooltip 
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--card))',
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: '8px',
-                              }}
-                            />
-                            <Line 
-                              type="monotone" 
-                              dataKey="price" 
-                              stroke="hsl(var(--primary))" 
-                              strokeWidth={2}
-                              dot={{ fill: 'hsl(var(--primary))' }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-64 flex items-center justify-center border rounded-lg bg-muted/20">
-                          <p className="text-muted-foreground">No price history available for this item</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Stock Info */}
-                    {resaleData?.hasData && (
-                      <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg">
-                        {resaleData.assetStock !== undefined && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Total Stock</p>
-                            <p className="text-lg font-semibold">{resaleData.assetStock.toLocaleString()}</p>
-                          </div>
-                        )}
-                        {resaleData.numberRemaining !== undefined && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Remaining</p>
-                            <p className="text-lg font-semibold">{resaleData.numberRemaining.toLocaleString()}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-          </DialogContent>
-        </Dialog>
       </main>
     </div>
     <LiveChat />

@@ -53,8 +53,8 @@ export const useRolimonsData = () => {
   useEffect(() => {
     fetchData();
     
-    // Fetch every 60 seconds (Rolimons rate limit is 1 req/min)
-    const interval = setInterval(fetchData, 60000);
+    // Auto-refresh every 30 seconds for live updates
+    const interval = setInterval(fetchData, 30000);
     
     return () => clearInterval(interval);
   }, []);
