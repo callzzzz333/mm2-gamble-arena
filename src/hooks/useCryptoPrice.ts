@@ -59,8 +59,8 @@ export const useCryptoPrice = (coinId: string = "litecoin") => {
   useEffect(() => {
     fetchCryptoData();
 
-    // Refresh every 60 seconds
-    const interval = setInterval(fetchCryptoData, 60000);
+    // Refresh every second for live updates
+    const interval = setInterval(fetchCryptoData, 1000);
 
     return () => clearInterval(interval);
   }, [coinId]);
