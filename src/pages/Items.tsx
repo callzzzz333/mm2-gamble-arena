@@ -94,7 +94,7 @@ const ItemChart = memo(({ itemId }: { itemId: string }) => {
   );
 });
 
-const ItemRow = memo(({ item }: { item: Item }) => {
+const ItemRow = memo(({ item, index }: { item: Item; index: number }) => {
   const [isVisible, setIsVisible] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
   
@@ -130,7 +130,11 @@ const ItemRow = memo(({ item }: { item: Item }) => {
   };
   
   return (
-    <Card ref={rowRef} className="hover:shadow-md transition-shadow mb-3 optimize-render">
+    <Card 
+      ref={rowRef} 
+      className="hover:shadow-md transition-all duration-300 mb-3 optimize-render animate-fade-in"
+      style={{ animationDelay: `${index * 30}ms` }}
+    >
       <div className="flex items-center gap-4 p-4">
           <div className="w-16 h-16 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
           {item.image_url ? (
@@ -340,64 +344,74 @@ interface GameInfo {
             </TabsList>
 
             {(["all", "MM2", "SAB", "PVB", "GAG", "ADM"] as const).map((game) => (
-              <TabsContent key={game} value={game} className="space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                  <div>
-                    <h1 className="text-4xl font-bold mb-2">{gameInfo[game].title}</h1>
-                    <p className="text-muted-foreground">{gameInfo[game].description}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="outline">{gameInfo[game].conversionRate}</Badge>
-                      <Badge variant="secondary">Source: {gameInfo[game].source}</Badge>
-                      {rolimonsData && (
-                        <Badge variant="outline" className="gap-1">
+              <TabsContent key={game} value={game} className="space-y-6 animate-fade-in">
+                <div className="bg-gradient-to-r from-card/80 to-card/50 backdrop-blur-sm border border-border rounded-xl p-6 mb-6 shadow-lg">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex-1">
+                      <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                        {gameInfo[game].title}
+                      </h1>
+                      <p className="text-muted-foreground mb-3">{gameInfo[game].description}</p>
+                      <div className="flex flex-wrap gap-3 text-sm">
+                        <Badge variant="outline" className="flex items-center gap-1">
                           <TrendingUp className="w-3 h-3" />
-                          {rolimonsData.item_count} Items
+                          {gameInfo[game].conversionRate}
                         </Badge>
-                      )}
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Package className="w-3 h-3" />
+                          {filteredItems.length} items
+                        </Badge>
+                      </div>
                     </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      onClick={refetch}
+                      disabled={loading}
+                      className="gap-2 hover:scale-105 transition-transform"
+                    >
+                      {loading ? "Refreshing..." : "Refresh Data"}
+                    </Button>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={refetch}
-                    disabled={loading}
-                    className="gap-2"
-                  >
-                    {loading ? "Refreshing..." : "Refresh Data"}
-                  </Button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="md:col-span-2">
-                    <Input
-                      placeholder="Search items by name..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      variant={sortBy === "value-desc" ? "default" : "outline"}
-                      onClick={() => setSortBy("value-desc")}
-                      size="sm"
-                    >
-                      Value ↓
-                    </Button>
-                    <Button
-                      variant={sortBy === "rap-desc" ? "default" : "outline"}
-                      onClick={() => setSortBy("rap-desc")}
-                      size="sm"
-                    >
-                      RAP ↓
-                    </Button>
-                    <Button
-                      variant={sortBy === "name" ? "default" : "outline"}
-                      onClick={() => setSortBy("name")}
-                      size="sm"
-                    >
-                      Name
-                    </Button>
+                <div className="bg-card/30 backdrop-blur-sm border border-border rounded-xl p-4 mb-4 shadow-sm">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="md:col-span-2">
+                      <Input
+                        placeholder="Search items by name..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full transition-all focus:shadow-glow"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        variant={sortBy === "value-desc" ? "default" : "outline"}
+                        onClick={() => setSortBy("value-desc")}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Value ↓
+                      </Button>
+                      <Button
+                        variant={sortBy === "rap-desc" ? "default" : "outline"}
+                        onClick={() => setSortBy("rap-desc")}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        RAP ↓
+                      </Button>
+                      <Button
+                        variant={sortBy === "name" ? "default" : "outline"}
+                        onClick={() => setSortBy("name")}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Name
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -428,8 +442,8 @@ interface GameInfo {
                   </Card>
                 ) : (
                   <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto scrollbar-thin">
-                    {filteredItems.map((item) => (
-                      <ItemRow key={item.rolimons_id} item={item} />
+                    {filteredItems.map((item, index) => (
+                      <ItemRow key={item.rolimons_id} item={item} index={index} />
                     ))}
                   </div>
                 )}

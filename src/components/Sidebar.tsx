@@ -105,10 +105,12 @@ export const Sidebar = () => {
           </Button>
         ))}
 
-        <div className="py-4">
-          <div className="px-3 mb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Crypto</p>
-          </div>
+        <div className="py-3">
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent mx-3" />
+        </div>
+
+        <div className="px-3 mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Crypto Market</p>
         </div>
 
         {isLoading ? (
@@ -144,11 +146,13 @@ export const Sidebar = () => {
           </div>
         )}
 
-        <div className="py-4">
-          <div className="px-3 mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            <TrendingUp className="w-4 h-4" />
-            Game Item Values
-          </div>
+        <div className="py-3">
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent mx-3" />
+        </div>
+
+        <div className="px-3 mb-3 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-primary" />
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Game Item Values</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 px-1">
@@ -167,10 +171,12 @@ export const Sidebar = () => {
           ))}
         </div>
 
-        <div className="py-4">
-          <div className="px-3 mb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Community</p>
-          </div>
+        <div className="py-3">
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent mx-3" />
+        </div>
+
+        <div className="px-3 mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Community</p>
         </div>
 
         <div className="space-y-2">
@@ -218,8 +224,12 @@ export const Sidebar = () => {
 
         {isAdmin && (
           <>
-            <div className="py-4">
-              <div className="h-px bg-border" />
+            <div className="py-3">
+              <div className="h-px bg-gradient-to-r from-transparent via-destructive/50 to-transparent mx-3" />
+            </div>
+
+            <div className="px-3 mb-3">
+              <p className="text-xs font-semibold text-destructive/70 uppercase tracking-wider">Admin</p>
             </div>
 
             <Button
