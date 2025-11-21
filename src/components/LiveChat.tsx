@@ -23,6 +23,9 @@ interface Message {
   username: string;
   message: string;
   created_at: string;
+  reply_to_id?: string | null;
+  reply_to_username?: string | null;
+  reply_to_message?: string | null;
   profiles?: {
     avatar_url: string | null;
     roblox_username: string | null;
@@ -39,6 +42,7 @@ export const LiveChat = () => {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -133,6 +137,9 @@ export const LiveChat = () => {
       user_id: user.id,
       username: profile.username,
       message: newMessage.trim(),
+      reply_to_id: replyTo?.id || null,
+      reply_to_username: replyTo?.username || null,
+      reply_to_message: replyTo?.message || null,
     });
 
     if (error) {
@@ -143,8 +150,9 @@ export const LiveChat = () => {
       });
     } else {
       setNewMessage("");
+      setReplyTo(null);
     }
-  }, [user, profile, newMessage, toast]);
+  }, [user, profile, newMessage, replyTo, toast]);
 
   const chatContent = (
     <>
@@ -259,10 +267,16 @@ export const LiveChat = () => {
       <GiveawayWidget />
 
       <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+        <div className="space-y-2">
           {messages.map((msg) => (
-            <div key={msg.id} className="mb-3">
-              <div className="bg-secondary/30 border border-border rounded-lg p-3 hover:bg-secondary/50 transition-colors">
+            <div key={msg.id} className="animate-fade-in">
+              <div className="bg-secondary/30 border border-border rounded-lg p-3 hover:bg-secondary/50 transition-all duration-200 group">
+                {msg.reply_to_message && (
+                  <div className="mb-2 pl-3 border-l-2 border-primary/50 text-xs text-muted-foreground">
+                    <span className="font-medium text-primary">{msg.reply_to_username}</span>
+                    <p className="truncate">{msg.reply_to_message}</p>
+                  </div>
+                )}
                 <div className="flex items-start gap-3">
                   <Avatar className="w-8 h-8 flex-shrink-0">
                     <AvatarImage src={msg.profiles?.avatar_url || undefined} />
@@ -294,6 +308,14 @@ export const LiveChat = () => {
                     <p className="text-sm text-foreground/90 break-words leading-relaxed">
                       {msg.message}
                     </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1 h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setReplyTo(msg)}
+                    >
+                      Reply
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -304,13 +326,32 @@ export const LiveChat = () => {
       </ScrollArea>
 
       <form onSubmit={sendMessage} className="p-4 border-t border-border/50 bg-card/80 backdrop-blur-sm">
+        {replyTo && (
+          <div className="mb-2 p-2 bg-secondary/50 rounded-lg flex items-start justify-between gap-2 animate-fade-in">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-primary">
+                Replying to {replyTo.profiles?.roblox_username || replyTo.username}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">{replyTo.message}</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setReplyTo(null)}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
         <div className="flex gap-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={user ? "Type a message..." : "Login to chat"}
+            placeholder={user ? (replyTo ? "Type your reply..." : "Type a message...") : "Login to chat"}
             disabled={!user}
-            className="flex-1 bg-background/50"
+            className="flex-1 bg-background/50 transition-all"
             maxLength={500}
           />
           <Button

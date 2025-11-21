@@ -119,6 +119,9 @@ export type Database = {
           created_at: string | null
           id: string
           message: string
+          reply_to_id: string | null
+          reply_to_message: string | null
+          reply_to_username: string | null
           user_id: string
           username: string
         }
@@ -126,6 +129,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           message: string
+          reply_to_id?: string | null
+          reply_to_message?: string | null
+          reply_to_username?: string | null
           user_id: string
           username: string
         }
@@ -133,10 +139,20 @@ export type Database = {
           created_at?: string | null
           id?: string
           message?: string
+          reply_to_id?: string | null
+          reply_to_message?: string | null
+          reply_to_username?: string | null
           user_id?: string
           username?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_user_id_fkey"
             columns: ["user_id"]
