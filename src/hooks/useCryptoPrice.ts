@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface CryptoData {
   symbol: string;
@@ -19,6 +19,7 @@ export const useCryptoPrice = (coinId: string = "litecoin") => {
   const [cryptoData, setCryptoData] = useState<CryptoData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const previousDataRef = useRef<string | null>(null);
 
   const fetchCryptoData = async () => {
     try {
@@ -34,7 +35,7 @@ export const useCryptoPrice = (coinId: string = "litecoin") => {
 
       const change24h = data.market_data.price_change_percentage_24h || 0;
 
-      setCryptoData({
+      const newCryptoData = {
         symbol: data.symbol.toUpperCase(),
         name: data.name,
         price: data.market_data.current_price.usd || 0,
@@ -45,7 +46,14 @@ export const useCryptoPrice = (coinId: string = "litecoin") => {
         marketCap: data.market_data.market_cap.usd || 0,
         lastUpdated: new Date(data.last_updated),
         isPositive: change24h >= 0,
-      });
+      };
+
+      // Compare with previous data to avoid unnecessary updates
+      const dataString = JSON.stringify(newCryptoData);
+      if (previousDataRef.current !== dataString) {
+        previousDataRef.current = dataString;
+        setCryptoData(newCryptoData);
+      }
 
       setError(null);
     } catch (err) {
