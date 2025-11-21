@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface RolimonsItem {
@@ -27,10 +27,11 @@ export const useRolimonsData = () => {
   const [data, setData] = useState<RolimonsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const previousDataRef = useRef<string | null>(null);
 
   const fetchData = async () => {
     try {
-      setLoading(true);
+      if (loading) setLoading(true);
       setError(null);
 
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
@@ -41,12 +42,17 @@ export const useRolimonsData = () => {
         throw functionError;
       }
 
-      setData(functionData);
+      // Compare with previous data to avoid unnecessary updates
+      const dataString = JSON.stringify(functionData);
+      if (previousDataRef.current !== dataString) {
+        previousDataRef.current = dataString;
+        setData(functionData);
+      }
     } catch (err) {
       console.error('Error fetching Rolimons data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
-      setLoading(false);
+      if (loading) setLoading(false);
     }
   };
 

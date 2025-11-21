@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ResaleDataPoint {
@@ -21,16 +21,18 @@ export const useItemResaleData = (assetId: string | null) => {
   const [data, setData] = useState<ResaleData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const previousDataRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!assetId) {
       setData(null);
+      previousDataRef.current = null;
       return;
     }
 
     const fetchResaleData = async () => {
       try {
-        setLoading(true);
+        if (loading) setLoading(true);
         setError(null);
 
         const { data: functionData, error: functionError } = await supabase.functions.invoke(
@@ -44,12 +46,17 @@ export const useItemResaleData = (assetId: string | null) => {
           throw functionError;
         }
 
-        setData(functionData);
+        // Compare with previous data to avoid unnecessary updates
+        const dataString = JSON.stringify(functionData);
+        if (previousDataRef.current !== dataString) {
+          previousDataRef.current = dataString;
+          setData(functionData);
+        }
       } catch (err) {
         console.error('Error fetching resale data:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch data');
       } finally {
-        setLoading(false);
+        if (loading) setLoading(false);
       }
     };
 
