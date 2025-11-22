@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_feed: {
+        Row: {
+          activity_type: string
+          amount: number | null
+          created_at: string | null
+          id: string
+          item_id: string | null
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          item_id?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          item_id?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_feed_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blackjack_players: {
         Row: {
           bet_amount: number
@@ -732,6 +770,36 @@ export type Database = {
         }
         Relationships: []
       }
+      market_statistics: {
+        Row: {
+          average_price: number | null
+          game_type: string
+          id: string
+          total_transactions: number | null
+          total_volume: number | null
+          trending_items: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          average_price?: number | null
+          game_type: string
+          id?: string
+          total_transactions?: number | null
+          total_volume?: number | null
+          trending_items?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          average_price?: number | null
+          game_type?: string
+          id?: string
+          total_transactions?: number | null
+          total_volume?: number | null
+          trending_items?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       marketplace_listings: {
         Row: {
           created_at: string
@@ -811,6 +879,41 @@ export type Database = {
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_history: {
+        Row: {
+          demand: number | null
+          id: string
+          item_id: string
+          rap: number | null
+          recorded_at: string | null
+          value: number
+        }
+        Insert: {
+          demand?: number | null
+          id?: string
+          item_id: string
+          rap?: number | null
+          recorded_at?: string | null
+          value: number
+        }
+        Update: {
+          demand?: number | null
+          id?: string
+          item_id?: string
+          rap?: number | null
+          recorded_at?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_history_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
             referencedColumns: ["id"]
           },
         ]
@@ -1139,6 +1242,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_watchlist: {
+        Row: {
+          added_at: string | null
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string | null
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_watchlist_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       verification_codes: {
         Row: {
