@@ -10,6 +10,9 @@ import Giveaways from "./pages/Giveaways";
 import FAQ from "./pages/FAQ";
 import Socials from "./pages/Socials";
 import Admin from "./pages/Admin";
+import Analytics from "./pages/Analytics";
+import Profile from "./pages/Profile";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,8 +25,11 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/items" element={<Items />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/giveaways" element={<Giveaways />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/socials" element={<Socials />} />

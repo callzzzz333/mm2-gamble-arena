@@ -2,7 +2,7 @@
 // NOTE: Only the button styles and layering details have been upgraded — logic unchanged.
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Menu, X, Shield, TrendingUp, ExternalLink, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Home, Menu, X, Shield, TrendingUp, ExternalLink, ArrowUpRight, ArrowDownRight, BarChart3, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -44,6 +44,8 @@ export const Sidebar = () => {
 
   const mainItems = [
     { title: "Values", path: "/items?game=all", key: "values", icon: TrendingUp },
+    { title: "Analytics", path: "/analytics", key: "analytics", icon: BarChart3 },
+    { title: "Profile", path: "/profile", key: "profile", icon: User },
   ];
 
   const gameItems = [
