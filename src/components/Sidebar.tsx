@@ -43,9 +43,9 @@ export const Sidebar = () => {
   };
 
   const mainItems = [
-    { title: "Values", path: "/items?game=all", key: "values", icon: TrendingUp },
+    { title: "Trading", path: "/trading", key: "trading", icon: TrendingUp },
+    { title: "Portfolio", path: "/portfolio", key: "portfolio", icon: User },
     { title: "Analytics", path: "/analytics", key: "analytics", icon: BarChart3 },
-    { title: "Profile", path: "/profile", key: "profile", icon: User },
   ];
 
   const gameItems = [
@@ -58,7 +58,6 @@ export const Sidebar = () => {
 
   const sectionItems = [
     { title: "Giveaways", path: "/giveaways", key: "giveaways" },
-    { title: "FAQ", path: "/faq", key: "faq" },
     { title: "Socials", path: "/socials", key: "socials" },
   ];
 
@@ -152,25 +151,12 @@ export const Sidebar = () => {
           <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent mx-3" />
         </div>
 
-        <div className="px-3 mb-3 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-primary" />
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Game Item Values</p>
+        <div className="px-3 mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Memecoins</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 px-1">
-          {gameItems.map((item) => (
-            <Button
-              key={item.title}
-              variant="ghost"
-              className={cn(
-                "h-24 rounded-lg transition-all hover:scale-105 border-2 border-border/50 bg-card/50",
-                isActive(item.path) ? "ring-2 ring-primary shadow-lg" : "",
-              )}
-              onClick={() => handleNavigation(item.path)}
-            >
-              <span className="font-bold text-lg">{item.title}</span>
-            </Button>
-          ))}
+
         </div>
 
         <div className="py-3">
@@ -193,21 +179,6 @@ export const Sidebar = () => {
             <img 
               src={giveawaysBanner} 
               alt="Giveaways"
-              className="w-full h-full object-cover"
-            />
-          </Button>
-
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full h-20 p-0 rounded-lg overflow-hidden transition-all hover:scale-102",
-              isActive("/faq") ? "ring-2 ring-primary shadow-lg" : "",
-            )}
-            onClick={() => handleNavigation("/faq")}
-          >
-            <img 
-              src={faqBanner} 
-              alt="FAQ"
               className="w-full h-full object-cover"
             />
           </Button>
