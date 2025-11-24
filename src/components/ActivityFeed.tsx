@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Activity, TrendingUp, DollarSign } from "lucide-react";
@@ -12,7 +12,7 @@ interface ActivityItem {
   metadata: any;
 }
 
-export function ActivityFeed() {
+export const ActivityFeed = memo(() => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
@@ -98,4 +98,4 @@ export function ActivityFeed() {
       </ScrollArea>
     </Card>
   );
-}
+});
