@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { useRolimonsData } from "@/hooks/useRolimonsData";
-import { useItemResaleData } from "@/hooks/useItemResaleData";
+import { useOptimizedRolimonsData } from "@/hooks/useOptimizedRolimonsData";
+import { useOptimizedResaleData } from "@/hooks/useOptimizedResaleData";
 import { Package, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, DollarSign } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
@@ -58,7 +58,7 @@ const convertToUSD = (robux: number) => {
 };
 
 const ItemChart = memo(({ itemId }: { itemId: string }) => {
-  const { data: resaleData, loading } = useItemResaleData(itemId);
+  const { data: resaleData, loading } = useOptimizedResaleData(itemId);
   
   if (loading) {
     return (
@@ -228,7 +228,7 @@ const ItemRow = memo(({ item, index }: { item: Item; index: number }) => {
 });
 
 const Items = () => {
-  const { data: rolimonsData, loading, error, refetch } = useRolimonsData();
+  const { data: rolimonsData, loading, error, refetch } = useOptimizedRolimonsData();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState<"value-desc" | "value-asc" | "name" | "rap-desc">("value-desc");

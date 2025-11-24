@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,6 +28,39 @@ export default function Analytics() {
   const [priceHistory, setPriceHistory] = useState<any[]>([]);
   const [selectedGame, setSelectedGame] = useState<string>("all");
 
+  const fetchMarketStats = useCallback(async () => {
+    const { data } = await supabase
+      .from('market_statistics')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    if (data) setStats(data);
+  }, []);
+
+  const fetchRecentActivity = useCallback(async () => {
+    const { data } = await supabase
+      .from('activity_feed')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (data) setActivities(data);
+  }, []);
+
+  const fetchPriceHistory = useCallback(async () => {
+    const { data } = await supabase
+      .from('price_history')
+      .select('*')
+      .order('recorded_at', { ascending: false })
+      .limit(100);
+    if (data) {
+      const chartData = data.reverse().map(item => ({
+        time: new Date(item.recorded_at).toLocaleTimeString(),
+        value: Number(item.value),
+        rap: item.rap
+      }));
+      setPriceHistory(chartData);
+    }
+  }, []);
+
   useEffect(() => {
     fetchMarketStats();
     fetchRecentActivity();
@@ -52,44 +85,11 @@ export default function Analytics() {
       supabase.removeChannel(statsChannel);
       supabase.removeChannel(activityChannel);
     };
-  }, []);
+  }, [fetchMarketStats, fetchRecentActivity, fetchPriceHistory]);
 
-  const fetchMarketStats = async () => {
-    const { data } = await supabase
-      .from('market_statistics')
-      .select('*')
-      .order('updated_at', { ascending: false });
-    if (data) setStats(data);
-  };
-
-  const fetchRecentActivity = async () => {
-    const { data } = await supabase
-      .from('activity_feed')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (data) setActivities(data);
-  };
-
-  const fetchPriceHistory = async () => {
-    const { data } = await supabase
-      .from('price_history')
-      .select('*')
-      .order('recorded_at', { ascending: false })
-      .limit(100);
-    if (data) {
-      const chartData = data.reverse().map(item => ({
-        time: new Date(item.recorded_at).toLocaleTimeString(),
-        value: Number(item.value),
-        rap: item.rap
-      }));
-      setPriceHistory(chartData);
-    }
-  };
-
-  const totalVolume = stats.reduce((acc, s) => acc + Number(s.total_volume), 0);
-  const totalTransactions = stats.reduce((acc, s) => acc + s.total_transactions, 0);
-  const avgPrice = stats.length > 0 ? totalVolume / Math.max(totalTransactions, 1) : 0;
+  const totalVolume = useMemo(() => stats.reduce((acc, s) => acc + Number(s.total_volume), 0), [stats]);
+  const totalTransactions = useMemo(() => stats.reduce((acc, s) => acc + s.total_transactions, 0), [stats]);
+  const avgPrice = useMemo(() => stats.length > 0 ? totalVolume / Math.max(totalTransactions, 1) : 0, [totalVolume, totalTransactions, stats.length]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">

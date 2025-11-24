@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -36,6 +36,65 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
 
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (data) setProfile(data);
+  }, [user]);
+
+  const fetchWatchlist = useCallback(async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('user_watchlist')
+      .select(`
+        *,
+        items (
+          name,
+          value,
+          image_url,
+          game_type
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('added_at', { ascending: false });
+
+    if (data) setWatchlist(data as any);
+    setLoading(false);
+  }, [user]);
+
+  const fetchTransactions = useCallback(async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (data) setTransactions(data);
+  }, [user]);
+
+  const removeFromWatchlist = useCallback(async (watchlistId: string) => {
+    const { error } = await supabase
+      .from('user_watchlist')
+      .delete()
+      .eq('id', watchlistId);
+
+    if (error) {
+      toast.error("Failed to remove from watchlist");
+    } else {
+      toast.success("Removed from watchlist");
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) {
       navigate("/auth");
@@ -58,70 +117,14 @@ export default function Profile() {
     return () => {
       supabase.removeChannel(watchlistChannel);
     };
-  }, [user, navigate]);
+  }, [user, navigate, fetchProfile, fetchWatchlist, fetchTransactions]);
 
-  const fetchProfile = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (data) setProfile(data);
-  };
-
-  const fetchWatchlist = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from('user_watchlist')
-      .select(`
-        *,
-        items (
-          name,
-          value,
-          image_url,
-          game_type
-        )
-      `)
-      .eq('user_id', user.id)
-      .order('added_at', { ascending: false });
-
-    if (data) setWatchlist(data as any);
-    setLoading(false);
-  };
-
-  const fetchTransactions = async () => {
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (data) setTransactions(data);
-  };
-
-  const removeFromWatchlist = async (watchlistId: string) => {
-    const { error } = await supabase
-      .from('user_watchlist')
-      .delete()
-      .eq('id', watchlistId);
-
-    if (error) {
-      toast.error("Failed to remove from watchlist");
-    } else {
-      toast.success("Removed from watchlist");
-    }
-  };
+  const totalWatchlistValue = useMemo(
+    () => watchlist.reduce((acc, item) => acc + Number(item.items.value), 0),
+    [watchlist]
+  );
 
   if (!profile) return null;
-
-  const totalWatchlistValue = watchlist.reduce((acc, item) => acc + Number(item.items.value), 0);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">

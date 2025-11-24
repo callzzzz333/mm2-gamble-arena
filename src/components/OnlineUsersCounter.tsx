@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
-export function OnlineUsersCounter() {
+export const OnlineUsersCounter = memo(() => {
   const [onlineUsers, setOnlineUsers] = useState(0);
 
   useEffect(() => {
@@ -47,4 +47,4 @@ export function OnlineUsersCounter() {
       </div>
     </Card>
   );
-}
+});
