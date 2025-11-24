@@ -883,6 +883,139 @@ export type Database = {
           },
         ]
       }
+      paper_portfolios: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          name: string
+          total_profit_loss: number
+          total_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          name?: string
+          total_profit_loss?: number
+          total_value?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          name?: string
+          total_profit_loss?: number
+          total_value?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      paper_positions: {
+        Row: {
+          amount: number
+          average_buy_price: number
+          created_at: string
+          current_price: number
+          id: string
+          portfolio_id: string
+          profit_loss: number
+          profit_loss_percentage: number
+          token_address: string
+          token_name: string
+          token_symbol: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          average_buy_price: number
+          created_at?: string
+          current_price?: number
+          id?: string
+          portfolio_id: string
+          profit_loss?: number
+          profit_loss_percentage?: number
+          token_address: string
+          token_name: string
+          token_symbol: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          average_buy_price?: number
+          created_at?: string
+          current_price?: number
+          id?: string
+          portfolio_id?: string
+          profit_loss?: number
+          profit_loss_percentage?: number
+          token_address?: string
+          token_name?: string
+          token_symbol?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_positions_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "paper_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paper_trades: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          portfolio_id: string
+          price: number
+          token_address: string
+          token_name: string
+          token_symbol: string
+          total_value: number
+          trade_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          portfolio_id: string
+          price: number
+          token_address: string
+          token_name: string
+          token_symbol: string
+          total_value: number
+          trade_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          portfolio_id?: string
+          price?: number
+          token_address?: string
+          token_name?: string
+          token_symbol?: string
+          total_value?: number
+          trade_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_trades_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "paper_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_history: {
         Row: {
           demand: number | null
@@ -1037,6 +1170,80 @@ export type Database = {
           spin_result?: number | null
           started_at?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      solana_giveaway_entries: {
+        Row: {
+          created_at: string
+          giveaway_id: string
+          id: string
+          user_id: string
+          wallet_address: string | null
+        }
+        Insert: {
+          created_at?: string
+          giveaway_id: string
+          id?: string
+          user_id: string
+          wallet_address?: string | null
+        }
+        Update: {
+          created_at?: string
+          giveaway_id?: string
+          id?: string
+          user_id?: string
+          wallet_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solana_giveaway_entries_giveaway_id_fkey"
+            columns: ["giveaway_id"]
+            isOneToOne: false
+            referencedRelation: "solana_giveaways"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solana_giveaways: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          ended_at: string | null
+          ends_at: string
+          id: string
+          prize_amount: number
+          prize_token: string
+          status: string
+          title: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          ended_at?: string | null
+          ends_at: string
+          id?: string
+          prize_amount: number
+          prize_token?: string
+          status?: string
+          title: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          ended_at?: string | null
+          ends_at?: string
+          id?: string
+          prize_amount?: number
+          prize_token?: string
+          status?: string
+          title?: string
+          winner_id?: string | null
         }
         Relationships: []
       }
